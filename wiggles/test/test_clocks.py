@@ -15,7 +15,8 @@
 """Tests for the clocks module."""
 
 from nose.tools import assert_equals, assert_raises
-from wiggles.clocks import Rate
+from wiggles.test.isclose import assert_close
+from wiggles.clocks import Rate, Clock
 from wiggles.singleton import Singleton
 
 class MockWallTime(object):
@@ -24,9 +25,9 @@ class MockWallTime(object):
         self.frame_num = 0
         self.time = 0.0
 
-    def tick(self):
-        self.frame_num += 1
-        self.time += 1.0
+    def tick(self, num = 1):
+        self.frame_num += num
+        self.time += num
 
 
 class TestRate(object):
@@ -41,3 +42,56 @@ class TestRate(object):
         freq_bpm = 120.0
 
         assert_equals(freq_bpm, Rate(freq_bpm, 'bpm').bpm)
+
+class TestClock(object):
+
+    def setUp(self):
+
+        self.wt = MockWallTime()
+
+    def test_clock_simple(self):
+
+        wt = self.wt
+
+        cl = Clock(Rate(0.5), timebase = wt)
+        assert_equals(cl.phase(), 0.0)
+        assert_equals(cl.ticks(), 0)
+        wt.tick()
+        assert_equals(cl.phase(), 0.5)
+        assert_equals(cl.ticks(), 0)
+        wt.tick()
+        assert_equals(cl.phase(), 0.0)
+        assert_equals(cl.ticks(), 1)
+
+        # check to make sure clocks still work correctly if their timebase
+        # doesn't start at zero
+        cl = Clock(Rate(0.3), timebase = wt)
+        assert_equals(cl.phase(), 0.0)
+        wt.tick()
+        assert_equals(cl.phase(), 0.3)
+        assert_equals(cl.ticks(), 0)
+
+        # check for repeated calls
+        assert_equals(cl.phase(), 0.3)
+        assert_equals(cl.phase(), 0.3)
+        assert_equals(cl.phase(), 0.3)
+        assert_equals(cl.ticks(), 0)
+
+        wt.tick()
+        assert_equals(cl.phase(), 0.6)
+
+        # clock should update correctly if it did not poll
+        wt.tick(2)
+        assert_close(cl.phase(), 0.2)
+        assert_equals(cl.ticks(), 1)
+
+
+
+
+
+
+
+
+
+
+

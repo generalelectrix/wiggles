@@ -84,7 +84,8 @@ class WallTime(object):
 def check_if_current(method):
     from functools import wraps
     @wraps(method)
-    def checked(self, *args, **kwargs):
+    def checked(*args, **kwargs):
+        self = args[0]
         if not self.current():
             self.update()
         return method(*args, **kwargs)
@@ -115,12 +116,12 @@ class Clock(object):
         self.accumulated_ticks = 0
 
     def current(self):
-        return self.frame_num == timebase.frame_num
+        return self.frame_num == self.timebase.frame_num
 
     def update(self):
         """Update and recompute the phase of this clock."""
-        self.frame_num = timebase.frame_num
-        current_time = timebase.time
+        self.frame_num = self.timebase.frame_num
+        current_time = self.timebase.time
         new_phase = self._phase + (current_time - self._last_time)*self.rate.hz
 
         # this clock has ticked floor(new_phase) times since the last time it was
