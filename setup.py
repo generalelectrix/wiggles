@@ -13,5 +13,5 @@ setup(name='wiggles',
       author='Chris Macklin <chris@imaginaryphotons.com>, Josh Erickson <ponderosa@imaginaryphotons.com>',
       license='GPL2',
       packages=['wiggles'],
-      install_requires=['pysimpledmx']
+      install_requires=['pysimpledmx', 'numpy', 'pyqtgraph']
       )
