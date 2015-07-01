@@ -111,27 +111,36 @@ class Clock(object):
         self.rate = rate
         self._phase = phase
         self.timebase = timebase
-        self.frame_num = timebase.frame_num
+        self._frame_num = timebase.frame_num
         self._last_time = timebase.time
         self.accumulated_ticks = 0
+        self.accumulated_phase = 0.0
+        self.total_ticks = 0
 
     def current(self):
-        return self.frame_num == self.timebase.frame_num
+        return self._frame_num == self.timebase.frame_num
 
     def update(self):
         """Update and recompute the phase of this clock."""
-        self.frame_num = self.timebase.frame_num
+        self._frame_num = self.timebase.frame_num
         current_time = self.timebase.time
-        new_phase = self._phase + (current_time - self._last_time)*self.rate.hz
+        self.accumulated_phase = (current_time - self._last_time)*self.rate.hz
+        new_phase = self._phase + self.accumulated_phase
 
         # this clock has ticked floor(new_phase) times since the last time it was
         # updated
         self.accumulated_ticks = int(new_phase)
+        self.total_ticks += self.accumulated_ticks
 
         # wrap phase to the correct range
         self._phase = new_phase % 1.0
 
         self._last_time = current_time
+
+    @property
+    @check_if_current
+    def frame_num(self):
+        return self._frame_num
 
     @check_if_current
     def phase(self):
@@ -141,4 +150,45 @@ class Clock(object):
     def ticks(self):
         return self.accumulated_ticks
 
+class ClockMultiplier(object):
+    """Clock which ticks faster or slower than another clock."""
 
+    def __init__(self, source, mult=1.0):
+        """Make a new multiplier on an existing clock."""
+        self.source = source
+        self.mult = mult
+        self._phase = source.phase()
+        self._frame_num = source.frame_num
+        self.accumulated_ticks = 0
+        self.accumulated_phase = 0.0
+        self.total_ticks = 0
+
+    def current(self):
+        return self._frame_num == self.source.frame_num
+
+    def update(self):
+        """Update the phase of this clock based on the master."""
+        self._frame_num = self.source.frame_num
+        self.accumulated_phase = self.source.accumulated_phase * self.mult
+        new_phase = self._phase + self.accumulated_phase
+
+        # this clock has ticked floor(new_phase) times since the last time it was
+        # updated
+        self.accumulated_ticks = int(new_phase)
+        self.total_ticks += self.accumulated_ticks
+
+        # wrap phase to the correct range
+        self._phase = new_phase % 1.0
+
+    @property
+    @check_if_current
+    def frame_num(self):
+        return self._frame_num
+
+    @check_if_current
+    def phase(self):
+        return self._phase
+
+    @check_if_current
+    def ticks(self):
+        return self.accumulated_ticks
