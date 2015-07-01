@@ -16,7 +16,7 @@
 
 from nose.tools import assert_equals, assert_raises
 from wiggles.test.isclose import assert_close
-from wiggles.clocks import Rate, Clock
+from wiggles.clocks import Rate, Clock, ClockMultiplier
 from wiggles.singleton import Singleton
 
 class MockWallTime(object):
@@ -85,11 +85,27 @@ class TestClock(object):
         assert_close(cl.phase(), 0.2)
         assert_equals(cl.ticks(), 1)
 
+    def test_clock_mult(self):
 
+        wt = self.wt
 
+        cl = Clock(Rate(0.1), timebase = wt)
+        cl_m = ClockMultiplier(cl, mult=2.0)
 
+        assert_equals(cl.phase(), 0.0)
+        assert_equals(cl_m.phase(), 0.0)
+        wt.tick()
+        assert_equals(cl.phase(), 0.1)
+        assert_equals(cl_m.phase(), 0.2)
 
+        # changing the rate at this point should have no effect yet
+        cl.rate = Rate(0.15)
+        assert_equals(cl.phase(), 0.1)
+        assert_equals(cl_m.phase(), 0.2)
 
+        wt.tick()
+        assert_equals(cl.phase(), 0.25)        
+        assert_equals(cl_m.phase(), 0.5)
 
 
 

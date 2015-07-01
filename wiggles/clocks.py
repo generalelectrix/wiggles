@@ -90,7 +90,8 @@ def check_if_current(method):
             self.update()
         return method(*args, **kwargs)
     return checked
-    
+
+# TODO: refactor the Clock interface out of Clock and ClockMultiplier
 
 class Clock(object):
     """Primitive class for clocks.
