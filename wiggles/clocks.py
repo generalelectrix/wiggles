@@ -181,6 +181,10 @@ class ClockMultiplier(object):
         # wrap phase to the correct range
         self._phase = new_phase % 1.0
 
+    def resync(self):
+        """Resync the phase of this multiplier to that of its master."""
+        self._phase = self.source.phase() * self.mult
+
     @property
     @check_if_current
     def frame_num(self):

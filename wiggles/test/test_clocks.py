@@ -106,8 +106,25 @@ class TestClock(object):
         wt.tick()
         assert_equals(cl.phase(), 0.25)        
         assert_equals(cl_m.phase(), 0.5)
+        wt.tick(2)
+        assert_equals(cl.phase(), 0.55)
+        assert_equals(cl.ticks(), 0)
+        assert_close(cl_m.phase(), 0.1)
+        assert_equals(cl_m.ticks(), 1)
+        cl.rate = Rate(0.05)
+        wt.tick(4)
+        cl.phase()
+        wt.tick(5)
+        assert_close(cl.phase(), 0.0)
+        assert_equals(cl.ticks(), 1)
+        assert_close(cl_m.phase(), 0.0)
+        assert_equals(cl_m.ticks(), 1)
 
+    def test_resync(self):
+        wt = self.wt
 
-
+        cl = Clock(Rate(0.1), timebase = wt)
+        cl_m = ClockMultiplier(cl, mult=2.0)
+        wt.tick()
 
 
