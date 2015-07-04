@@ -16,19 +16,22 @@
 
 from nose.tools import assert_equals, assert_raises
 from wiggles.test.isclose import assert_close
-from wiggles.clocks import Rate, Clock, ClockMultiplier, Broadcaster
+from wiggles.clocks import Rate, Clock, ClockMultiplier, FrameUpdater, FrameUpdated
 
-class MockWallTime(Broadcaster):
+class MockWallTime(FrameUpdated):
     """Simple clock used to ease testing.  Runs at 1.0 seconds per frame."""
     def __init__(self):
         self.frame_num = 0
         self.time = 0.0
-        self._init_broadcast()
+        self.frame_updater = FrameUpdater(self)
 
     def tick(self, num = 1):
         self.frame_num += num
         self.time += num
-        self._notify_listeners(self.frame_num)
+        self.frame_updater.frame_update(self.frame_num)
+
+    def _frame_update(self, frame_num):
+        pass
 
 
 class TestRate(object):
@@ -86,6 +89,12 @@ class TestClock(object):
         assert_close(cl.phase, 0.2)
         assert_equals(cl.ticks, 1)
 
+class TestClockMultiplier(object):
+
+    def setUp(self):
+
+        self.wt = MockWallTime()
+
     def test_clock_mult(self):
 
         wt = self.wt
@@ -121,7 +130,7 @@ class TestClock(object):
         assert_close(cl_m.phase, 0.0)
         assert_equals(cl_m.ticks, 1)
 
-    def test_resync(self):
+    def test_reset_mult(self):
         wt = self.wt
 
         cl = Clock(Rate(0.1), timebase = wt)
@@ -133,6 +142,16 @@ class TestClock(object):
         cl_m.mult = 1.0
         assert_equals(cl.phase, cl_m.phase)
         wt.tick()
+        assert_equals(cl.phase, cl_m.phase)
+
+    def test_cascaded_reset(self):
+        wt = self.wt
+
+        cl = Clock(Rate(0.1), timebase=wt)
+        cl_m = ClockMultiplier(cl, mult=2.0)
+        wt.tick()
+        assert_close(cl.phase*2.0, cl_m.phase)
+        cl.reset()
         assert_equals(cl.phase, cl_m.phase)
 
     def test_mult_stays_in_phase(self):

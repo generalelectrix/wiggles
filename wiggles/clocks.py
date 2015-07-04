@@ -60,19 +60,13 @@ class Broadcaster(object):
     """Superclass for things that want to inform subscribers of updates.
 
     Holds its listeners in a WeakKeyDictionary to allow GC."""
-    def _init_broadcast(self):
-        """Implementing classes should call super().__init__"""
+    def __init__(self):
+        """Make a new Broadcaster."""
         self._listeners = WeakKeyDictionary()
 
-    def add_listener(self, listener, method='_update'):
-        """Add a listener and associated method name to call.
-
-        method should be a string, NOT the method itself.
-
-        Default method is the '_update' method, presumed to have one argument
-        consisting of the new frame number.
-        """
-        self._listeners[listener] = method
+    def add_listener(self, listener):
+        """Add a listener."""
+        self._listeners[listener] = None
 
     def remove_listener(self, listener):
         """Remove a listener."""
@@ -81,32 +75,84 @@ class Broadcaster(object):
         except KeyError:
             pass
 
-    def _notify_listeners(self, *args, **kwargs):
+    def _update_listeners(self, *args, **kwargs):
         """Notify listeners of an update."""
         for listener, method in self._listeners.iteritems():
             getattr(listener, method)(*args, **kwargs)
 
 
-class Transciever(Broadcaster):
-    """Base class for classes which receive updates and broadcast updates."""
-    def _init_transciever(self, frame_num):
-        """Initialize the broadcasting mechanism."""
-        self._init_broadcast()
-        self.frame_num = frame_num
+class FrameUpdater(Broadcaster):
+    """Responsible for cascading frame update commands."""
+    def __init__(self, client):
+        """Initialize the broadcasting mechanism and store a backlink to the client."""
+        super(FrameUpdater, self).__init__()
+        self.client = client
 
-    def _update(self, frame_num):
-        """Update the frame number, call the update method, and notify listeners."""
-        self.frame_num = frame_num
-        self.update()
-        self._notify_listeners(frame_num)
+    def frame_update(self, frame_num):
+        """Call the update method and notify listeners."""
+        self.client._frame_update(frame_num)
+        for listener in self._listeners.iterkeys():
+            listener.frame_update(frame_num)
 
-    def update(self):
-        """Inheriting classes should override this method."""
+class FrameUpdated(object):
+    """Mixin to add frame updater interface."""
+    def add_frame_client(self, client):
+        self.frame_updater.add_listener(client.frame_updater)
+
+    def remove_frame_client(self, client):
+        self.frame_updater.remove_listener(client.frame_updater)
+
+class Synchronizer(Broadcaster):
+    """Responsible for passing along clock synchronization commands."""
+    def __init__(self, client):
+        """Initialize the broadcasting mechanism and store a backlink to the client."""
+        super(Synchronizer, self).__init__()
+        self.client = client
+
+    def reset(self):
+        """Call the _reset method and notify listeners."""
+        self.client._reset()
+        for listener in self._listeners.iterkeys():
+            listener.reset()
+
+    def force_tick(self):
+        """Call the _force_tick method and notify listeners."""
+        self.client._force_tick()
+        for listener in self._listeners.iterkeys():
+            listener.force_tick()
+
+class Synchronized(object):
+    """Mixin to add synchronizer interface."""
+    def add_synchronize_client(self, client):
+        self.synchronizer.add_listener(client.synchronizer)
+
+    def remove_synchronized_client(self, client):
+        self.synchronizer.remove_listener(client.synchronizer)
+
+    def reset(self):
+        """Force this clock and any slaves to reset."""
+        self.synchronizer.reset()
+
+    def force_tick(self):
+        """Force this clock and any slaves to tick on the next frame."""
+        self.synchronizer.force_tick()
+
+
+class FrameMaster(FrameUpdated):
+    """Grand master who decides when a new frame should happen."""
+    def __init__(self, frame_num=0):
+        self.frame_num = 0
+        self.frame_updater = FrameUpdater(self)
+
+    def frame_update(self):
+        self.frame_num += 1
+        self.frame_updater.frame_update(self.frame_num)
+
+    def _frame_update(self, frame_num):
         pass
 
-
-class WallTime(Transciever):
-    """Simple placeholder class which provides wall time and frame number.
+class WallTime(FrameUpdated):
+    """Simple placeholder class which provides the wall time.
 
     Implemented as a Singleton.
     """
@@ -114,51 +160,65 @@ class WallTime(Transciever):
     __metaclass__ = Singleton
 
     def __init__(self, frame_num=0):
-        self._init_transciever(frame_num)
+        self.frame_updater = FrameUpdater(self)
 
-    def update(self):
+    def _frame_update(self, frame_num):
         """Get the wall time for this frame."""
         self.time = time.time()
 
 
-class ClockBase(object):
-    """Clocks tick and provide their phase."""
+class ClockBase(FrameUpdated, Synchronized):
+    """Clocks tick, count phase, update on frame updates, and synchronize."""
     def __init__(self):
         self.phase = 0.0
         self.accumulated_phase = 0.0
-        self.total_ticks = 0
-        self.accumulated_ticks = 0
+        self.ticks = 0
 
-    @property
-    def ticks(self):
-        return self.accumulated_ticks
+        self.force_tick = False
 
-    def reset(self):
+        self.frame_updater = FrameUpdater(self)
+        self.synchronizer = Synchronizer(self)
+
+    def add_slave(self, slave):
+        """Add a clock slaved to this clock."""
+        self.add_synchronize_client(slave)
+        self.add_frame_client(slave)
+
+    def remove_slave(self, slave):
+        """Remove a slave."""
+        self.remove_synchronized_client(slave)
+        self.remove_frame_client(slave)
+
+    def _frame_update(self, frame_num):
+        """Subclasses should override this method."""
+        raise Exception("Subclasses of ClockBase should override _frame_update")
+
+    def _reset(self):
         """Reinitialize this clock to zero.
 
         Subclasses can override this if it makes sense for them.
         """
-        # TODO: This gets strange if any clocks are listening to this one.
-        # decide what to do about that, and think about providing cascading reset
         self.phase = 0.0
         self.accumulated_phase = 0.0
-        self.total_ticks = 0
-        self.accumulated_ticks = 0
+        self.ticks = 0
+
+    def _force_tick(self):
+        """Command this clock to reset and tick on the next update."""
+        self.force_tick = True
 
 
-    def clock_update(self):
+    def update_clock(self):
         new_phase = self.phase + self.accumulated_phase
 
         # this clock has ticked floor(new_phase) times since the last time it was
         # updated
-        self.accumulated_ticks = int(new_phase)
-        self.total_ticks += self.accumulated_ticks
+        self.ticks = int(new_phase)
 
         # wrap phase to the correct range
         self.phase = new_phase % 1.0
 
 
-class Clock(ClockBase, Transciever):
+class Clock(ClockBase):
     """Simple clock that ticks at a fixed rate."""
 
     def __init__(self, rate, phase=0.0, timebase=WallTime()):
@@ -171,43 +231,76 @@ class Clock(ClockBase, Transciever):
                 the frame number.  Defaults to using the WallTime.
         """
         super(Clock, self).__init__()
-        self._init_transciever(timebase.frame_num)
 
         self.rate = rate
+        self.phase = phase
         self.timebase = timebase
-        timebase.add_listener(self)
+        timebase.add_frame_client(self)
 
         self._last_time = timebase.time
 
-    def update(self):
+        self.sync_master = None
+
+    def slave_to(self, master):
+        """Have this clock listen to reset and force_tick messages from another.
+
+        master can be None to stop synchronizing to another clock."""
+        if self.sync_master:
+            self.sync_master.remove_synchronized_client(self)
+        self.sync_master = master
+        if master:
+            master.add_synchronize_client(self)
+
+    def _frame_update(self, frame_num):
         """Recompute the phase of this clock, and how many times it ticked."""
         current_time = self.timebase.time
-        self.accumulated_phase = (current_time - self._last_time)*self.rate.hz
-        self.clock_update()
+        if self.force_tick:
+            self._reset()
+            self.ticks = 1
+            self.force_tick = False
+        else:
+            self.accumulated_phase = (current_time - self._last_time)*self.rate.hz
+            self.update_clock()
         self._last_time = current_time
 
 
-class ClockMultiplier(ClockBase, Transciever):
+class ClockMultiplier(ClockBase):
     """Clock which ticks faster or slower than another clock."""
 
-    def __init__(self, source, mult=1.0):
+    def __init__(self, master, mult=1.0):
         """Make a new multiplier on an existing clock."""
         super(ClockMultiplier, self).__init__()
-        self._init_transciever(source.frame_num)
+        self.master = None
+        self.slave_to(master)
 
-        self.source = source
-        source.add_listener(self)
-
-        self.phase = source.phase
+        self.phase = master.phase
         self.mult = mult
 
-    def reset(self):
-        """Resync the phase of this multiplier to that of its master."""
-        self.phase = self.source.phase
-        self.accumulated_phase = 0.0
-        self.accumulated_ticks = 0
+    def slave_to(self, master):
+        """Slave this multiplier to a master clock."""
+        if self.master:
+            self.master.remove_slave(self)
+        self.master = master
+        master.add_slave(self)
 
-    def update(self):
+    def _reset(self):
+        """Resync the phase of this multiplier to that of its master."""
+        self.phase = self.master.phase
+        self.accumulated_phase = 0.0
+        self.ticks = 0
+
+    def _frame_update(self, frame_num):
         """Update the phase of this clock based on the master."""
-        self.accumulated_phase = self.source.accumulated_phase * self.mult
-        self.clock_update()
+        if self.force_tick:
+            self.phase = 0.0
+            self.accumulated_phase = 0.0
+            self.ticks = 1
+            self.force_tick = False
+        else:
+            self.accumulated_phase = self.master.accumulated_phase * self.mult
+            self.update_clock()
+
+
+
+
+
