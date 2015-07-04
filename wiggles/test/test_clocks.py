@@ -16,18 +16,19 @@
 
 from nose.tools import assert_equals, assert_raises
 from wiggles.test.isclose import assert_close
-from wiggles.clocks import Rate, Clock, ClockMultiplier
-from wiggles.singleton import Singleton
+from wiggles.clocks import Rate, Clock, ClockMultiplier, Broadcaster
 
-class MockWallTime(object):
+class MockWallTime(Broadcaster):
     """Simple clock used to ease testing.  Runs at 1.0 seconds per frame."""
     def __init__(self):
         self.frame_num = 0
         self.time = 0.0
+        self._init_broadcast()
 
     def tick(self, num = 1):
         self.frame_num += num
         self.time += num
+        self._notify_listeners(self.frame_num)
 
 
 class TestRate(object):
@@ -54,36 +55,36 @@ class TestClock(object):
         wt = self.wt
 
         cl = Clock(Rate(0.5), timebase = wt)
-        assert_equals(cl.phase(), 0.0)
-        assert_equals(cl.ticks(), 0)
+        assert_equals(cl.phase, 0.0)
+        assert_equals(cl.ticks, 0)
         wt.tick()
-        assert_equals(cl.phase(), 0.5)
-        assert_equals(cl.ticks(), 0)
+        assert_equals(cl.phase, 0.5)
+        assert_equals(cl.ticks, 0)
         wt.tick()
-        assert_equals(cl.phase(), 0.0)
-        assert_equals(cl.ticks(), 1)
+        assert_equals(cl.phase, 0.0)
+        assert_equals(cl.ticks, 1)
 
         # check to make sure clocks still work correctly if their timebase
         # doesn't start at zero
         cl = Clock(Rate(0.3), timebase = wt)
-        assert_equals(cl.phase(), 0.0)
+        assert_equals(cl.phase, 0.0)
         wt.tick()
-        assert_equals(cl.phase(), 0.3)
-        assert_equals(cl.ticks(), 0)
+        assert_equals(cl.phase, 0.3)
+        assert_equals(cl.ticks, 0)
 
         # check for repeated calls
-        assert_equals(cl.phase(), 0.3)
-        assert_equals(cl.phase(), 0.3)
-        assert_equals(cl.phase(), 0.3)
-        assert_equals(cl.ticks(), 0)
+        assert_equals(cl.phase, 0.3)
+        assert_equals(cl.phase, 0.3)
+        assert_equals(cl.phase, 0.3)
+        assert_equals(cl.ticks, 0)
 
         wt.tick()
-        assert_equals(cl.phase(), 0.6)
+        assert_equals(cl.phase, 0.6)
 
         # clock should update correctly if it did not poll
         wt.tick(2)
-        assert_close(cl.phase(), 0.2)
-        assert_equals(cl.ticks(), 1)
+        assert_close(cl.phase, 0.2)
+        assert_equals(cl.ticks, 1)
 
     def test_clock_mult(self):
 
@@ -92,33 +93,33 @@ class TestClock(object):
         cl = Clock(Rate(0.1), timebase = wt)
         cl_m = ClockMultiplier(cl, mult=2.0)
 
-        assert_equals(cl.phase(), 0.0)
-        assert_equals(cl_m.phase(), 0.0)
+        assert_equals(cl.phase, 0.0)
+        assert_equals(cl_m.phase, 0.0)
         wt.tick()
-        assert_equals(cl.phase(), 0.1)
-        assert_equals(cl_m.phase(), 0.2)
+        assert_equals(cl.phase, 0.1)
+        assert_equals(cl_m.phase, 0.2)
 
         # changing the rate at this point should have no effect yet
         cl.rate = Rate(0.15)
-        assert_equals(cl.phase(), 0.1)
-        assert_equals(cl_m.phase(), 0.2)
+        assert_equals(cl.phase, 0.1)
+        assert_equals(cl_m.phase, 0.2)
 
         wt.tick()
-        assert_equals(cl.phase(), 0.25)        
-        assert_equals(cl_m.phase(), 0.5)
+        assert_equals(cl.phase, 0.25)        
+        assert_equals(cl_m.phase, 0.5)
         wt.tick(2)
-        assert_equals(cl.phase(), 0.55)
-        assert_equals(cl.ticks(), 0)
-        assert_close(cl_m.phase(), 0.1)
-        assert_equals(cl_m.ticks(), 1)
+        assert_equals(cl.phase, 0.55)
+        assert_equals(cl.ticks, 0)
+        assert_close(cl_m.phase, 0.1)
+        assert_equals(cl_m.ticks, 1)
         cl.rate = Rate(0.05)
         wt.tick(4)
-        cl.phase()
+        cl.phase
         wt.tick(5)
-        assert_close(cl.phase(), 0.0)
-        assert_equals(cl.ticks(), 1)
-        assert_close(cl_m.phase(), 0.0)
-        assert_equals(cl_m.ticks(), 1)
+        assert_close(cl.phase, 0.0)
+        assert_equals(cl.ticks, 1)
+        assert_close(cl_m.phase, 0.0)
+        assert_equals(cl_m.ticks, 1)
 
     def test_resync(self):
         wt = self.wt

@@ -21,6 +21,8 @@ when asking things in this module for their current value.  That would require
 bidirectional references and need more work around maintaining those references.
 """
 
+from weakref import WeakKeyDictionary
+
 import time
 from wiggles.singleton import Singleton
 
@@ -53,7 +55,24 @@ class Rate(object):
     def bpm(self):
         return self.rate * 60
 
-class WallTime(object):
+class Broadcaster(object):
+    def _init_broadcast(self):
+        self._listeners = WeakKeyDictionary()
+
+    def add_listener(self, listener, method):
+        self._listeners[listener] = method
+
+    def remove_listener(self, listener):
+        try:
+            del self._listeners[listener]
+        except KeyError:
+            pass
+
+    def _notify_listeners(self, *args, **kwargs):
+        for listener, method in self._listeners.iteritems():
+            getattr(listener, method)(*args, **kwargs)
+
+class WallTime(Broadcaster):
     """Simple placeholder class which provides wall time and frame number.
 
     Implemented as a Singleton.
@@ -63,41 +82,20 @@ class WallTime(object):
 
     def __init__(self, frame_num=0):
         self.frame_num = frame_num
+        self._init_broadcast()
 
-    @property
-    def frame_num(self):
-        return self._frame_num
-
-    # when the frame number is set, cache the current time
-    @frame_num.setter
-    def frame_num(self, value):
-        self._time = time.time()
-        self._frame_num = value
-
-    @property
-    def time(self):
-        """The reference time for this frame."""
-        return self._time
+    def update(self, frame_num):
+        self.time = time.time()
+        self._frame_num = frame_num
+        self._notify_listeners(frame_num)
 
 
-# decorator to ensure a clock is up to date
-def check_if_current(method):
-    from functools import wraps
-    @wraps(method)
-    def checked(*args, **kwargs):
-        self = args[0]
-        if not self.current():
-            self.update()
-        return method(*args, **kwargs)
-    return checked
 
-# TODO: refactor the Clock interface out of Clock and ClockMultiplier
-
-class Clock(object):
+class Clock(Broadcaster):
     """Primitive class for clocks.
 
-    Clocks periodically update their state when polled, and cache their values
-    for the current and prior time.
+    Clocks update their state when their frame number is set.  They then alert
+    all of their listeners of their new value.
     """
 
     def __init__(self, rate, phase=0.0, timebase=WallTime()):
@@ -109,24 +107,31 @@ class Clock(object):
             timebase: object that this clock uses to check the wall time and get
                 the frame number.  Defaults to using the WallTime.
         """
+        self._init_broadcast()
         self.rate = rate
-        self._phase = phase
+        self.phase = phase
         self.timebase = timebase
-        self._frame_num = timebase.frame_num
+        timebase.add_listener(self, method='update')
+
+        self.frame_num = timebase.frame_num
         self._last_time = timebase.time
         self.accumulated_ticks = 0
         self.accumulated_phase = 0.0
         self.total_ticks = 0
 
-    def current(self):
-        return self._frame_num == self.timebase.frame_num
+        self._init_broadcast()
 
-    def update(self):
+    @property
+    def ticks(self):
+        return self.accumulated_ticks
+
+
+    def update(self, frame_num):
         """Update and recompute the phase of this clock."""
-        self._frame_num = self.timebase.frame_num
+        self.frame_num = frame_num
         current_time = self.timebase.time
         self.accumulated_phase = (current_time - self._last_time)*self.rate.hz
-        new_phase = self._phase + self.accumulated_phase
+        new_phase = self.phase + self.accumulated_phase
 
         # this clock has ticked floor(new_phase) times since the last time it was
         # updated
@@ -134,44 +139,38 @@ class Clock(object):
         self.total_ticks += self.accumulated_ticks
 
         # wrap phase to the correct range
-        self._phase = new_phase % 1.0
+        self.phase = new_phase % 1.0
 
         self._last_time = current_time
+        self._notify_listeners(frame_num)
 
-    @property
-    @check_if_current
-    def frame_num(self):
-        return self._frame_num
 
-    @check_if_current
-    def phase(self):
-        return self._phase
-
-    @check_if_current
-    def ticks(self):
-        return self.accumulated_ticks
-
-class ClockMultiplier(object):
+class ClockMultiplier(Broadcaster):
     """Clock which ticks faster or slower than another clock."""
 
     def __init__(self, source, mult=1.0):
         """Make a new multiplier on an existing clock."""
         self.source = source
+        source.add_listener(self, method='update')
         self.mult = mult
-        self._phase = source.phase()
-        self._frame_num = source.frame_num
+        self.phase = source.phase
+        self.frame_num = source.frame_num
         self.accumulated_ticks = 0
         self.accumulated_phase = 0.0
         self.total_ticks = 0
 
-    def current(self):
-        return self._frame_num == self.source.frame_num
+        self._init_broadcast()
 
-    def update(self):
+    @property
+    def ticks(self):
+        return self.accumulated_ticks
+
+
+    def update(self, frame_num):
         """Update the phase of this clock based on the master."""
-        self._frame_num = self.source.frame_num
+        self.frame_num = frame_num
         self.accumulated_phase = self.source.accumulated_phase * self.mult
-        new_phase = self._phase + self.accumulated_phase
+        new_phase = self.phase + self.accumulated_phase
 
         # this clock has ticked floor(new_phase) times since the last time it was
         # updated
@@ -179,21 +178,10 @@ class ClockMultiplier(object):
         self.total_ticks += self.accumulated_ticks
 
         # wrap phase to the correct range
-        self._phase = new_phase % 1.0
+        self.phase = new_phase % 1.0
+
+        self._notify_listeners(frame_num)
 
     def resync(self):
         """Resync the phase of this multiplier to that of its master."""
-        self._phase = self.source.phase() * self.mult
-
-    @property
-    @check_if_current
-    def frame_num(self):
-        return self._frame_num
-
-    @check_if_current
-    def phase(self):
-        return self._phase
-
-    @check_if_current
-    def ticks(self):
-        return self.accumulated_ticks
+        self.phase = self.source.phase * self.mult
