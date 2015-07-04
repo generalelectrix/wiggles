@@ -139,7 +139,13 @@ class Synchronized(object):
 
 
 class FrameMaster(FrameUpdated):
-    """Grand master who decides when a new frame should happen."""
+    """Grand master who decides when a new frame should happen.
+
+    Implemented as a Singleton.
+    """
+
+    # make this a singleton:
+    __metaclass__ = Singleton
     def __init__(self, frame_num=0):
         self.frame_num = 0
         self.frame_updater = FrameUpdater(self)
@@ -161,6 +167,8 @@ class WallTime(FrameUpdated):
 
     def __init__(self, frame_num=0):
         self.frame_updater = FrameUpdater(self)
+        FrameMaster().add_frame_client(self)
+        self.time = None
 
     def _frame_update(self, frame_num):
         """Get the wall time for this frame."""
@@ -254,6 +262,13 @@ class Clock(ClockBase):
     def _frame_update(self, frame_num):
         """Recompute the phase of this clock, and how many times it ticked."""
         current_time = self.timebase.time
+
+        # this check should only be necessary in the rate event that this clock
+        # was started at the same time as the WallTime (or its timebase)
+        # can probably think of a more clever way to refactor this away.
+        if self._last_time is None:
+            self._last_time = current_time
+
         if self.force_tick:
             self._reset()
             self.ticks = 1
