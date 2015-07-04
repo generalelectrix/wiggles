@@ -13,7 +13,12 @@ License: Apache License 2.0 http://opensource.org/licenses/apache2.0.php
 import math
 
 def assert_close(a, b, rel_tol=1e-9, abs_tol=0.0):
-    """A nose-style assertion for isclose."""
+    """A nose-style assertion for isclose.
+
+    If either value is 0.0 and abs_tol has not been set, abs_tol = 1e-12 is used.
+    """
+    if a == 0.0 or b == 0.0 and abs_tol == 0.0:
+        abs_tol = 1e-12
     if not isclose(a, b, rel_tol, abs_tol):
         raise AssertionError("{} is not close enough to {}".format(a, b))
 
