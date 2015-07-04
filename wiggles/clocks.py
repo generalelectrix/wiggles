@@ -133,6 +133,17 @@ class ClockBase(object):
     def ticks(self):
         return self.accumulated_ticks
 
+    def reset(self):
+        """Reinitialize this clock to zero.
+
+        Subclasses can override this if it makes sense for them.
+        """
+        self.phase = 0.0
+        self.accumulated_phase = 0.0
+        self.total_ticks = 0
+        self.accumulated_ticks = 0
+
+
     def clock_update(self):
         new_phase = self.phase + self.accumulated_phase
 
@@ -166,7 +177,6 @@ class Clock(ClockBase, Transciever):
 
         self._last_time = timebase.time
 
-
     def update(self):
         """Recompute the phase of this clock, and how many times it ticked."""
         current_time = self.timebase.time
@@ -188,9 +198,11 @@ class ClockMultiplier(ClockBase, Transciever):
 
         self.mult = mult
 
-    def resync(self):
+    def reset(self):
         """Resync the phase of this multiplier to that of its master."""
         self.phase = self.source.phase
+        self.accumulated_phase = 0.0
+        self.accumulated_ticks = 0
 
     def update(self):
         """Update the phase of this clock based on the master."""

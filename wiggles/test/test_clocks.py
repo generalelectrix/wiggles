@@ -129,7 +129,10 @@ class TestClock(object):
         wt.tick()
         cl_m.mult = 1.3
         wt.tick()
-        cl_m.resync()
+        cl_m.reset()
+        cl_m.mult = 1.0
+        assert_equals(cl.phase, cl_m.phase)
+        wt.tick()
         assert_equals(cl.phase, cl_m.phase)
 
 
