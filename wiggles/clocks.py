@@ -55,24 +55,57 @@ class Rate(object):
     def bpm(self):
         return self.rate * 60
 
+
 class Broadcaster(object):
+    """Superclass for things that want to inform subscribers of updates.
+
+    Holds its listeners in a WeakKeyDictionary to allow GC."""
     def _init_broadcast(self):
+        """Implementing classes should call super().__init__"""
         self._listeners = WeakKeyDictionary()
 
-    def add_listener(self, listener, method):
+    def add_listener(self, listener, method='_update'):
+        """Add a listener and associated method name to call.
+
+        method should be a string, NOT the method itself.
+
+        Default method is the '_update' method, presumed to have one argument
+        consisting of the new frame number.
+        """
         self._listeners[listener] = method
 
     def remove_listener(self, listener):
+        """Remove a listener."""
         try:
             del self._listeners[listener]
         except KeyError:
             pass
 
     def _notify_listeners(self, *args, **kwargs):
+        """Notify listeners of an update."""
         for listener, method in self._listeners.iteritems():
             getattr(listener, method)(*args, **kwargs)
 
-class WallTime(Broadcaster):
+
+class Transciever(Broadcaster):
+    """Base class for classes which receive updates and broadcast updates."""
+    def _init_transciever(self, frame_num):
+        """Initialize the broadcasting mechanism."""
+        self._init_broadcast()
+        self.frame_num = frame_num
+
+    def _update(self, frame_num):
+        """Update the frame number, call the update method, and notify listeners."""
+        self.frame_num = frame_num
+        self.update()
+        self._notify_listeners(frame_num)
+
+    def update(self):
+        """Inheriting classes should override this method."""
+        pass
+
+
+class WallTime(Transciever):
     """Simple placeholder class which provides wall time and frame number.
 
     Implemented as a Singleton.
@@ -81,22 +114,39 @@ class WallTime(Broadcaster):
     __metaclass__ = Singleton
 
     def __init__(self, frame_num=0):
-        self.frame_num = frame_num
-        self._init_broadcast()
+        self._init_transciever(frame_num)
 
-    def update(self, frame_num):
+    def update(self):
+        """Get the wall time for this frame."""
         self.time = time.time()
-        self._frame_num = frame_num
-        self._notify_listeners(frame_num)
 
 
+class ClockBase(object):
+    """Clocks tick and provide their phase."""
+    def __init__(self):
+        self.phase = 0.0
+        self.accumulated_phase = 0.0
+        self.total_ticks = 0
+        self.accumulated_ticks = 0
 
-class Clock(Broadcaster):
-    """Primitive class for clocks.
+    @property
+    def ticks(self):
+        return self.accumulated_ticks
 
-    Clocks update their state when their frame number is set.  They then alert
-    all of their listeners of their new value.
-    """
+    def clock_update(self):
+        new_phase = self.phase + self.accumulated_phase
+
+        # this clock has ticked floor(new_phase) times since the last time it was
+        # updated
+        self.accumulated_ticks = int(new_phase)
+        self.total_ticks += self.accumulated_ticks
+
+        # wrap phase to the correct range
+        self.phase = new_phase % 1.0
+
+
+class Clock(ClockBase, Transciever):
+    """Simple clock that ticks at a fixed rate."""
 
     def __init__(self, rate, phase=0.0, timebase=WallTime()):
         """Create a new clock with rate object and an initial phase.
@@ -107,81 +157,42 @@ class Clock(Broadcaster):
             timebase: object that this clock uses to check the wall time and get
                 the frame number.  Defaults to using the WallTime.
         """
-        self._init_broadcast()
+        super(Clock, self).__init__()
+        self._init_transciever(timebase.frame_num)
+
         self.rate = rate
-        self.phase = phase
         self.timebase = timebase
-        timebase.add_listener(self, method='update')
+        timebase.add_listener(self)
 
-        self.frame_num = timebase.frame_num
         self._last_time = timebase.time
-        self.accumulated_ticks = 0
-        self.accumulated_phase = 0.0
-        self.total_ticks = 0
-
-        self._init_broadcast()
-
-    @property
-    def ticks(self):
-        return self.accumulated_ticks
 
 
-    def update(self, frame_num):
-        """Update and recompute the phase of this clock."""
-        self.frame_num = frame_num
+    def update(self):
+        """Recompute the phase of this clock, and how many times it ticked."""
         current_time = self.timebase.time
         self.accumulated_phase = (current_time - self._last_time)*self.rate.hz
-        new_phase = self.phase + self.accumulated_phase
-
-        # this clock has ticked floor(new_phase) times since the last time it was
-        # updated
-        self.accumulated_ticks = int(new_phase)
-        self.total_ticks += self.accumulated_ticks
-
-        # wrap phase to the correct range
-        self.phase = new_phase % 1.0
-
+        self.clock_update()
         self._last_time = current_time
-        self._notify_listeners(frame_num)
 
 
-class ClockMultiplier(Broadcaster):
+class ClockMultiplier(ClockBase, Transciever):
     """Clock which ticks faster or slower than another clock."""
 
     def __init__(self, source, mult=1.0):
         """Make a new multiplier on an existing clock."""
+        super(ClockMultiplier, self).__init__()
+        self._init_transciever(source.frame_num)
+
         self.source = source
-        source.add_listener(self, method='update')
+        source.add_listener(self)
+
         self.mult = mult
-        self.phase = source.phase
-        self.frame_num = source.frame_num
-        self.accumulated_ticks = 0
-        self.accumulated_phase = 0.0
-        self.total_ticks = 0
-
-        self._init_broadcast()
-
-    @property
-    def ticks(self):
-        return self.accumulated_ticks
-
-
-    def update(self, frame_num):
-        """Update the phase of this clock based on the master."""
-        self.frame_num = frame_num
-        self.accumulated_phase = self.source.accumulated_phase * self.mult
-        new_phase = self.phase + self.accumulated_phase
-
-        # this clock has ticked floor(new_phase) times since the last time it was
-        # updated
-        self.accumulated_ticks = int(new_phase)
-        self.total_ticks += self.accumulated_ticks
-
-        # wrap phase to the correct range
-        self.phase = new_phase % 1.0
-
-        self._notify_listeners(frame_num)
 
     def resync(self):
         """Resync the phase of this multiplier to that of its master."""
         self.phase = self.source.phase * self.mult
+
+    def update(self):
+        """Update the phase of this clock based on the master."""
+        self.accumulated_phase = self.source.accumulated_phase * self.mult
+        self.clock_update()
