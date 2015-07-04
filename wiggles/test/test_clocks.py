@@ -127,5 +127,9 @@ class TestClock(object):
         cl = Clock(Rate(0.1), timebase = wt)
         cl_m = ClockMultiplier(cl, mult=2.0)
         wt.tick()
+        cl_m.mult = 1.3
+        wt.tick()
+        cl_m.resync()
+        assert_equals(cl.phase, cl_m.phase)
 
 

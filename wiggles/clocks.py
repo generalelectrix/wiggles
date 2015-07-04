@@ -190,7 +190,7 @@ class ClockMultiplier(ClockBase, Transciever):
 
     def resync(self):
         """Resync the phase of this multiplier to that of its master."""
-        self.phase = self.source.phase * self.mult
+        self.phase = self.source.phase
 
     def update(self):
         """Update the phase of this clock based on the master."""
