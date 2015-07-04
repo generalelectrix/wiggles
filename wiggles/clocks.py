@@ -138,6 +138,8 @@ class ClockBase(object):
 
         Subclasses can override this if it makes sense for them.
         """
+        # TODO: This gets strange if any clocks are listening to this one.
+        # decide what to do about that, and think about providing cascading reset
         self.phase = 0.0
         self.accumulated_phase = 0.0
         self.total_ticks = 0
@@ -196,6 +198,7 @@ class ClockMultiplier(ClockBase, Transciever):
         self.source = source
         source.add_listener(self)
 
+        self.phase = source.phase
         self.mult = mult
 
     def reset(self):
