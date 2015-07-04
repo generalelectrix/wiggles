@@ -135,4 +135,42 @@ class TestClock(object):
         wt.tick()
         assert_equals(cl.phase, cl_m.phase)
 
+    def test_mult_stays_in_phase(self):
+        wt = self.wt
+
+        cl = Clock(Rate(0.1), timebase=wt)
+        wt.tick()
+        cl_m = ClockMultiplier(cl, mult=2.0)
+        assert_equals(cl.phase, cl_m.phase)
+        wt.tick()
+        assert_close(cl_m.phase, 0.3)
+        assert_equals(cl.phase, 0.2)
+        cl_m.mult = 0.0
+        wt.tick()
+        assert_equals(cl_m.phase, cl.phase)
+        cl_m.mult = 1.0
+        wt.tick()
+        assert_equals(cl_m.phase, cl.phase)
+        cl_m.mult = 3.0
+        # clocks should rephase in 30 timesteps
+        wt.tick(30)
+        assert_close(cl_m.phase, cl.phase)
+        cl_m.mult = 33.0
+        # clocks should rephase in 330 timesteps
+        wt.tick(330)
+        assert_close(cl_m.phase, cl.phase)
+        # some floating point error probably cropping up
+        # reset for some more tests
+        cl.reset()
+        cl_m.reset()
+        cl_m.mult = 1./3.
+        # clocks should rephase in 30 timesteps
+        wt.tick(30)
+        assert_close(cl_m.phase, cl.phase)
+        cl_m.mult = 1./33.
+        # clocks should rephase in 330 timesteps
+        wt.tick(330)
+        assert_close(cl_m.phase, cl.phase)
+
+
 
