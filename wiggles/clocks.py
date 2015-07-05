@@ -75,10 +75,7 @@ class Broadcaster(object):
         except KeyError:
             pass
 
-    def _update_listeners(self, *args, **kwargs):
-        """Notify listeners of an update."""
-        for listener, method in self._listeners.iteritems():
-            getattr(listener, method)(*args, **kwargs)
+
 
 
 class FrameUpdater(Broadcaster):
