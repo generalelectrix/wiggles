@@ -1,0 +1,44 @@
+wiggles notes
+
+wiggles is a lighting controller built on two primitive ideas:
+- analog clocks: this is an interface that
+    0. "tells the time" in a continuous fashion
+        (eg it is presently 35.75935% of the way between the last tick and the next tick)
+    1. "ticks"
+        (supplies a trigger event when the clock's phase rolls from 1.0 to 0.0)
+
+- quasi-periodic waveforms: waveforms with a current phase on [0.0,1.0)
+    You may ask a waveform for its current value, or its current value with an arbitrary phase offset.
+    Waveforms need not be truly periodic but should still have a notion of constant-width periods in time (representing the portion of the waveform mapped to the phase 0.0 to 1.0) with phase offsets (possibly returning a value from a neighboring period, regardless of whether the waveform is 1.0-periodic)
+
+some core design principles:
+    restrict artistic weirdness as little as possible in the core control model, by allowing as many things to be plugged into each other as is feasible.  add meaningful restrictions as far up the stack as possible.
+        - aggressively simplify and refactor all control interfaces into as few data types as possible.
+        - create automatic and efficient conversion interfaces between as many of these datatypes as possible; prefer allowing conversion of orange to apple in *any way at all* rather than not at all, without compromising code safety.
+        - clocks can be used as waveforms; waveforms can be used as clocks, by passing on whatever clock interface they are using
+        - well-behaved waveforms are expected to remain in-bounds, but are unrestricted internally in dynamic range.  clipping or compression should occur as late in signal processessing as is feasible.
+
+    aggressively simplify the control interfaces of complex fixtures to enable trivial mapping to the control data types.  prefer a simple and uniform interface over exposing every last modal function of a complex fixture.  allow the expressive data flow model to provide complexity rather than the fixture interface.  for example: why expose rotation speed if you have indexing instead?  now the interface is absolute position, can be made periodic on [0.0,1.0), could be driven *directly* by a clock signal, and could have velocity re-exposed by taking the derivative (cheap and easy)
+
+    enable trivial, dynamic routing and rerouting of data/feedback to and from control surfaces.  make it completely trivial to put a knob on anything.  think Ableton Live-style hotmapping of midi controls.
+
+    allow things to be gracefully and non-catastrophically unplugged.  consider exposing options for how an unplugged socket behaves (retain last value?  retain entire last waveform or clock state?).
+
+a note on phases: as part of the aggressive simplification of control interfaces, phases will be unipolar floats.  In other words, phase is a value between 0 and 1, rather than 0 and 2pi, or 0 and 360.
+
+basic control data types:
+    unipolar float: [0.0, 1.0)
+    bipolar float: [-1.0, 1.0)
+    integer enumeration: [0, 1, 2, ..., N] (with transport along-side for optional enum case nametags)
+
+basic automatic coercions:
+    unipolar float stretches to fill bipolar float's domain.  bipolar float compressess to fill unipolar float's domain.  enumerations with N entries are assigned a bin of equal width on either float's domain, and that binning is used to coerce floats to enums.  enums coerce to floats is trickier, several options here.
+
+color:
+    color is a tricky business; need consultation here.  want to provide a rich spectral color transport layer, but unclear on implementation.
+
+languages:
+    python 3 for providing a high-level dynamic backbone.  type annotations should be provided wherever possible.
+    rust for implementing the core data flow operations.
+
+    Rust here is entirely a slave to Python; Python will host the function call that starts the application.  The rust layer will provide a C API, and certain Python objects will hold on to Rust-level pointers to lower-level objects; these links should ideally be two-directional.  Expensive things like computing waveforms and chasing dataflow graphs will be done in Rust.  Highly dynamic operations like real-time routing of signals will be expressed in Python.
