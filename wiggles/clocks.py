@@ -12,19 +12,14 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-"""The basis for timekeeping.
-
-The main limitation of this module as presently written is that all updates are
-performed as lazy pull operations.  Better would be some kind of push
-infrastructure, which would eliminate all the "are you current?" checks needed
-when asking things in this module for their current value.  That would require
-bidirectional references and need more work around maintaining those references.
-"""
+"""The basis for timekeeping."""
 
 from weakref import WeakKeyDictionary
 
 import time
-from wiggles.singleton import Singleton
+
+HZ = "hz"
+BPM = "bpm"
 
 class Rate(object):
     """Helper object for handling rates.
@@ -32,18 +27,12 @@ class Rate(object):
     Provides for automatic conversion between different rate-keeping systems.
     Intrinsically stored as hertz.
     """
-    def __init__(self, rate, unit='Hz'):
-        """Create a Rate object given a value and a unit of measure.
-
-        unit can be either 'hz' or 'bpm', case-insensitive
-        """
-        # TODO: probably better to use some kind of class or singleton for Hz
-        # and Bpm
-        unit = unit.lower()
-        if unit == 'hz':
+    def __init__(self, rate, unit=HZ):
+        """Create a Rate object given a value and a unit of measure."""
+        if unit == HZ:
             self.rate = rate
-        elif unit == 'bpm':
-            self.rate = rate / 60
+        elif unit == BPM:
+            self.rate = rate / 60.0
         else:
             raise Exception("Could not interpret the unit '{}'".format(unit))
 
@@ -76,8 +65,6 @@ class Broadcaster(object):
             pass
 
 
-
-
 class FrameUpdater(Broadcaster):
     """Responsible for cascading frame update commands."""
     def __init__(self, client):
@@ -91,6 +78,7 @@ class FrameUpdater(Broadcaster):
         for listener in self._listeners.iterkeys():
             listener.frame_update(frame_num)
 
+
 class FrameUpdated(object):
     """Mixin to add frame updater interface."""
     def add_frame_client(self, client):
@@ -98,6 +86,7 @@ class FrameUpdated(object):
 
     def remove_frame_client(self, client):
         self.frame_updater.remove_listener(client.frame_updater)
+
 
 class Synchronizer(Broadcaster):
     """Responsible for passing along clock synchronization commands."""

@@ -115,7 +115,7 @@ class TestClockMultiplier(object):
         assert_equals(cl_m.phase, 0.2)
 
         wt.tick()
-        assert_equals(cl.phase, 0.25)        
+        assert_equals(cl.phase, 0.25)
         assert_equals(cl_m.phase, 0.5)
         wt.tick(2)
         assert_equals(cl.phase, 0.55)
