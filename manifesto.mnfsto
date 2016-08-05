@@ -1,5 +1,3 @@
-wiggles notes
-
 wiggles is a lighting controller built on two primitive ideas:
 - analog clocks: this is an interface that
     0. "tells the time" in a continuous fashion
