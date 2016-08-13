@@ -39,4 +39,11 @@ languages:
     python 3 for providing a high-level dynamic backbone.  type annotations should be provided wherever possible.
     rust for implementing the core data flow operations.
 
-    Rust here is entirely a slave to Python; Python will host the function call that starts the application.  The rust layer will provide a C API, and certain Python objects will hold on to Rust-level pointers to lower-level objects; these links should ideally be two-directional.  Expensive things like computing waveforms and chasing dataflow graphs will be done in Rust.  Highly dynamic operations like real-time routing of signals will be expressed in Python.
+    Rust here is entirely a slave to Python; Python will host the function call that starts the application.  The rust layer will provide a C API, and certain Python objects will hold on to Rust-level pointers to lower-level objects; these links should ideally be two-directional.  Expensive things like computing waveforms and chasing dataflow graphs will be done in Rust.  Highly dynamic operations like real-time routing of signals will probably be expressed in Python.  UI abstraction layers are also a good Python candidate, humans can't push all that many buttons in the time it takes to draw a frame.
+
+processing and filtering of waveforms:
+    - ideally, waveform re-scaling should happen as late in the signal chain as possible, and should have a very straightforward interface.  should implement this as arbitrary functional rescaling across arbitrary numbers of input parameters to allow things like multi-parameter nonlinear rescalings (topological compressions, for example), and implement one-parameter linear on top of this.  simple amplitude compression would also be really nice.  compression artifacts may even look interesting even though they sound terrible.  adding harmonic noise into lighting, even weird digital ones, might look really interesting on some parameters.
+    - seek out good noise generators from the animation world.  Implement them first.  Automatic peridoic noise generation from sample and hold?  How can we implement sample and hold for the entire state of an animator?  Immutable processing closures?  How expensive is creating a closure?
+
+distributed-ness:
+    - can we implement the waveform interface in some efficient way across a 0mq socket?
