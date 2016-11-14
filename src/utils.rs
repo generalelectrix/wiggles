@@ -7,6 +7,9 @@ const ALMOST_EQ_TOLERANCE: f64 = 0.000_000_1;
 #[inline(always)]
 pub fn modulo(a: f64, b: f64) -> f64 { ((a % b) + b) % b }
 
+/// True modulus, on 1.0.
+pub fn modulo_one(v: f64) -> f64 { modulo(v, 1.0) }
+
 /// Minimum included angle between two unit angles.
 /// Might be negative.
 #[inline(always)]
