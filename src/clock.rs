@@ -1,21 +1,30 @@
 //! Types and traits for clocks and clock signals.
 use update::{Update, DeltaT};
 use utils::modulo_one;
-use std::cell::Cell;
+use std::rc::Rc;
+use std::cell::{Cell, RefCell};
 
-#[derive(Clone)]
-/// A rate in Hz.
-pub struct Rate(pub f64);
+#[derive(Clone, Debug)]
+pub enum Rate {
+    Hz(f64),
+    Bpm(f64),
+    Period(f64)
+}
 
-#[derive(Clone)]
-/// A phase expressed as a unipolar float [0.0, 1.0)
-pub struct Phase(pub f64);
+impl Rate {
+    fn in_hz(&self) -> f64 {
+        match *self {
+            Rate::Hz(v) => v,
+            Rate::Bpm(bpm) => bpm / 60.0,
+            Rate::Period(seconds) => 1.0 / seconds
+        }
+    }
+}
 
-impl Copy for Phase {}
 
 pub trait ClockSource {
     /// Get the phase of this clock.
-    fn phase(&self) -> Phase;
+    fn phase(&self) -> f64;
 
     /// Get the current tick count of this clock.
     fn ticks(&self) -> i64;
@@ -26,8 +35,7 @@ pub trait ClockSource {
     /// Get the tick count and phase of this clock, as a single float.
     /// The integer portion is tick count, while the fractional portion is phase.
     fn value(&self) -> f64 {
-        let Phase(p) = self.phase();
-        self.ticks() as f64 + p
+        self.ticks() as f64 + self.phase()
     }
 }
 
@@ -40,23 +48,21 @@ pub struct Clock {
     phase: f64,
     tick_count: i64,
     ticked: bool,
-    rate: f64
+    rate: f64 // Hz
 }
 
 impl Clock {
     pub fn new(rate: Rate) -> Self {
-        let Rate(f) = rate;
-        Clock {phase: 0.0, tick_count: 0, rate: f, ticked: true}
+        Clock {phase: 0.0, tick_count: 0, rate: rate.in_hz(), ticked: true}
     }
 
     pub fn set_rate(&mut self, rate: Rate) {
-        let Rate(r) = rate;
-        self.rate = r;
+        self.rate = rate.in_hz();
     }
 }
 
 impl ClockSource for Clock {
-    fn phase(&self) -> Phase {Phase(self.phase)}
+    fn phase(&self) -> f64 {self.phase}
     fn ticks(&self) -> i64 {self.tick_count}
     fn ticked(&self) -> bool {self.ticked}
 }
@@ -142,6 +148,8 @@ impl<T: ClockSource> Update for ClockMultiplier<T> {
     fn update(&mut self, delta_t: DeltaT) {
         // if a current_value is set, pull it out and use it to update prev_value.
         // if not, simply increase the age of the currently held previous value.
+        // this implementation assumes that state updates come at a deterministic
+        // and constant delta_t.
         if let Some((value, _)) = self.current_value.get() {
             self.prev_value = value;
             self.prev_value_age = 1;
@@ -154,9 +162,9 @@ impl<T: ClockSource> Update for ClockMultiplier<T> {
 }
 
 impl<T: ClockSource> ClockSource for ClockMultiplier<T> {
-    fn phase(&self) -> Phase {
+    fn phase(&self) -> f64 {
         let (value, _) = self.compute_current_value();
-        Phase(modulo_one(value))
+        modulo_one(value)
     }
 
     fn ticks(&self) -> i64 {
@@ -168,4 +176,51 @@ impl<T: ClockSource> ClockSource for ClockMultiplier<T> {
         let (_, ticked) = self.compute_current_value();
         ticked
     }
+}
+
+impl<T: ClockSource> ClockSource for Rc<RefCell<T>> {
+    fn phase(&self) -> f64 {self.borrow().phase()}
+    fn ticks(&self) -> i64 {self.borrow().ticks()}
+    fn ticked(&self) -> bool {self.borrow().ticked()}
+}
+
+mod tests {
+    #![allow(unused_imports)]
+    use update::*;
+    use super::*;
+    use super::Rate::Hz;
+    use utils::assert_almost_eq;
+    use std::rc::Rc;
+    use std::cell::RefCell;
+
+    #[test]
+    fn test_clock() {
+        let mut source = Clock::new(Hz(1.0));
+
+        // update clock 3/4 of a period
+        source.update(DeltaT(0.75));
+
+        assert_almost_eq(0.75, source.phase());
+        assert_eq!(0, source.ticks());
+        assert!(! source.ticked());
+
+        // update clock another 3/4 of a period
+        source.update(DeltaT(0.75));
+        assert_almost_eq(0.5, source.phase());
+        assert_eq!(1, source.ticks());
+        assert!(source.ticked());
+
+    }
+
+    #[test]
+    fn test_clock_multiplication() {
+        // clock that ticks at 1 Hz.
+        let source = Rc::new(RefCell::new(Clock::new(Hz(1.0))));
+
+        // clock that should tick at 2 Hz.
+        let mult = ClockMultiplier::new(source, 2.0);
+
+        assert_eq!(0.0, mult.phase());
+    }
+
 }
