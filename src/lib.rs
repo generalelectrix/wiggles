@@ -1,6 +1,5 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-    }
-}
+#![allow(dead_code)]
+
+mod utils;
+mod clock;
+mod update;
