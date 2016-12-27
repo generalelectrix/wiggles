@@ -76,9 +76,8 @@ impl SynchronizableClock for Clock {
 }
 
 impl Update for Clock {
-    fn update(&mut self, delta_t: DeltaT) {
+    fn update(&mut self, DeltaT(dt): DeltaT) {
         // determine how much phase has elapsed
-        let DeltaT(dt) = delta_t;
         let elapsed_phase = self.rate * dt;
         let phase_unwrapped = self.phase + elapsed_phase;
 
@@ -145,7 +144,7 @@ impl<T: ClockSource> ClockMultiplier<T> {
 }
 
 impl<T: ClockSource> Update for ClockMultiplier<T> {
-    fn update(&mut self, delta_t: DeltaT) {
+    fn update(&mut self, _: DeltaT) {
         // if a current_value is set, pull it out and use it to update prev_value.
         // if not, simply increase the age of the currently held previous value.
         // this implementation assumes that state updates come at a deterministic
@@ -177,6 +176,7 @@ impl<T: ClockSource> ClockSource for ClockMultiplier<T> {
         ticked
     }
 }
+
 
 impl<T: ClockSource> ClockSource for Rc<RefCell<T>> {
     fn phase(&self) -> f64 {self.borrow().phase()}
@@ -218,9 +218,25 @@ mod tests {
         let source = Rc::new(RefCell::new(Clock::new(Hz(1.0))));
 
         // clock that should tick at 2 Hz.
-        let mult = ClockMultiplier::new(source, 2.0);
+        let mut mult = ClockMultiplier::new(source.clone(), 2.0);
+
+        let dt = DeltaT(0.75);
 
         assert_eq!(0.0, mult.phase());
+
+        source.borrow_mut().update(dt);
+        mult.update(dt);
+
+        assert_almost_eq(0.5, mult.phase());
+        assert!(mult.ticked());
+
+        source.borrow_mut().update(dt);
+        mult.update(dt);
+
+        source.borrow_mut().update(dt);
+        mult.update(dt);
+
+
     }
 
 }
