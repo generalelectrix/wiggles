@@ -17,7 +17,6 @@ pub enum ClockMessage {
 }
 
 impl ClockNetwork {
-    pub fn blah() {}
     pub fn new() -> Self {
         ClockNetwork { nodes: HashMap::new() }
     }
