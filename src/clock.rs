@@ -21,7 +21,6 @@ impl Rate {
     }
 }
 
-
 pub trait ClockSource {
     /// Get the phase of this clock.
     fn phase(&self) -> f64;
@@ -76,7 +75,7 @@ impl SynchronizableClock for Clock {
 }
 
 impl Update for Clock {
-    fn update(&mut self, DeltaT(dt): DeltaT) {
+    fn update(&mut self, dt: DeltaT) {
         // determine how much phase has elapsed
         let elapsed_phase = self.rate * dt;
         let phase_unwrapped = self.phase + elapsed_phase;
@@ -198,14 +197,14 @@ mod tests {
         let mut source = Clock::new(Hz(1.0));
 
         // update clock 3/4 of a period
-        source.update(DeltaT(0.75));
+        source.update(0.75);
 
         assert_almost_eq(0.75, source.phase());
         assert_eq!(0, source.ticks());
         assert!(! source.ticked());
 
         // update clock another 3/4 of a period
-        source.update(DeltaT(0.75));
+        source.update(0.75);
         assert_almost_eq(0.5, source.phase());
         assert_eq!(1, source.ticks());
         assert!(source.ticked());
@@ -220,7 +219,7 @@ mod tests {
         // clock that should tick at 2 Hz.
         let mut mult = ClockMultiplier::new(source.clone(), 2.0);
 
-        let dt = DeltaT(0.75);
+        let dt = 0.75;
 
         assert_eq!(0.0, mult.phase());
 
@@ -235,8 +234,6 @@ mod tests {
 
         source.borrow_mut().update(dt);
         mult.update(dt);
-
-
     }
 
 }
