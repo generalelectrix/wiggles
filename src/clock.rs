@@ -3,92 +3,49 @@ use update::{Update, DeltaT};
 use utils::modulo_one;
 use std::rc::Rc;
 use std::cell::{Cell, RefCell};
+use clock_network::{
+    ClockValue, ClockGraph, ComputeClock, UpdateClock, CompleteClock};
+use knob::{Knob, KnobValue};
+use datatypes::Rate;
 
-#[derive(Clone, Debug)]
-pub enum Rate {
-    Hz(f64),
-    Bpm(f64),
-    Period(f64)
+
+struct Clock {
+    value: ClockValue,
 }
 
-impl Rate {
-    fn in_hz(&self) -> f64 {
-        match *self {
-            Rate::Hz(v) => v,
-            Rate::Bpm(bpm) => bpm / 60.0,
-            Rate::Period(seconds) => 1.0 / seconds
-        }
-    }
-}
-
-pub trait ClockSource {
-    /// Get the phase of this clock.
-    fn phase(&self) -> f64;
-
-    /// Get the current tick count of this clock.
-    fn ticks(&self) -> i64;
-
-    /// Find out if the clock ticked the last time it updated.
-    fn ticked(&self) -> bool;
-
-    /// Get the tick count and phase of this clock, as a single float.
-    /// The integer portion is tick count, while the fractional portion is phase.
-    fn value(&self) -> f64 {
-        self.ticks() as f64 + self.phase()
-    }
-}
-
-pub trait SynchronizableClock {
-    /// Reset a clock such that it's phase is 0.0 and it behaves as if it just ticked.
-    fn reset(&mut self);
-}
-
-pub struct Clock {
-    phase: f64,
-    tick_count: i64,
-    ticked: bool,
-    rate: f64 // Hz
+pub fn create_clock(iniital_rate: Rate) -> impl CompleteClock {
+    let rate_knob = Knob::new("rate", 0, KnobValue::Rate(initial_rate));
 }
 
 impl Clock {
     pub fn new(rate: Rate) -> Self {
-        Clock {phase: 0.0, tick_count: 0, rate: rate.in_hz(), ticked: true}
-    }
-
-    pub fn set_rate(&mut self, rate: Rate) {
-        self.rate = rate.in_hz();
-    }
-}
-
-impl ClockSource for Clock {
-    fn phase(&self) -> f64 {self.phase}
-    fn ticks(&self) -> i64 {self.tick_count}
-    fn ticked(&self) -> bool {self.ticked}
-}
-
-impl SynchronizableClock for Clock {
-    fn reset(&mut self) {
-        self.phase = 0.0;
-        self.tick_count = 0;
-        self.ticked = true;
+        Clock {
+            value: ClockValue{phase: 0.0, tick_count: 0, ticked: true},
+            rate: rate.in_hz(),
+        }
     }
 }
 
-impl Update for Clock {
-    fn update(&mut self, dt: DeltaT) {
+impl ComputeClock for Clock {
+    fn compute_clock(&self, _: &[ClockValue], _: &[Knob]) -> ClockValue { self.value }
+}
+
+impl UpdateClock for Clock {
+    fn update(&mut self, knobs: &[Knob], dt: DeltaT) {
+        debug_assert!(knobs.length() == 1);
         // determine how much phase has elapsed
         let elapsed_phase = self.rate * dt;
-        let phase_unwrapped = self.phase + elapsed_phase;
+        let phase_unwrapped = self.value.phase + elapsed_phase;
 
         // Determine how many ticks have actually elapsed.  It may be more than 1.
         // It may also be negative if this clock has a negative rate.
         let accumulated_ticks = phase_unwrapped.floor() as i64;
 
         // This clock ticked if we accumulated +-1 or more ticks.
-        self.ticked = accumulated_ticks.abs() > 0;
-        self.tick_count += accumulated_ticks;
+        self.value.ticked = accumulated_ticks.abs() > 0;
+        self.value.tick_count += accumulated_ticks;
 
-        self.phase = modulo_one(phase_unwrapped);
+        self.value.phase = modulo_one(phase_unwrapped);
     }
 }
 
@@ -98,21 +55,20 @@ impl Update for Clock {
 
 
 /// Multiply another clock signal to produce a clock that runs at a different rate.
-pub struct ClockMultiplier<T: ClockSource> {
-    source: T,
+pub struct ClockMultiplier {
     factor: f64,
-    current_value: Cell<Option<(f64, bool)>>, // we may have computed and memoized the current value
+    current_value: Cell<Option<ClockValue>>, // we may have computed and memoized the current value
+    /// Previous floating-point value of time.
     prev_value: f64,
     prev_value_age: i64, // how many updates have gone by since we last computed a value?
 }
 
-impl<T: ClockSource> ClockMultiplier<T> {
-    pub fn new(source: T, factor: f64) -> Self {
+impl ClockMultiplier {
+    pub fn new(initial_source_value: f64, factor: f64) -> Self {
         // initially set this clock's previous value to the current value of
         // the upstream clock times the multiplier.
-        let v = source.value() * factor;
+        let v = initial_source_value * factor;
         ClockMultiplier {
-            source: source,
             factor: factor,
             current_value: Cell::new(None),
             prev_value: v,
@@ -121,12 +77,12 @@ impl<T: ClockSource> ClockMultiplier<T> {
 
     /// Compute the current value of this clock and whether or not it ticks this frame.
     /// Memoize this result, or return an existing memoized result.
-    fn compute_current_value(&self) -> (f64, bool) {
+    fn compute_current_value(&self, upstream_val: ClockValue) -> ClockValue {
         if let Some(vt) = self.current_value.get() {
             vt
         }
         else {
-            let current_value = self.source.value() * self.factor;
+            let current_value = upstream_val.float_value() * self.factor;
             let delta_v = current_value - self.prev_value;
             // depending on the age of the previous value, crudely calculate how
             // much of the total delta_v accumulated this frame.
@@ -136,20 +92,24 @@ impl<T: ClockSource> ClockMultiplier<T> {
             let current_tick_number = current_value.trunc();
             let approximate_prev_tick_number = (current_value - delta_v_this_frame).trunc();
             let ticked = current_tick_number != approximate_prev_tick_number;
-            self.current_value.set(Some((current_value, ticked)));
-            (current_value, ticked)
+            let new_value = ClockValue {
+                phase: modulo_one(current_value),
+                tick_count: current_value.trunc() as i64,
+                ticked: ticked,};
+            self.current_value.set(Some(new_value));
+            new_value
         }
     }
 }
 
-impl<T: ClockSource> Update for ClockMultiplier<T> {
+impl UpdateClock for ClockMultiplier {
     fn update(&mut self, _: DeltaT) {
         // if a current_value is set, pull it out and use it to update prev_value.
         // if not, simply increase the age of the currently held previous value.
         // this implementation assumes that state updates come at a deterministic
         // and constant delta_t.
-        if let Some((value, _)) = self.current_value.get() {
-            self.prev_value = value;
+        if let Some(value) = self.current_value.get() {
+            self.prev_value = value.float_value();
             self.prev_value_age = 1;
             self.current_value.set(None);
         }
@@ -160,34 +120,14 @@ impl<T: ClockSource> Update for ClockMultiplier<T> {
 }
 
 impl<T: ClockSource> ClockSource for ClockMultiplier<T> {
-    fn phase(&self) -> f64 {
-        let (value, _) = self.compute_current_value();
-        modulo_one(value)
-    }
-
-    fn ticks(&self) -> i64 {
-        let (value, _) = self.compute_current_value();
-        value.trunc() as i64
-    }
-
-    fn ticked(&self) -> bool {
-        let (_, ticked) = self.compute_current_value();
-        ticked
-    }
-}
-
-
-impl<T: ClockSource> ClockSource for Rc<RefCell<T>> {
-    fn phase(&self) -> f64 {self.borrow().phase()}
-    fn ticks(&self) -> i64 {self.borrow().ticks()}
-    fn ticked(&self) -> bool {self.borrow().ticked()}
+    fn complete_value(&self, g: &ClockGraph) -> ClockValue { self.compute_current_value() }
 }
 
 mod tests {
     #![allow(unused_imports)]
     use update::*;
     use super::*;
-    use super::Rate::Hz;
+    use datatypes::Rate::Hz;
     use utils::assert_almost_eq;
     use std::rc::Rc;
     use std::cell::RefCell;
