@@ -13,8 +13,9 @@ struct Clock {
     value: ClockValue,
 }
 
-pub fn create_clock(iniital_rate: Rate) -> impl CompleteClock {
+pub fn create_simple_clock(iniital_rate: Rate) -> Box<CompleteClock> {
     let rate_knob = Knob::new("rate", 0, KnobValue::Rate(initial_rate));
+    let reset_knob = Knob::new("reset", 1, KnobValue::Button(false));
 }
 
 impl Clock {
@@ -117,10 +118,6 @@ impl UpdateClock for ClockMultiplier {
             self.prev_value_age += 1;
         }
     }
-}
-
-impl<T: ClockSource> ClockSource for ClockMultiplier<T> {
-    fn complete_value(&self, g: &ClockGraph) -> ClockValue { self.compute_current_value() }
 }
 
 mod tests {

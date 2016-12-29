@@ -51,6 +51,10 @@ impl ClockGraph {
     }
 }
 
+pub struct ClockNodePrototype {
+    inputs
+}
+
 /// A single node in an arbitrary clock graph, accepting inputs, listening to
 /// knobs, and with a stored behavior that uses these values to produce a
 /// clock value when called upon.
