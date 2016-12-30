@@ -1,6 +1,6 @@
 //! Declarations of various re-used dataflow types and type aliases.
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 /// Floating-point representation of a rate, permitting the use of various
 /// unit semantics.
 pub enum Rate {

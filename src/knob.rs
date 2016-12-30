@@ -1,59 +1,70 @@
 use datatypes::Rate;
 use std::cell::Cell;
 
+#[derive(Clone, Copy, Debug)]
 pub enum KnobValue {
     Button(bool),
     Rate(Rate),
 }
 
 impl KnobValue {
-    fn same_varaint(&self, other: &KnobValue) {
-        match (*self, *other) with
-            Rate(_), Rate(_) => true,
+    pub fn same_variant(&self, other: &KnobValue) -> bool {
+        match (*self, *other) {
+            (KnobValue::Rate(_), KnobValue::Rate(_)) => true,
+            (KnobValue::Button(_), KnobValue::Button(_)) => true,
+            (_, _) => false,
+        }
     }
 }
 
 pub type KnobId = usize;
 
-/// A struct acting as a template for the creation of individual knobs.
-pub struct KnobPrototype {
-    /// The name of this knob.
-    pub name: &'static str,
-    /// The initial value of this knob, also serving as a type hint.
-    pub value: KnobValue
-}
-
+#[derive(Clone, Debug)]
 pub struct Knob {
     pub name: &'static str,
     /// An explicit numeric identifier for this knob.
     /// These will be automatically assigned by the entity that this knob becomes
     /// associated with.
     pub id: KnobId,
-    /// Provide an instance of a knob value to hint at the expected type.
-    /// Also used to initialize the value upon construction.
-    pub prototype_value: KnobValue,
     /// The current value of this knob.
     value: Cell<KnobValue>,
 }
 
 impl Knob {
-    pub fn from_prototype(prototype: KnobPrototype, id: KnobId) -> Self {
+    pub fn new(name: &'static str, id: KnobId, initial_value: KnobValue) -> Self {
         Knob {
-            name: prototype.name,
+            name: name,
             id: id,
-            prototype_value: prototype.value,
-            value: Cell::new(*initial_value)}
+            value: Cell::new(initial_value)}
     }
 
-    pub fn set(&self, value: &KnobValue) -> Result<(), KnobMessage> {
-        if self.same_variant(value) {
-            self.value.set(*value);
+    /// Assign a new value to this knob.  Only allow if the incoming value is
+    /// the same as that which currently contained.
+    pub fn set(&self, value: KnobValue) -> Result<(), KnobMessage> {
+        if self.value.get().same_variant(&value) {
+            self.value.set(value);
             Ok(())
         } else {
             Err(KnobMessage::TypeMismatch {
-                expected: self.prototype_value,
+                expected: self.value.get(),
                 actual: value,
                 name: self.name.to_string()})
+        }
+    }
+
+    /// Get the value of this knob as a button event, or panic.
+    pub fn button_state(&self) -> bool {
+        match self.value.get() {
+            KnobValue::Button(state) => state,
+            x => panic!("Tried to get a Button value from a knob whose value is {:?}.", x)
+        }
+    }
+
+    /// Get the value of a Rate knob, or panic.
+    pub fn rate(&self) -> Rate {
+        match self.value.get() {
+            KnobValue::Rate(r) => r,
+            x => panic!("Tried to get a Rate value from a knob whose value is {:?}.", x)
         }
     }
 }

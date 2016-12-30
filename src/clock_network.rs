@@ -15,17 +15,20 @@ use knob::Knob;
 #[derive(Clone, Copy, Debug)]
 /// Represent the complete value of the current state of a clock.
 pub struct ClockValue {
-    phase: f64,
-    tick_count: i64,
-    ticked: bool,
+    pub phase: f64,
+    pub tick_count: i64,
+    pub ticked: bool,
 }
 
 impl ClockValue {
-    fn float_value(&self) -> f64 { self.tick_count as f64 + self.phase }
+    pub fn float_value(&self) -> f64 { self.tick_count as f64 + self.phase }
 }
 
+#[derive(Clone, Copy, Debug)]
 /// Newtype declaration to ensure we don't mix up nodes between different graph domains.
 pub struct ClockNodeIndex(NodeIndex);
+
+#[derive(Clone, Copy, Debug)]
 /// Newtype declaration to ensure we don't mix up edges between different graph domains.
 pub struct ClockEdgeIndex(EdgeIndex);
 
@@ -46,13 +49,64 @@ impl ClockGraph {
         if let Some(node) = self.g.node_weight(idx) {
             node.get_value(&self)
         } else {
-            panic!("The clock node id {} is invalid or does not exist.", idx)
+            panic!("The clock node id {:?} is invalid or does not exist.", idx)
         }
     }
 }
 
+pub type ClockImplProducer = Box<Fn() -> Box<CompleteClock>>;
+
+/// Serve as a persistent prototype which can be used to create new instances of clock nodes.
 pub struct ClockNodePrototype {
-    inputs
+    /// A name that identifies this particular clock prototype.  For example,
+    /// "simple", "multiplier", etc.
+    type_name: &'static str,
+    /// The names and numeric IDs of the clock input ports.
+    inputs: Box<[(&'static str, InputId)]>,
+    /// The control knobs that this clock presents.
+    knobs: Box<[Knob]>,
+    /// A stored procedure that returns a trait object implementing the clock.
+    clock: ClockImplProducer,
+}
+
+impl ClockNodePrototype {
+    pub fn new(type_name: &'static str,
+               inputs: Box<[(&'static str, InputId)]>,
+               knobs: Box<[Knob]>,
+               clock: ClockImplProducer)
+               -> Self {
+        ClockNodePrototype {
+            type_name: type_name, inputs: inputs, knobs: knobs, clock: clock
+        }
+    }
+
+    pub fn create_node(&self,
+                       name: String,
+                       id: ClockNodeIndex,
+                       input_nodes: &[ClockNodeIndex])
+                       -> ClockNode {
+        debug_assert!(input_nodes.len() == self.inputs.len());
+        let connected_inputs =
+            self.inputs.iter()
+                       .enumerate()
+                       .zip(input_nodes)
+                       .map(|((i, &(name, input_id)), node_id)| {
+                                // make sure the input IDs are consistent and
+                                // monotonically increasing.
+                                debug_assert!(input_id == i);
+                                ClockInputSocket::new(name, input_id, *node_id)
+                            })
+                       .collect::<Vec<_>>()
+                       .into_boxed_slice();
+        ClockNode {
+            name: name,
+            id: id,
+            inputs: connected_inputs,
+            knobs: self.knobs.clone(),
+            current_value: Cell::new(None),
+            clock: (self.clock)(),
+        }
+    }
 }
 
 /// A single node in an arbitrary clock graph, accepting inputs, listening to
@@ -63,10 +117,10 @@ pub struct ClockNode {
     name: String,
     /// The index of this node in the enclosing graph.
     /// The graph implementation must ensure that these indices remain stable.
-    id: NodeIndex,
+    id: ClockNodeIndex,
     /// Named input sockets that connect this node to upstream clocks.
     inputs: Box<[ClockInputSocket]>,
-    /// Named knobs that permit threading in control parameters.
+    /// Named knobs that provide control parameters.
     knobs: Box<[Knob]>,
     /// The current, memoized value of this clock.
     current_value: Cell<Option<ClockValue>>,
@@ -84,7 +138,7 @@ impl ClockNode {
             v
         } else {
             let v = self.clock.compute_clock(&self.inputs, &self.knobs, g);
-            self.current_value.set(v);
+            self.current_value.set(Some(v));
             v
         }
     }
@@ -115,7 +169,7 @@ pub type InputId = usize;
 /// Specify an upstream clock via an incoming edge to this clock graph node.
 pub struct ClockInputSocket {
     /// The local name of this input socket.
-    name: &'static str,
+    pub name: &'static str,
     /// A locally-unique numeric id for this socket.  For each node, these should
     /// start at 0 and increase monotonically.
     id: InputId,
@@ -124,8 +178,12 @@ pub struct ClockInputSocket {
 }
 
 impl ClockInputSocket {
+    pub fn new(name: &'static str, id: InputId, input_node: ClockNodeIndex) -> Self {
+        ClockInputSocket { name: name, id: id, input_node: input_node }
+    }
+
     /// Fetch the upstream value from the source for this socket.
-    fn get_value(&self, g: &ClockGraph) -> ClockValue {
+    pub fn get_value(&self, g: &ClockGraph) -> ClockValue {
         g.get_value_from_node(self.input_node)
     }
 }

@@ -4,51 +4,9 @@ use utils::modulo_one;
 use std::rc::Rc;
 use std::cell::{Cell, RefCell};
 use clock_network::{
-    ClockValue, ClockGraph, ComputeClock, UpdateClock, CompleteClock};
+    ClockValue, ClockGraph, ComputeClock, UpdateClock, CompleteClock, ClockInputSocket};
 use knob::{Knob, KnobValue};
 use datatypes::Rate;
-
-
-struct Clock {
-    value: ClockValue,
-}
-
-pub fn create_simple_clock(iniital_rate: Rate) -> Box<CompleteClock> {
-    let rate_knob = Knob::new("rate", 0, KnobValue::Rate(initial_rate));
-    let reset_knob = Knob::new("reset", 1, KnobValue::Button(false));
-}
-
-impl Clock {
-    pub fn new(rate: Rate) -> Self {
-        Clock {
-            value: ClockValue{phase: 0.0, tick_count: 0, ticked: true},
-            rate: rate.in_hz(),
-        }
-    }
-}
-
-impl ComputeClock for Clock {
-    fn compute_clock(&self, _: &[ClockValue], _: &[Knob]) -> ClockValue { self.value }
-}
-
-impl UpdateClock for Clock {
-    fn update(&mut self, knobs: &[Knob], dt: DeltaT) {
-        debug_assert!(knobs.length() == 1);
-        // determine how much phase has elapsed
-        let elapsed_phase = self.rate * dt;
-        let phase_unwrapped = self.value.phase + elapsed_phase;
-
-        // Determine how many ticks have actually elapsed.  It may be more than 1.
-        // It may also be negative if this clock has a negative rate.
-        let accumulated_ticks = phase_unwrapped.floor() as i64;
-
-        // This clock ticked if we accumulated +-1 or more ticks.
-        self.value.ticked = accumulated_ticks.abs() > 0;
-        self.value.tick_count += accumulated_ticks;
-
-        self.value.phase = modulo_one(phase_unwrapped);
-    }
-}
 
 // =================================
 // quasi-stateless clock multiplication
@@ -104,7 +62,7 @@ impl ClockMultiplier {
 }
 
 impl UpdateClock for ClockMultiplier {
-    fn update(&mut self, _: DeltaT) {
+    fn update(&mut self, _: &[Knob], _: DeltaT) {
         // if a current_value is set, pull it out and use it to update prev_value.
         // if not, simply increase the age of the currently held previous value.
         // this implementation assumes that state updates come at a deterministic
