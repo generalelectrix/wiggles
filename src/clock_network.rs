@@ -7,7 +7,7 @@ use std::cell::Cell;
 use std::collections::HashMap;
 use petgraph::stable_graph::StableDiGraph;
 use petgraph::graph::{NodeIndex, EdgeIndex};
-
+use utils::modulo_one;
 use update::{Update, DeltaT};
 use knob::Knob;
 
@@ -21,6 +21,10 @@ pub struct ClockValue {
 }
 
 impl ClockValue {
+    /// Construct a clock value from a float and whether or not it just ticked.
+    pub fn from_float_value(val: f64, ticked: bool) -> Self {
+        ClockValue { phase: modulo_one(val), tick_count: val.trunc() as i64, ticked: ticked }
+    }
     pub fn float_value(&self) -> f64 { self.tick_count as f64 + self.phase }
 }
 
@@ -41,6 +45,11 @@ pub struct ClockGraph {
 }
 
 impl ClockGraph {
+    pub fn new() -> Self {
+        ClockGraph { g: StableDiGraph::new(), node_lookup: HashMap::new() }
+    }
+
+
     /// Get the current value from any node in the graph.
     /// # Panics
     /// 
@@ -144,10 +153,17 @@ impl ClockNode {
     }
 }
 
+impl Update for ClockNode {
+    fn update(&mut self, dt: DeltaT) {
+        self.current_value.set(None);
+        self.clock.update(&mut self.knobs, dt);
+    }
+}
+
 /// Given a timestep and the current state of a clock's control knobs, update
 /// any internal state of the clock.
 pub trait UpdateClock {
-    fn update(&mut self, knobs: &[Knob], dt: DeltaT);
+    fn update(&mut self, knobs: &mut [Knob], dt: DeltaT);
 }
 
 /// Given some inputs and knobs, compute a clock value.

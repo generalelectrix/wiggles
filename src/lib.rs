@@ -1,9 +1,10 @@
 #![allow(dead_code)]
+#[macro_use]
+extern crate log;
 extern crate petgraph;
 mod utils;
-mod clock;
 mod update;
-mod clock_network;
 mod knob;
 mod datatypes;
-mod basic_clock;
+mod clock_network;
+mod clocks;

@@ -1,8 +1,6 @@
 //! Implementation of a clock that runs at a constant rate, controlled by a knob.
-use update::{Update, DeltaT};
+use update::DeltaT;
 use utils::modulo_one;
-use std::rc::Rc;
-use std::cell::{Cell, RefCell};
 use clock_network::{
     ClockValue,
     ClockGraph,
@@ -11,29 +9,33 @@ use clock_network::{
     CompleteClock,
     ClockInputSocket,
     ClockNodePrototype};
-use knob::{Knob, KnobValue};
+use knob::{Knob, KnobValue, KnobId};
 use datatypes::Rate;
 
-const RATE_KNOB_ID: usize = 0;
-const RESET_KNOB_ID: usize = 1;
+const RATE_KNOB_ID: KnobId = 0;
+const RESET_KNOB_ID: KnobId = 1;
 const INIT_CLOCK_VAL: ClockValue = ClockValue { phase: 0.0, tick_count: 0, ticked: true };
 const INIT_RATE: Rate = Rate::Hz(1.0);
 
+/// The most basic clock, which ticks at a rate controlled by a knob.
 struct Clock {
     value: ClockValue,
 }
 
 impl Clock {
+    /// Create a new instance of this clock, and hide it behind the interface trait.
     fn create() -> Box<CompleteClock> {
         Box::new(Clock { value: INIT_CLOCK_VAL })
     }
 
+    /// Produce the prototype for this type of clock.  This should only need to be called once,
+    /// during program initialization.
     pub fn create_prototype() -> ClockNodePrototype {
         let rate_knob = Knob::new("rate", RATE_KNOB_ID, KnobValue::Rate(INIT_RATE));
         let reset_knob = Knob::new("reset", RESET_KNOB_ID, KnobValue::Button(false));
         let knobs = vec![rate_knob, reset_knob].into_boxed_slice();
         let inputs = Box::new([]);
-        ClockNodePrototype::new("basic_clock", inputs, knobs, Box::new(Clock::create))
+        ClockNodePrototype::new("basic", inputs, knobs, Box::new(Clock::create))
     }
 }
 
@@ -46,12 +48,12 @@ impl ComputeClock for Clock {
 }
 
 impl UpdateClock for Clock {
-    fn update(&mut self, knobs: &[Knob], dt: DeltaT) {
+    fn update(&mut self, knobs: &mut [Knob], dt: DeltaT) {
         debug_assert!(knobs.len() == 2);
         // if someone hit the reset button, register it and swap the knob value
-        let reset_knob = &knobs[RESET_KNOB_ID];
-        if reset_knob.button_state() {
-            reset_knob.set(KnobValue::Button(false));
+        if knobs[RESET_KNOB_ID].button_state() {
+            // TODO: decide what to do about errors in knob type from this side...
+            knobs[RESET_KNOB_ID].set(KnobValue::Button(false));
             self.value = INIT_CLOCK_VAL;
         } else {
             // determine how much phase has elapsed
