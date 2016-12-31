@@ -1,4 +1,6 @@
 use datatypes::Rate;
+use clock_network::{ClockNodeIndex, ClockNode};
+use std::collections::HashSet;
 
 #[derive(Clone, Copy, Debug)]
 pub enum KnobValue {
@@ -58,6 +60,8 @@ impl Knob {
     }
 
     /// Get the value of this knob as a button event, or panic.
+    /// This method should probably only be called by the entity that owns a
+    /// particular knob as it should implicitly be aware of its type.
     pub fn get_button_state(&self) -> bool {
         match self.value {
             KnobValue::Button(state) => state,
@@ -69,12 +73,16 @@ impl Knob {
 
     /// Set the value of this knob as a button event state.
     /// Panics if this knob isn't a button.
+    /// This method should probably only be called by the entity that owns a
+    /// particular knob as it should implicitly be aware of its type.
     pub fn set_button_state(&mut self, state: bool) {
         self.set(KnobValue::Button(state))
             .expect("Failed to set state of '{}' as a button");
     }
 
     /// Get the value of a Rate knob, or panic.
+    /// This method should probably only be called by the entity that owns a
+    /// particular knob as it should implicitly be aware of its type.
     pub fn rate(&self) -> Rate {
         match self.value {
             KnobValue::Rate(r) => r,
@@ -83,10 +91,33 @@ impl Knob {
     }
 
     /// Get the value of a PositiveFloat knob, or panic.
+    /// This method should probably only be called by the entity that owns a
+    /// particular knob as it should implicitly be aware of its type.
     pub fn positive_float(&self) -> f64 {
         match self.value {
             KnobValue::PositiveFloat(f) => f,
             x => panic!("Tried to get a PositiveFloat value from a knob whose value is {:?}.", x)
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Hash)]
+pub enum KnobPatch {
+    Clock { node: ClockNodeIndex, id: KnobId },
+}
+
+/// Keep track of all of the knobs and how to find them.
+pub struct PatchBay {
+    patches: HashSet<KnobPatch>,
+}
+
+impl PatchBay {
+    pub fn new() -> Self { PatchBay { patches: HashSet::new() }}
+
+    pub fn add_clock_node(&mut self, node: &ClockNode) {
+        for knob in node.knobs.iter() {
+            let patch = KnobPatch::Clock { node: node.id, id: knob.id };
+            self.patches.insert(patch);
         }
     }
 }

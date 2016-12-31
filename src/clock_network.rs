@@ -28,11 +28,11 @@ impl ClockValue {
     pub fn float_value(&self) -> f64 { self.tick_count as f64 + self.phase }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 /// Newtype declaration to ensure we don't mix up nodes between different graph domains.
 pub struct ClockNodeIndex(NodeIndex);
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 /// Newtype declaration to ensure we don't mix up edges between different graph domains.
 pub struct ClockEdgeIndex(EdgeIndex);
 
@@ -45,10 +45,19 @@ pub struct ClockGraph {
 }
 
 impl ClockGraph {
+    /// Create an empty clock graph.
     pub fn new() -> Self {
         ClockGraph { g: StableDiGraph::new(), node_lookup: HashMap::new() }
     }
 
+    // /// Add a new node to the graph using a prototype and a list of input
+    // /// nodes to connect the inputs of the 
+    // pub fn add_node(
+    //     &mut self,
+    //     prototype: ClockNodePrototype,
+    //     name: String,
+    //     input_nodes: &[ClockNodeIndex]
+    //     )
 
     /// Get the current value from any node in the graph.
     /// # Panics
@@ -123,14 +132,14 @@ impl ClockNodePrototype {
 /// clock value when called upon.
 pub struct ClockNode {
     /// Unique name for this clock.
-    name: String,
+    pub name: String,
     /// The index of this node in the enclosing graph.
     /// The graph implementation must ensure that these indices remain stable.
-    id: ClockNodeIndex,
+    pub id: ClockNodeIndex,
     /// Named input sockets that connect this node to upstream clocks.
     inputs: Box<[ClockInputSocket]>,
     /// Named knobs that provide control parameters.
-    knobs: Box<[Knob]>,
+    pub knobs: Box<[Knob]>,
     /// The current, memoized value of this clock.
     current_value: Cell<Option<ClockValue>>,
     /// The stored behavior used to update the current value based on the
