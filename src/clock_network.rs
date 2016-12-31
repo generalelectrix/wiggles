@@ -88,17 +88,14 @@ impl ClockGraph {
 
     /// Return an error if any of the provided nodes is not part of this graph.
     pub fn check_nodes(&self, nodes: &[ClockNodeIndex]) -> Result<(), ClockMessage> {
-        // Use a peekable iterator to check for presence of abscence of a single
-        // item without needing to perform an allocation using collect.
-        let mut bad_nodes_iter =
+        let bad_nodes =
             nodes.iter().cloned()
-                 .filter(|&ix| !self.contains_node(ix))
-                 .peekable();
-        if let Some(_) = bad_nodes_iter.peek() {
-            let msgs = bad_nodes_iter.map(|idx| ClockMessage::InvalidNodeIndex(idx))
-                                     .collect::<Vec<_>>();
-            Err(ClockMessage::MessageCollection(msgs))
-        } else { Ok(()) }
+                 .filter_map(|ix| {
+                     if self.contains_node(ix) { None }
+                     else { Some(ClockMessage::InvalidNodeIndex(ix)) }})
+                 .collect::<Vec<_>>();
+        if bad_nodes.len() == 0 { Err(ClockMessage::MessageCollection(bad_nodes)) }
+        else { Ok(()) }
     }
 
     /// Instantiate a collection of external listeners for a node index.
