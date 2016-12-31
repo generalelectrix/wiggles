@@ -6,10 +6,11 @@
 use std::cell::Cell;
 use std::collections::HashMap;
 use petgraph::stable_graph::StableDiGraph;
-use petgraph::graph::{NodeIndex, EdgeIndex};
+use petgraph::graph::{NodeIndex, EdgeIndex, IndexType, DefaultIx};
 use utils::modulo_one;
 use update::{Update, DeltaT};
 use knob::Knob;
+use interconnect::Interconnector;
 
 
 #[derive(Clone, Copy, Debug)]
@@ -28,20 +29,39 @@ impl ClockValue {
     pub fn float_value(&self) -> f64 { self.tick_count as f64 + self.phase }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Default)]
 /// Newtype declaration to ensure we don't mix up nodes between different graph domains.
 pub struct ClockNodeIndex(NodeIndex);
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+/// This implementation is not unsafe, though since the trait is unsafe the unsafety
+/// here is only coming from our reliance on the underlying type itself.
+unsafe impl IndexType for ClockNodeIndex {
+    #[inline(always)]
+    fn new(x: usize) -> Self { ClockNodeIndex(NodeIndex::new(x)) }
+    #[inline(always)]
+    fn index(&self) -> usize {
+        let ClockNodeIndex(idx) = *self;
+        idx.index() }
+    #[inline(always)]
+    fn max() -> Self { ClockNodeIndex::new(DefaultIx::max() as usize) }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Default)]
 /// Newtype declaration to ensure we don't mix up edges between different graph domains.
 pub struct ClockEdgeIndex(EdgeIndex);
+
+/// Placeholder type for keeping track of other domains listening to the clock domain.
+type ExternalListener = usize;
 
 /// A clock graph is composed of nodes and dumb edges that just act as wires.
 pub struct ClockGraph {
     /// The backing graph that holds the individual nodes.
     g: StableDiGraph<ClockNode, ()>,
     /// A hash to loop up clock nodes by name.
-    node_lookup: HashMap<String, ClockNodeIndex>
+    node_lookup: HashMap<String, ClockNodeIndex>,
+    /// A collection of connections from nodes to other dataflow domains.
+    /// Indexed using the same node indices as the main graph.
+    external_connections: Interconnector<ClockNodeIndex, ExternalListener>,
 }
 
 fn placeholder_index() -> ClockNodeIndex { ClockNodeIndex(NodeIndex::new(0)) }
@@ -49,12 +69,21 @@ fn placeholder_index() -> ClockNodeIndex { ClockNodeIndex(NodeIndex::new(0)) }
 impl ClockGraph {
     /// Create an empty clock graph.
     pub fn new() -> Self {
-        ClockGraph { g: StableDiGraph::new(), node_lookup: HashMap::new() }
+        ClockGraph {
+            g: StableDiGraph::new(),
+            node_lookup: HashMap::new(),
+            external_connections: Interconnector::new() }
     }
 
     /// Return true if this graph contains the provided node index.
     pub fn contains_node(&self, ClockNodeIndex(idx): ClockNodeIndex) -> bool {
         self.g.contains_node(idx)
+    }
+
+    /// Return true if this node has one or more outgoing edges or external listeners.
+    /// Returns false if the node does not exist.
+    pub fn has_listeners(&self, ClockNodeIndex(idx): ClockNodeIndex) -> bool {
+        self.g.edges(idx).next().is_some()
     }
 
     /// Return an error if any of the provided nodes is not part of this graph.
@@ -66,13 +95,21 @@ impl ClockGraph {
                  .filter(|&ix| !self.contains_node(ix))
                  .peekable();
         if let Some(_) = bad_nodes_iter.peek() {
-            let bad_nodes = bad_nodes_iter.collect::<Vec<_>>();
-            Err(ClockMessage::InvalidNodeIndices(bad_nodes))
+            let msgs = bad_nodes_iter.map(|idx| ClockMessage::InvalidNodeIndex(idx))
+                                     .collect::<Vec<_>>();
+            Err(ClockMessage::MessageCollection(msgs))
         } else { Ok(()) }
     }
 
+    /// Instantiate a collection of external listeners for a node index.
+    /// If this collection already exists and is not empty, panic.
+    fn add_external_listener_collection(&mut self, ClockNodeIndex(idx): ClockNodeIndex) {
+
+    }
+
     /// Add a new node to the graph using a prototype and a list of input
-    /// nodes to connect the inputs of the clock.
+    /// nodes to connect the inputs of the clock.  Initializes a collection
+    /// of external listeners for this node as well.
     pub fn add_node(&mut self,
                     prototype: ClockNodePrototype,
                     name: String,
@@ -84,6 +121,7 @@ impl ClockGraph {
         let new_node = try!(prototype.create_node(name, placeholder_index(), input_nodes));
         // add the node to the graph
         let node_index = self.g.add_node(new_node);
+        
         // add edges to the input nodes
         for &ClockNodeIndex(input_node) in input_nodes.iter() {
             self.g.add_edge(input_node, node_index, ());
@@ -94,16 +132,29 @@ impl ClockGraph {
         Ok(new_node)
     }
 
+    /// Remove a node from the graph, including all edges coming in to the node.
+    /// If the graph has any *outgoing* edges, return an error.  Incoming edges
+    /// are always safe to eliminate.
+    /// The remove node is returned if removal was successful.
+    // pub fn remove_node(&mut self, idx: ClockNodeIndex) -> Result<ClockNode, ClockMessage> {
+    //     if self.has_listeners(idx) {
+    //         return Err(ClockMessage::NodeHasListeners);
+    //     }
+    //     // this node isn't feeding anything downstream, so we can safely delete it
 
-    /// Get the current value from any node in the graph.
-    /// # Panics
-    /// 
-    /// If the provided node doesn't exist or is invalid.
-    fn get_value_from_node(&self, ClockNodeIndex(idx): ClockNodeIndex) -> ClockValue {
+    // }
+
+
+    /// Get the current clock value from any node in the graph.
+    /// Return an error if the node doesn't exist or is invalid.
+    fn get_value_from_node(
+            &self,
+            ClockNodeIndex(idx): ClockNodeIndex)
+            -> Result<ClockValue, ClockMessage> {
         if let Some(node) = self.g.node_weight(idx) {
-            node.get_value(&self)
+            Ok(node.get_value(&self))
         } else {
-            panic!("The clock node id {:?} is invalid or does not exist.", idx)
+            Err(ClockMessage::InvalidNodeIndex(ClockNodeIndex(idx)))
         }
     }
 }
@@ -141,7 +192,12 @@ impl ClockNodePrototype {
                        id: ClockNodeIndex,
                        input_nodes: &[ClockNodeIndex])
                        -> Result<ClockNode, ClockMessage> {
-        debug_assert!(input_nodes.len() == self.inputs.len());
+        if input_nodes.len() != self.inputs.len() {
+            return Err(
+                ClockMessage::MismatchedInputs {
+                    expected: self.inputs.len(),
+                    provided: input_nodes.len()});
+        }
         let connected_inputs =
             self.inputs.iter()
                        .enumerate()
@@ -245,16 +301,22 @@ impl ClockInputSocket {
     }
 
     /// Fetch the upstream value from the source for this socket.
+    /// # Panics
+    /// 
+    /// If the upstream node doesn't exist.
     pub fn get_value(&self, g: &ClockGraph) -> ClockValue {
-        g.get_value_from_node(self.input_node)
+        g.get_value_from_node(self.input_node).unwrap()
     }
 }
 
-
+#[derive(Debug)]
 /// Message type to convey error conditions related to clock network operations.
 pub enum ClockMessage {
+    MessageCollection(Vec<ClockMessage>),
     WouldCycle { source: ClockNodeIndex, sink: ClockNodeIndex },
     InvalidInputId(InputId),
-    InvalidNodeIndices(Vec<ClockNodeIndex>),
+    InvalidNodeIndex(ClockNodeIndex),
     MismatchedInputs { expected: usize, provided: usize },
+    NodeHasListeners,
+
 }
