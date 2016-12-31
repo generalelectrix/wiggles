@@ -44,20 +44,46 @@ pub struct ClockGraph {
     node_lookup: HashMap<String, ClockNodeIndex>
 }
 
+fn placeholder_index() -> ClockNodeIndex { ClockNodeIndex(NodeIndex::new(0)) }
+
 impl ClockGraph {
     /// Create an empty clock graph.
     pub fn new() -> Self {
         ClockGraph { g: StableDiGraph::new(), node_lookup: HashMap::new() }
     }
 
-    // /// Add a new node to the graph using a prototype and a list of input
-    // /// nodes to connect the inputs of the 
-    // pub fn add_node(
-    //     &mut self,
-    //     prototype: ClockNodePrototype,
-    //     name: String,
-    //     input_nodes: &[ClockNodeIndex]
-    //     )
+    pub fn contains_node(&self, ClockNodeIndex(idx): ClockNodeIndex) -> bool {
+        self.g.contains_node(idx)
+    }
+
+    /// Add a new node to the graph using a prototype and a list of input
+    /// nodes to connect the inputs of the 
+    pub fn add_node(&mut self,
+                    prototype: ClockNodePrototype,
+                    name: String,
+                    input_nodes: &[ClockNodeIndex])
+                    -> Result<&ClockNode, ClockMessage> {
+        // check that all the input nodes exist
+        let bad_nodes = input_nodes.iter().cloned()
+                                   .filter(|&ix| !self.contains_node(ix))
+                                   .collect::<Vec<_>>();
+        if !bad_nodes.is_empty() {
+            return Err(ClockMessage::InvalidNodeIndices(bad_nodes));
+        }
+        // create the node with a placeholder index
+        let new_node = prototype.create_node(name, placeholder_index(), input_nodes);
+        // add the node to the graph
+        let node_index = self.g.add_node(new_node);
+        // add edges to the input nodes
+        for &ClockNodeIndex(input_node) in input_nodes.iter() {
+            self.g.add_edge(input_node, node_index, ());
+        }
+        // write the index back into the new node
+        let new_node = self.g.node_weight_mut(node_index).unwrap();
+        new_node.id = ClockNodeIndex(node_index);
+        Ok(new_node)
+    }
+
 
     /// Get the current value from any node in the graph.
     /// # Panics
@@ -218,4 +244,5 @@ impl ClockInputSocket {
 pub enum ClockMessage {
     WouldCycle { source: ClockNodeIndex, sink: ClockNodeIndex },
     InvalidInputId(InputId),
+    InvalidNodeIndices(Vec<ClockNodeIndex>),
 }
