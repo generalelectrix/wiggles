@@ -52,26 +52,36 @@ impl ClockGraph {
         ClockGraph { g: StableDiGraph::new(), node_lookup: HashMap::new() }
     }
 
+    /// Return true if this graph contains the provided node index.
     pub fn contains_node(&self, ClockNodeIndex(idx): ClockNodeIndex) -> bool {
         self.g.contains_node(idx)
     }
 
+    /// Return an error if any of the provided nodes is not part of this graph.
+    pub fn check_nodes(&self, nodes: &[ClockNodeIndex]) -> Result<(), ClockMessage> {
+        // Use a peekable iterator to check for presence of abscence of a single
+        // item without needing to perform an allocation using collect.
+        let mut bad_nodes_iter =
+            nodes.iter().cloned()
+                 .filter(|&ix| !self.contains_node(ix))
+                 .peekable();
+        if let Some(_) = bad_nodes_iter.peek() {
+            let bad_nodes = bad_nodes_iter.collect::<Vec<_>>();
+            Err(ClockMessage::InvalidNodeIndices(bad_nodes))
+        } else { Ok(()) }
+    }
+
     /// Add a new node to the graph using a prototype and a list of input
-    /// nodes to connect the inputs of the 
+    /// nodes to connect the inputs of the clock.
     pub fn add_node(&mut self,
                     prototype: ClockNodePrototype,
                     name: String,
                     input_nodes: &[ClockNodeIndex])
                     -> Result<&ClockNode, ClockMessage> {
         // check that all the input nodes exist
-        let bad_nodes = input_nodes.iter().cloned()
-                                   .filter(|&ix| !self.contains_node(ix))
-                                   .collect::<Vec<_>>();
-        if !bad_nodes.is_empty() {
-            return Err(ClockMessage::InvalidNodeIndices(bad_nodes));
-        }
+        try!(self.check_nodes(input_nodes));
         // create the node with a placeholder index
-        let new_node = prototype.create_node(name, placeholder_index(), input_nodes);
+        let new_node = try!(prototype.create_node(name, placeholder_index(), input_nodes));
         // add the node to the graph
         let node_index = self.g.add_node(new_node);
         // add edges to the input nodes
@@ -124,11 +134,13 @@ impl ClockNodePrototype {
         }
     }
 
+    pub fn n_inputs(&self) -> usize { self.inputs.len() }
+
     pub fn create_node(&self,
                        name: String,
                        id: ClockNodeIndex,
                        input_nodes: &[ClockNodeIndex])
-                       -> ClockNode {
+                       -> Result<ClockNode, ClockMessage> {
         debug_assert!(input_nodes.len() == self.inputs.len());
         let connected_inputs =
             self.inputs.iter()
@@ -140,16 +152,15 @@ impl ClockNodePrototype {
                                 debug_assert!(input_id == i);
                                 ClockInputSocket::new(name, input_id, *node_id)
                             })
-                       .collect::<Vec<_>>()
-                       .into_boxed_slice();
-        ClockNode {
+                       .collect::<Vec<_>>().into_boxed_slice();
+        Ok(ClockNode {
             name: name,
             id: id,
             inputs: connected_inputs,
             knobs: self.knobs.clone(),
             current_value: Cell::new(None),
             clock: (self.clock)(),
-        }
+        })
     }
 }
 
@@ -245,4 +256,5 @@ pub enum ClockMessage {
     WouldCycle { source: ClockNodeIndex, sink: ClockNodeIndex },
     InvalidInputId(InputId),
     InvalidNodeIndices(Vec<ClockNodeIndex>),
+    MismatchedInputs { expected: usize, provided: usize },
 }
