@@ -51,9 +51,8 @@ impl UpdateClock for Clock {
     fn update(&mut self, knobs: &mut [Knob], dt: DeltaT) {
         debug_assert!(knobs.len() == 2);
         // if someone hit the reset button, register it and swap the knob value
-        if knobs[RESET_KNOB_ID].button_state() {
-            // TODO: decide what to do about errors in knob type from this side...
-            knobs[RESET_KNOB_ID].set(KnobValue::Button(false));
+        if knobs[RESET_KNOB_ID].get_button_state() {
+            knobs[RESET_KNOB_ID].set_button_state(false);
             self.value = INIT_CLOCK_VAL;
         } else {
             // determine how much phase has elapsed

@@ -58,11 +58,20 @@ impl Knob {
     }
 
     /// Get the value of this knob as a button event, or panic.
-    pub fn button_state(&self) -> bool {
+    pub fn get_button_state(&self) -> bool {
         match self.value {
             KnobValue::Button(state) => state,
-            x => panic!("Tried to get a Button value from a knob whose value is {:?}.", x)
+            x => panic!("Tried to get a Button value from the knob '{}' whose value is {:?}.",
+                        self.name,
+                        x)
         }
+    }
+
+    /// Set the value of this knob as a button event state.
+    /// Panics if this knob isn't a button.
+    pub fn set_button_state(&mut self, state: bool) {
+        self.set(KnobValue::Button(state))
+            .expect("Failed to set state of '{}' as a button");
     }
 
     /// Get the value of a Rate knob, or panic.
@@ -82,6 +91,7 @@ impl Knob {
     }
 }
 
+#[derive(Debug)]
 pub enum KnobMessage {
     TypeMismatch { expected: KnobValue, actual: KnobValue, name: String }
 }
