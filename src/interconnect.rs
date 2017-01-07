@@ -20,8 +20,7 @@ impl<IntId: IndexType, ExtId: Eq + Copy> Interconnector<IntId, ExtId> {
         let index = node.index();
         if let None = self.connections.get_mut(index) {
             // If this node index is out of bounds, extend the collection.
-            // Use zero-length vecs that won't allocate until used.
-            self.connections.resize(index, Vec::with_capacity(0));
+            self.connections.resize(index, Vec::new());
         }
         self.connections.get_mut(index).unwrap()
     }
@@ -35,9 +34,17 @@ impl<IntId: IndexType, ExtId: Eq + Copy> Interconnector<IntId, ExtId> {
     /// Remove a connection from an internal node to an external listener.
     /// Does nothing if that connection is not present.
     pub fn remove(&mut self, node: IntId, connection: ExtId) {
-        let conns = self.ensure_collection(node);
-        if let Some(index) = conns.iter().position(|&i| i == connection) {
-            conns.swap_remove(index);
+        if let Some(conns) = self.connections.get_mut(node.index()) {
+            if let Some(index) = conns.iter().position(|&i| i == connection) {
+                conns.swap_remove(index);
+            }
         }
+    }
+
+    /// Return true if this node has any external connections.
+    pub fn has_connections(&self, node: IntId) -> bool {
+        if let Some(conns) = self.connections.get(node.index()) {
+            !conns.is_empty()
+        } else { false }
     }
 }

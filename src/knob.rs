@@ -1,6 +1,37 @@
+//! Traits and types for generic push-based control parameters.
 use datatypes::Rate;
-use clock_network::{ClockNodeIndex, ClockNode};
-use std::collections::HashSet;
+use clock_network::{ClockNodeIndex, ClockNode, ClockGraph};
+use std::collections::HashMap;
+
+/// A trait expressing that an entity exposes a Knob-based interface.
+pub trait Knobs {
+    /// Get an immutable slice of this entity's knobs.
+    fn knobs(&self) -> &[Knob];
+
+    /// Get a mutable slice of this entity's knobs.
+    fn knobs_mut(&mut self) -> &mut [Knob];
+
+    /// Set a new value on the given knob id.
+    /// Returns an error if the id doesn't exist or the value doesn't have the
+    /// right type.
+    fn set_knob_value(&mut self, id: KnobId, value: KnobValue) -> Result<(), KnobMessage> {
+        if let Some(knob) = self.knobs_mut().get_mut(id) {
+            knob.set(value)
+        } else {
+            Err(KnobMessage::InvalidId(id))
+        }
+    }
+
+    /// Get the current value of a given knob id.
+    /// Returns an error if the id doesn't exist.
+    fn get_knob_value(&self, id: KnobId) -> Result<KnobValue, KnobMessage> {
+        if let Some(knob) = self.knobs().get(id) {
+            Ok(knob.value)
+        } else {
+            Err(KnobMessage::InvalidId(id))
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 pub enum KnobValue {
@@ -108,21 +139,37 @@ pub enum KnobPatch {
 
 /// Keep track of all of the knobs and how to find them.
 pub struct PatchBay {
-    patches: HashSet<KnobPatch>,
+    /// Hold onto a prototype value for each knob so we can find out its type.
+    patches: HashMap<KnobPatch, KnobValue>,
 }
 
 impl PatchBay {
-    pub fn new() -> Self { PatchBay { patches: HashSet::new() }}
+    pub fn new() -> Self { PatchBay { patches: HashMap::new() }}
 
     pub fn add_clock_node(&mut self, node: &ClockNode) {
         for knob in node.knobs.iter() {
             let patch = KnobPatch::Clock { node: node.id, id: knob.id };
-            self.patches.insert(patch);
+            self.patches.insert(patch, knob.value);
         }
+    }
+
+    pub fn set_knob_value(&self,
+                          patch: KnobPatch,
+                          value: KnobValue,
+                          cg: &ClockGraph)
+                          -> Result<(), KnobMessage> {
+        // determine which graph to patch into
+        // match patch {
+        //     Clock { node: node, id: id } => {
+        //         cg.
+        //     }
+        // }
+        Ok(())
     }
 }
 
 #[derive(Debug)]
 pub enum KnobMessage {
-    TypeMismatch { expected: KnobValue, actual: KnobValue, name: String }
+    TypeMismatch { expected: KnobValue, actual: KnobValue, name: String },
+    InvalidId(KnobId),
 }

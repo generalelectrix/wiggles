@@ -9,7 +9,7 @@ use petgraph::stable_graph::StableDiGraph;
 use petgraph::graph::{NodeIndex, EdgeIndex, IndexType, DefaultIx};
 use utils::modulo_one;
 use update::{Update, DeltaT};
-use knob::Knob;
+use knob::{Knob, Knobs, KnobId, KnobValue, KnobMessage};
 use interconnect::Interconnector;
 
 
@@ -82,8 +82,10 @@ impl ClockGraph {
 
     /// Return true if this node has one or more outgoing edges or external listeners.
     /// Returns false if the node does not exist.
-    pub fn has_listeners(&self, ClockNodeIndex(idx): ClockNodeIndex) -> bool {
+    pub fn has_listeners(&self, node: ClockNodeIndex) -> bool {
+        let ClockNodeIndex(idx) = node;
         self.g.edges(idx).next().is_some()
+        || self.external_connections.has_connections(node)
     }
 
     /// Return an error if any of the provided nodes is not part of this graph.
@@ -96,12 +98,6 @@ impl ClockGraph {
                  .collect::<Vec<_>>();
         if bad_nodes.len() == 0 { Err(ClockMessage::MessageCollection(bad_nodes)) }
         else { Ok(()) }
-    }
-
-    /// Instantiate a collection of external listeners for a node index.
-    /// If this collection already exists and is not empty, panic.
-    fn add_external_listener_collection(&mut self, ClockNodeIndex(idx): ClockNodeIndex) {
-
     }
 
     /// Add a new node to the graph using a prototype and a list of input
@@ -119,6 +115,12 @@ impl ClockGraph {
         // add the node to the graph
         let node_index = self.g.add_node(new_node);
         
+        // If a collection of listeners already exists for this node id, some cleanup failed somewhere.
+        // Return an error, though we might want to panic instead.
+        if self.external_connections.has_connections(ClockNodeIndex(node_index)) {
+            return Err(ClockMessage::ExistingListenerCollection(ClockNodeIndex(node_index)));
+        }
+
         // add edges to the input nodes
         for &ClockNodeIndex(input_node) in input_nodes.iter() {
             self.g.add_edge(input_node, node_index, ());
@@ -129,30 +131,46 @@ impl ClockGraph {
         Ok(new_node)
     }
 
-    /// Remove a node from the graph, including all edges coming in to the node.
-    /// If the graph has any *outgoing* edges, return an error.  Incoming edges
-    /// are always safe to eliminate.
-    /// The remove node is returned if removal was successful.
-    // pub fn remove_node(&mut self, idx: ClockNodeIndex) -> Result<ClockNode, ClockMessage> {
-    //     if self.has_listeners(idx) {
-    //         return Err(ClockMessage::NodeHasListeners);
-    //     }
-    //     // this node isn't feeding anything downstream, so we can safely delete it
-
-    // }
-
-
-    /// Get the current clock value from any node in the graph.
-    /// Return an error if the node doesn't exist or is invalid.
-    fn get_value_from_node(
-            &self,
-            ClockNodeIndex(idx): ClockNodeIndex)
-            -> Result<ClockValue, ClockMessage> {
+    /// Get a reference to a node in the graph, if it exists.
+    pub fn get_node(&self, ClockNodeIndex(idx): ClockNodeIndex) -> Result<&ClockNode, ClockMessage> {
         if let Some(node) = self.g.node_weight(idx) {
-            Ok(node.get_value(&self))
+            Ok(node)
         } else {
             Err(ClockMessage::InvalidNodeIndex(ClockNodeIndex(idx)))
         }
+    }
+
+        /// Get a reference to a node in the graph, if it exists.
+    pub fn get_node_mut(&mut self, ClockNodeIndex(idx): ClockNodeIndex) -> Result<&mut ClockNode, ClockMessage> {
+        if let Some(node) = self.g.node_weight_mut(idx) {
+            Ok(node)
+        } else {
+            Err(ClockMessage::InvalidNodeIndex(ClockNodeIndex(idx)))
+        }
+    }
+
+    /// Remove a node from the graph, including all edges coming in to the node.
+    /// If the graph has any *outgoing* edges or external listeners, return an error.
+    /// Incoming edges are always safe to eliminate.
+    /// The removed node is returned if removal was successful.
+    pub fn remove_node(&mut self, node: ClockNodeIndex) -> Result<ClockNode, ClockMessage> {
+        if self.has_listeners(node) {
+            return Err(ClockMessage::NodeHasListeners);
+        }
+        // this node isn't feeding anything downstream, so we can safely delete it
+        // first eliminate all of the incoming edges
+        let ClockNodeIndex(idx) = node;
+        if let Some(nodeval) = self.g.remove_node(idx) {
+            Ok(nodeval)
+        } else {
+            Err(ClockMessage::InvalidNodeIndex(node))
+        }
+    }
+
+    /// Get the current clock value from any node in the graph.
+    /// Return an error if the node doesn't exist or is invalid.
+    fn get_value_from_node(&self, node: ClockNodeIndex) -> Result<ClockValue, ClockMessage> {
+        Ok(self.get_node(node)?.get_value(&self))
     }
 }
 
@@ -181,6 +199,8 @@ impl ClockNodePrototype {
             type_name: type_name, inputs: inputs, knobs: knobs, clock: clock
         }
     }
+
+    pub fn type_name(&self) -> &'static str { self.type_name }
 
     pub fn n_inputs(&self) -> usize { self.inputs.len() }
 
@@ -259,6 +279,11 @@ impl Update for ClockNode {
     }
 }
 
+impl Knobs for ClockNode {
+    fn knobs(&self) -> &[Knob] { &self.knobs }
+    fn knobs_mut(&mut self) -> &mut [Knob] { &mut self.knobs }
+}
+
 /// Given a timestep and the current state of a clock's control knobs, update
 /// any internal state of the clock.
 pub trait UpdateClock {
@@ -304,6 +329,8 @@ impl ClockInputSocket {
     pub fn get_value(&self, g: &ClockGraph) -> ClockValue {
         g.get_value_from_node(self.input_node).unwrap()
     }
+
+
 }
 
 #[derive(Debug)]
@@ -315,5 +342,5 @@ pub enum ClockMessage {
     InvalidNodeIndex(ClockNodeIndex),
     MismatchedInputs { expected: usize, provided: usize },
     NodeHasListeners,
-
+    ExistingListenerCollection(ClockNodeIndex),
 }
