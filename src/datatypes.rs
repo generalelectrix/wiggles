@@ -1,4 +1,6 @@
 //! Declarations of various re-used dataflow types and type aliases.
+use knob::KnobMessage;
+use clock_network::ClockMessage;
 
 #[derive(Clone, Copy, Debug)]
 /// Floating-point representation of a rate, permitting the use of various
@@ -19,3 +21,12 @@ impl Rate {
         }
     }
 }
+
+
+#[derive(Debug)]
+/// Top-level wrapper for all subdomain errors.
+pub enum Error {
+    Clock(ClockMessage),
+    Knob(KnobMessage),
+}
+

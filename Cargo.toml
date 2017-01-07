@@ -6,3 +6,4 @@ authors = ["general electrix <general.electrix@gmail.com>"]
 [dependencies]
 petgraph = "*"
 log = "*"
+itertools = "*"

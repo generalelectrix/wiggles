@@ -2,6 +2,7 @@
 #[macro_use]
 extern crate log;
 extern crate petgraph;
+extern crate itertools;
 mod utils;
 mod update;
 mod knob;

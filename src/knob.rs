@@ -1,7 +1,11 @@
 //! Traits and types for generic push-based control parameters.
+use std::collections::HashMap;
+use std::error;
+use std::fmt;
+
 use datatypes::Rate;
 use clock_network::{ClockNodeIndex, ClockNode, ClockGraph};
-use std::collections::HashMap;
+
 
 /// A trait expressing that an entity exposes a Knob-based interface.
 pub trait Knobs {
@@ -51,6 +55,14 @@ impl KnobValue {
             (KnobValue::Button(_), KnobValue::Button(_)) => true,
             (KnobValue::PositiveFloat(_), KnobValue::PositiveFloat(_)) => true,
             (_, _) => false,
+        }
+    }
+
+    pub fn type_name(&self) -> &'static str {
+        match *self {
+            KnobValue::Button(_) => "Button",
+            KnobValue::Rate(_) => "Rate",
+            KnobValue::PositiveFloat(_) => "PositiveFloat",
         }
     }
 }
@@ -172,4 +184,31 @@ impl PatchBay {
 pub enum KnobMessage {
     TypeMismatch { expected: KnobValue, actual: KnobValue, name: String },
     InvalidId(KnobId),
+}
+
+impl fmt::Display for KnobMessage {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            // Both underlying errors already impl `Display`, so we defer to
+            // their implementations.
+            KnobMessage::TypeMismatch{ref expected, ref actual, ref name} => 
+                write!(f,
+                       "Type mismatch for knob '{}': knob is a {}, but received a {},",
+                       name,
+                       expected.type_name(),
+                       actual.type_name()),
+            KnobMessage::InvalidId(id) => write!(f, "Invalid knob id: {}", id),
+        }
+    }
+}
+
+impl error::Error for KnobMessage {
+    fn description(&self) -> &str { 
+        match *self {
+            KnobMessage::TypeMismatch{..} => "Knob type mismatch.",
+            KnobMessage::InvalidId(_) => "Invalid knob id.",
+        }
+     }
+
+     fn cause(&self) -> Option<&error::Error> { None }
 }

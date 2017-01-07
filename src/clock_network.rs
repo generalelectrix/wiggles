@@ -3,15 +3,17 @@
 //! modulation, such as multiplication and division.  Clocks can also declare
 //! that they accept input from one or more "knobs", enabling push-based dataflow
 //! of control parameters into the clocks.
+use std::fmt;
+use std::error;
 use std::cell::Cell;
 use std::collections::HashMap;
+use itertools::Itertools;
 use petgraph::stable_graph::StableDiGraph;
 use petgraph::graph::{NodeIndex, EdgeIndex, IndexType, DefaultIx};
 use utils::modulo_one;
 use update::{Update, DeltaT};
 use knob::{Knob, Knobs, KnobId, KnobValue, KnobMessage};
 use interconnect::Interconnector;
-
 
 #[derive(Clone, Copy, Debug)]
 /// Represent the complete value of the current state of a clock.
@@ -155,7 +157,7 @@ impl ClockGraph {
     /// The removed node is returned if removal was successful.
     pub fn remove_node(&mut self, node: ClockNodeIndex) -> Result<ClockNode, ClockMessage> {
         if self.has_listeners(node) {
-            return Err(ClockMessage::NodeHasListeners);
+            return Err(ClockMessage::NodeHasListeners(node));
         }
         // this node isn't feeding anything downstream, so we can safely delete it
         // first eliminate all of the incoming edges
@@ -212,6 +214,7 @@ impl ClockNodePrototype {
         if input_nodes.len() != self.inputs.len() {
             return Err(
                 ClockMessage::MismatchedInputs {
+                    type_name: self.type_name,
                     expected: self.inputs.len(),
                     provided: input_nodes.len()});
         }
@@ -338,9 +341,38 @@ impl ClockInputSocket {
 pub enum ClockMessage {
     MessageCollection(Vec<ClockMessage>),
     WouldCycle { source: ClockNodeIndex, sink: ClockNodeIndex },
-    InvalidInputId(InputId),
+    InvalidInputId(ClockNodeIndex, InputId),
     InvalidNodeIndex(ClockNodeIndex),
-    MismatchedInputs { expected: usize, provided: usize },
-    NodeHasListeners,
+    MismatchedInputs { type_name: &'static str, expected: usize, provided: usize },
+    NodeHasListeners(ClockNodeIndex),
     ExistingListenerCollection(ClockNodeIndex),
+}
+
+impl fmt::Display for ClockMessage {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ClockMessage::WouldCycle{ source, sink } => 
+                write!(f, "Connecting clock node {:?} to {:?} would create a cycle.", source, sink),
+            ClockMessage::InvalidInputId(node, id) =>
+                write!(f, "Clock node {:?} has no input with id {:?}.", node, id),
+            ClockMessage::InvalidNodeIndex(node) =>
+                write!(f, "Invalid clock node {:?}.", node),
+            ClockMessage::MismatchedInputs { type_name, expected, provided } =>
+                write!(f, "Clock type {} expects {} inputs but was provided {}.", type_name, expected, provided),
+            ClockMessage::NodeHasListeners(node) =>
+                write!(f, "Clock node {:?} has listeners connected.", node),
+            ClockMessage::ExistingListenerCollection(node) =>
+                write!(f, "Tried to create a listener collection for node {:?} but it already has a non-empty one.", node),
+            ClockMessage::MessageCollection(ref msgs) => {
+                write!(f, "Multiple messages:\n{}", msgs.iter().format("\n"))
+            }
+        }
+    }
+}
+
+impl error::Error for ClockMessage {
+    // TODO: description messages, though we may never need them
+    fn description(&self) -> &str { "" }
+
+     fn cause(&self) -> Option<&error::Error> { None }
 }
