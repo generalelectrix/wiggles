@@ -106,7 +106,7 @@ impl ClockGraph {
     /// nodes to connect the inputs of the clock.  Initializes a collection
     /// of external listeners for this node as well.
     pub fn add_node(&mut self,
-                    prototype: ClockNodePrototype,
+                    prototype: &ClockNodePrototype,
                     name: String,
                     input_nodes: &[ClockNodeIndex])
                     -> Result<&ClockNode, ClockMessage> {
@@ -114,12 +114,15 @@ impl ClockGraph {
         try!(self.check_nodes(input_nodes));
         // create the node with a placeholder index
         let new_node = try!(prototype.create_node(name, placeholder_index(), input_nodes));
+
         // add the node to the graph
         let node_index = self.g.add_node(new_node);
         
         // If a collection of listeners already exists for this node id, some cleanup failed somewhere.
+        // Remove the node we just added.
         // Return an error, though we might want to panic instead.
         if self.external_connections.has_connections(ClockNodeIndex(node_index)) {
+            self.g.remove_node(node_index);
             return Err(ClockMessage::ExistingListenerCollection(ClockNodeIndex(node_index)));
         }
 
@@ -135,20 +138,12 @@ impl ClockGraph {
 
     /// Get a reference to a node in the graph, if it exists.
     pub fn get_node(&self, ClockNodeIndex(idx): ClockNodeIndex) -> Result<&ClockNode, ClockMessage> {
-        if let Some(node) = self.g.node_weight(idx) {
-            Ok(node)
-        } else {
-            Err(ClockMessage::InvalidNodeIndex(ClockNodeIndex(idx)))
-        }
+        self.g.node_weight(idx).ok_or(ClockMessage::InvalidNodeIndex(ClockNodeIndex(idx)))
     }
 
         /// Get a reference to a node in the graph, if it exists.
     pub fn get_node_mut(&mut self, ClockNodeIndex(idx): ClockNodeIndex) -> Result<&mut ClockNode, ClockMessage> {
-        if let Some(node) = self.g.node_weight_mut(idx) {
-            Ok(node)
-        } else {
-            Err(ClockMessage::InvalidNodeIndex(ClockNodeIndex(idx)))
-        }
+        self.g.node_weight_mut(idx).ok_or(ClockMessage::InvalidNodeIndex(ClockNodeIndex(idx)))
     }
 
     /// Remove a node from the graph, including all edges coming in to the node.
@@ -162,11 +157,7 @@ impl ClockGraph {
         // this node isn't feeding anything downstream, so we can safely delete it
         // first eliminate all of the incoming edges
         let ClockNodeIndex(idx) = node;
-        if let Some(nodeval) = self.g.remove_node(idx) {
-            Ok(nodeval)
-        } else {
-            Err(ClockMessage::InvalidNodeIndex(node))
-        }
+        self.g.remove_node(idx).ok_or(ClockMessage::InvalidNodeIndex(node))
     }
 
     /// Get the current clock value from any node in the graph.
