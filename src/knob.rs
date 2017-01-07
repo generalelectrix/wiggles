@@ -189,8 +189,6 @@ pub enum KnobMessage {
 impl fmt::Display for KnobMessage {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            // Both underlying errors already impl `Display`, so we defer to
-            // their implementations.
             KnobMessage::TypeMismatch{ref expected, ref actual, ref name} => 
                 write!(f,
                        "Type mismatch for knob '{}': knob is a {}, but received a {},",
