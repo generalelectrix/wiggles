@@ -1,5 +1,6 @@
 //! Master type for dispatching all application events.
 use knob::KnobEvent;
+use clock_network::ClockResponse;
 
 pub enum Event {
     /// Generically allow multiple events to be grouped together.
@@ -7,4 +8,5 @@ pub enum Event {
     /// APIs without requiring a memory allocation for a single event.
     EventCollection(Vec<Event>),
     Knob(KnobEvent),
+    ClockResponse(ClockResponse),
 }

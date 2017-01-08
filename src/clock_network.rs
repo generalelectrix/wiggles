@@ -10,12 +10,19 @@ use std::collections::HashMap;
 use itertools::Itertools;
 use petgraph::stable_graph::StableDiGraph;
 use petgraph::graph::{NodeIndex, EdgeIndex, IndexType, DefaultIx};
+use petgraph::algo::has_path_connecting;
 use petgraph::Direction;
 use utils::modulo_one;
 use update::{Update, DeltaT};
 use knob::{Knob, Knobs, KnobId, KnobValue, KnobPatch, KnobEvent};
 use interconnect::Interconnector;
 use event::Event;
+
+/// Events related to clocks and the clock graph.
+pub enum ClockResponse {
+    /// Inform the world that this clock node has swapped an input
+    InputSwaped { node: ClockNodeIndex, input_id: InputId, new_input: ClockNodeIndex },
+}
 
 #[derive(Clone, Copy, Debug)]
 /// Represent the complete value of the current state of a clock.
@@ -168,21 +175,43 @@ impl ClockGraph {
         Ok(self.get_node(node)?.get_value(&self))
     }
 
-    /// Return true if connecting source to sink might create a cycle in the graph.
-    /// If the source itself has no upstream sources or the sink has no downstream sinks,
-    /// connecting them can't create a cycle.  Similarly, if source and sink are already
-    /// connected, adding a parallel connection can't create a cycle.
-    fn must_check_for_cycle(&self,
-                            ClockNodeIndex(source): ClockNodeIndex,
-                            ClockNodeIndex(sink): ClockNodeIndex)
-                            -> bool {
-        // if the source has sources
-        self.g.edges_directed(source, Direction::Incoming).next().is_some()
-        // and if the sink has sinks
-        && self.g.edges_directed(sink, Direction::Outgoing).next().is_some()
-        // and if there isn't already an edge connecting source to sink
-        && self.g.find_edge(source, sink).is_none()
-        // then we need to check for a potential cycle.
+    /// Attempt to swap a particular input of a clock for a different input.
+    pub fn swap_input(&mut self,
+                      node_index: ClockNodeIndex,
+                      id: InputId,
+                      new_source: ClockNodeIndex)
+                      -> Result<ClockResponse, ClockError> {
+        let node = self.get_node_mut(node_index)?;
+        // make sure this won't create a cycle
+        self.check_cycle(new_source, node_index)?;
+
+        // first swap the input at the node level; this will blow up if the input
+        // id is invalid.
+        node.set_input(id, new_source)?;
+
+        // TODO: remove old edge, create new edge
+        
+    }
+
+    /// Return an error if connecting source to sink would create a cycle.
+    fn check_cycle(&self,
+                   ClockNodeIndex(source): ClockNodeIndex,
+                   ClockNodeIndex(sink): ClockNodeIndex)
+                   -> Result<(), ClockError> {
+        let would_cycle =
+            // if the source has sources
+            self.g.edges_directed(source, Direction::Incoming).next().is_some()
+            // and if the sink has sinks
+            && self.g.edges_directed(sink, Direction::Outgoing).next().is_some()
+            // and if there isn't already an edge connecting source to sink
+            && self.g.find_edge(source, sink).is_none()
+            // then we need to check if sink is already upstream from source.
+            && has_path_connecting(&self.g, sink, source, None);
+        if would_cycle {
+            Err(ClockError::WouldCycle {source: ClockNodeIndex(source), sink: ClockNodeIndex(sink)})
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -276,7 +305,7 @@ impl ClockNode {
     pub fn index(&self) -> ClockNodeIndex { self.id }
 
     /// Return the current value of this clock node.
-    fn get_value(&self, g: &ClockGraph) -> ClockValue {
+    pub fn get_value(&self, g: &ClockGraph) -> ClockValue {
         // If we have memoized the value, get it.
         if let Some(v) = self.current_value.get() {
             v
@@ -285,6 +314,13 @@ impl ClockNode {
             self.current_value.set(Some(v));
             v
         }
+    }
+
+    /// Set an input to a particular node.
+    pub fn set_input(&mut self, id: InputId, source: ClockNodeIndex) -> Result<(), ClockError> {
+        self.inputs.get_mut(id)
+                   .map(|input| { input.input_node = source; })
+                   .ok_or(ClockError::InvalidInputId(self.index(), id))
     }
 }
 
@@ -336,18 +372,20 @@ pub type InputId = usize;
 /// Specify an upstream clock via an incoming edge to this clock graph node.
 pub struct ClockInputSocket {
     /// The local name of this input socket.
-    pub name: &'static str,
+    name: &'static str,
     /// A locally-unique numeric id for this socket.  For each node, these should
     /// start at 0 and increase monotonically.
     id: InputId,
     /// The index of the source node.
-    input_node: ClockNodeIndex,
+    pub input_node: ClockNodeIndex,
 }
 
 impl ClockInputSocket {
     pub fn new(name: &'static str, id: InputId, input_node: ClockNodeIndex) -> Self {
         ClockInputSocket { name: name, id: id, input_node: input_node }
     }
+
+    pub fn name(&self) -> &'static str { self.name }
 
     /// Fetch the upstream value from the source for this socket.
     /// # Panics
