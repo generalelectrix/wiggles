@@ -18,7 +18,7 @@ const INIT_CLOCK_VAL: ClockValue = ClockValue { phase: 0.0, tick_count: 0, ticke
 const INIT_RATE: Rate = Rate::Hz(1.0);
 
 /// The most basic clock, which ticks at a rate controlled by a knob.
-struct Clock {
+pub struct Clock {
     value: ClockValue,
 }
 

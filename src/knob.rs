@@ -31,20 +31,14 @@ pub trait Knobs {
         if let Some(knob) = self.knobs_mut().get_mut(id) {
             knob.set(value)
         } else {
-            Err(KnobError
-        ::InvalidId(id))
+            Err(KnobError::InvalidId(id))
         }
     }
 
     /// Get the current value of a given knob id.
     /// Returns an error if the id doesn't exist.
     fn get_knob_value(&self, id: KnobId) -> Result<KnobValue, KnobError> {
-        if let Some(knob) = self.knobs().get(id) {
-            Ok(knob.value)
-        } else {
-            Err(KnobError
-        ::InvalidId(id))
-        }
+        self.knobs().get(id).map(|ref k| k.value).ok_or(KnobError::InvalidId(id))
     }
 }
 
@@ -173,25 +167,39 @@ impl PatchBay {
     pub fn new() -> Self { PatchBay { patches: HashMap::new() }}
 
     pub fn add_clock_node(&mut self, node: &ClockNode) -> KnobEvent {
-        let new_patches: Vec<_> =
+        let patches: Vec<_> =
             node.knobs.iter()
                       .map(|ref knob| {
                             let patch = KnobPatch::Clock { node: node.id, id: knob.id };
                             self.patches.insert(patch, knob.value);
                             patch
                       }).collect();
-        KnobEvent::KnobPatchesAdded(new_patches)
+        KnobEvent::KnobPatchesAdded(patches)
+    }
+
+    /// Remove all patches from a provided clock node, presumably because it has
+    /// been removed.
+    pub fn remove_clock_node(&mut self, node: &ClockNode) -> KnobEvent {
+        let patches: Vec<_> =
+            node.knobs.iter()
+                      .map(|ref knob| {
+                            let patch = KnobPatch::Clock { node: node.id, id: knob.id };
+                            self.patches.remove(&patch);
+                            patch
+                      }).collect();
+        KnobEvent::KnobPatchesDeleted(patches)
     }
 
     pub fn set_knob_value(&self,
                           patch: KnobPatch,
                           value: KnobValue,
                           cg: &mut ClockGraph)
-                          -> Result<(), ErrorMessage> {
+                          -> Result<KnobEvent, ErrorMessage> {
         // determine which graph to patch into
         match patch {
-            KnobPatch::Clock { node: node, id: id } => {
-                Ok(cg.get_node_mut(node)?.set_knob_value(id, value)?)
+            KnobPatch::Clock { node, id } => {
+                cg.get_node_mut(node)?.set_knob_value(id, value)?;
+                Ok(KnobEvent::ValueChanged { patch: patch, value: value })
             }
         }
     }

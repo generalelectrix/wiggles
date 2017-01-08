@@ -12,7 +12,7 @@ use petgraph::stable_graph::StableDiGraph;
 use petgraph::graph::{NodeIndex, EdgeIndex, IndexType, DefaultIx};
 use utils::modulo_one;
 use update::{Update, DeltaT};
-use knob::{Knob, Knobs, KnobId, KnobValue, KnobError};
+use knob::{Knob, Knobs};
 use interconnect::Interconnector;
 
 #[derive(Clone, Copy, Debug)]
@@ -281,6 +281,7 @@ impl Knobs for ClockNode {
 /// Given a timestep and the current state of a clock's control knobs, update
 /// any internal state of the clock.
 pub trait UpdateClock {
+    // FIXME: update may need to emit an event
     fn update(&mut self, knobs: &mut [Knob], dt: DeltaT);
 }
 
