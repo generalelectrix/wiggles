@@ -9,9 +9,12 @@ use clock_network::{
     UpdateClock,
     CompleteClock,
     ClockInputSocket,
-    ClockNodePrototype};
+    ClockNodePrototype,
+    ClockNodeIndex,
+    clock_button_update};
 use knob::{Knob, KnobValue, KnobId};
 use datatypes::Rate;
+use event::Event;
 
 const RATE_KNOB_ID: KnobId = 0;
 const TRIGGER_KNOB_ID: KnobId = 1;
@@ -50,16 +53,19 @@ impl ComputeClock for TriggeredClock {
 }
 
 impl UpdateClock for TriggeredClock {
-    fn update(&mut self, knobs: &mut [Knob], dt: DeltaT) {
+    fn update(&mut self, id: ClockNodeIndex, knobs: &mut [Knob], dt: DeltaT) -> Option<Event> {
         debug_assert!(knobs.len() == 2);
         // if someone hit the trigger button, register it and swap the knob value
         // FIXME: should emit an event announcing the change in button state.
         if knobs[TRIGGER_KNOB_ID].get_button_state() {
-            knobs[TRIGGER_KNOB_ID].set_button_state(false);
             self.value.phase = 0.0;
             self.value.ticked = true;
             self.value.tick_count += 1;
             self.running = true;
+
+            let trigger_knob = &mut knobs[TRIGGER_KNOB_ID];
+            trigger_knob.set_button_state(false);
+            Some(clock_button_update(id, trigger_knob, false))
         } else if self.running {
             // this clock only ever ticks as a result of a button press
             self.value.ticked = false;
@@ -76,6 +82,7 @@ impl UpdateClock for TriggeredClock {
             } else {
                 self.value.phase = phase_unwrapped;
             }
-        }
+            None
+        } else { None }
     }
 }

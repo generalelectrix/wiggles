@@ -12,8 +12,9 @@ use petgraph::stable_graph::StableDiGraph;
 use petgraph::graph::{NodeIndex, EdgeIndex, IndexType, DefaultIx};
 use utils::modulo_one;
 use update::{Update, DeltaT};
-use knob::{Knob, Knobs};
+use knob::{Knob, Knobs, KnobId, KnobValue, KnobPatch, KnobEvent};
 use interconnect::Interconnector;
+use event::Event;
 
 #[derive(Clone, Copy, Debug)]
 /// Represent the complete value of the current state of a clock.
@@ -236,14 +237,14 @@ impl ClockNodePrototype {
 /// clock value when called upon.
 pub struct ClockNode {
     /// Unique name for this clock.
-    pub name: String,
+    name: String,
     /// The index of this node in the enclosing graph.
     /// The graph implementation must ensure that these indices remain stable.
-    pub id: ClockNodeIndex,
+    id: ClockNodeIndex,
     /// Named input sockets that connect this node to upstream clocks.
     inputs: Vec<ClockInputSocket>,
     /// Named knobs that provide control parameters.
-    pub knobs: Vec<Knob>,
+    knobs: Vec<Knob>,
     /// The current, memoized value of this clock.
     current_value: Cell<Option<ClockValue>>,
     /// The stored behavior used to update the current value based on the
@@ -253,6 +254,9 @@ pub struct ClockNode {
 }
 
 impl ClockNode {
+    /// Return the index where this node can be found.
+    pub fn index(&self) -> ClockNodeIndex { self.id }
+
     /// Return the current value of this clock node.
     fn get_value(&self, g: &ClockGraph) -> ClockValue {
         // If we have memoized the value, get it.
@@ -267,9 +271,9 @@ impl ClockNode {
 }
 
 impl Update for ClockNode {
-    fn update(&mut self, dt: DeltaT) {
+    fn update(&mut self, dt: DeltaT) -> Option<Event> {
         self.current_value.set(None);
-        self.clock.update(&mut self.knobs, dt);
+        self.clock.update(self.id, &mut self.knobs, dt)
     }
 }
 
@@ -278,11 +282,21 @@ impl Knobs for ClockNode {
     fn knobs_mut(&mut self) -> &mut [Knob] { &mut self.knobs }
 }
 
+/// Helper function to create an event to register a clock changing the state of
+/// a button-type knob as a result of registering a transient button press.
+pub fn clock_button_update(node: ClockNodeIndex, knob: &Knob, state: bool) -> Event {
+    let patch = KnobPatch::Clock { node: node, id: knob.id() };
+    let value = KnobValue::Button(state);
+    Event::Knob(KnobEvent::ValueChanged { patch: patch, value: value })
+}
+
 /// Given a timestep and the current state of a clock's control knobs, update
-/// any internal state of the clock.
+/// any internal state of the clock.  Updating a clock may require emitting
+/// some kind of state update announcement, so allow returning a collection
+/// of events.  The id of the node that owns this clock is passed in as it
+/// is needed for emitting certain events.
 pub trait UpdateClock {
-    // FIXME: update may need to emit an event
-    fn update(&mut self, knobs: &mut [Knob], dt: DeltaT);
+    fn update(&mut self, id: ClockNodeIndex, knobs: &mut [Knob], dt: DeltaT) -> Option<Event>;
 }
 
 /// Given some inputs and knobs, compute a clock value.

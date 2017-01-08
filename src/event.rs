@@ -1,10 +1,10 @@
 //! Master type for dispatching all application events.
-use clock_network::ClockNodeIndex;
-use knob::KnobPatch;
+use knob::KnobEvent;
 
 pub enum Event {
-    /// Announce the availability of a new clock node.
-    NewClock { name: String, type_name: &'static str, node_id: ClockNodeIndex },
-    /// Announce the availability of new knobs.
-    NewKnobs { patches: Vec<KnobPatch> },
+    /// Generically allow multiple events to be grouped together.
+    /// This allows returning either a single event or multiple events from
+    /// APIs without requiring a memory allocation for a single event.
+    EventCollection(Vec<Event>),
+    Knob(KnobEvent),
 }

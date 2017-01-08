@@ -8,9 +8,12 @@ use clock_network::{
     UpdateClock,
     CompleteClock,
     ClockInputSocket,
-    ClockNodePrototype};
-use knob::{Knob, KnobValue, KnobId};
+    ClockNodePrototype,
+    ClockNodeIndex,
+    clock_button_update};
+use knob::{Knob, KnobValue, KnobId, KnobPatch, KnobEvent};
 use datatypes::Rate;
+use event::Event;
 
 const RATE_KNOB_ID: KnobId = 0;
 const RESET_KNOB_ID: KnobId = 1;
@@ -48,12 +51,17 @@ impl ComputeClock for Clock {
 }
 
 impl UpdateClock for Clock {
-    fn update(&mut self, knobs: &mut [Knob], dt: DeltaT) {
+    fn update(&mut self, id: ClockNodeIndex, knobs: &mut [Knob], dt: DeltaT) -> Option<Event> {
         debug_assert!(knobs.len() == 2);
         // if someone hit the reset button, register it and swap the knob value
         if knobs[RESET_KNOB_ID].get_button_state() {
-            knobs[RESET_KNOB_ID].set_button_state(false);
             self.value = INIT_CLOCK_VAL;
+            // set the knob back to the unpushed state
+            let reset_knob = &mut knobs[RESET_KNOB_ID];
+            reset_knob.set_button_state(false);
+
+            // emit an event for the knob value change
+            Some(clock_button_update(id, reset_knob, false))
         } else {
             // determine how much phase has elapsed
             let rate = knobs[RATE_KNOB_ID].rate().in_hz();
@@ -69,6 +77,7 @@ impl UpdateClock for Clock {
             self.value.tick_count += accumulated_ticks;
 
             self.value.phase = modulo_one(phase_unwrapped);
+            None
         }
 
 

@@ -76,16 +76,22 @@ pub type KnobId = usize;
 
 #[derive(Clone, Debug)]
 pub struct Knob {
-    pub name: &'static str,
+    name: &'static str,
     /// An explicit numeric identifier for this knob.
     /// These will be automatically assigned by the entity that this knob becomes
     /// associated with.
-    pub id: KnobId,
+    id: KnobId,
     /// The current value of this knob.
     value: KnobValue,
 }
 
 impl Knob {
+    /// Return the id this knob has been assigned.
+    pub fn id(&self) -> KnobId { self.id }
+
+    /// Return this knob's name.
+    pub fn name(&self) -> &'static str { self.name }
+
     pub fn new(name: &'static str, id: KnobId, initial_value: KnobValue) -> Self {
         Knob {
             name: name,
@@ -100,8 +106,7 @@ impl Knob {
             self.value = value;
             Ok(())
         } else {
-            Err(KnobError
-        ::TypeMismatch {
+            Err(KnobError::TypeMismatch {
                 expected: self.value,
                 actual: value,
                 name: self.name.to_string()})
@@ -168,12 +173,13 @@ impl PatchBay {
 
     pub fn add_clock_node(&mut self, node: &ClockNode) -> KnobEvent {
         let patches: Vec<_> =
-            node.knobs.iter()
-                      .map(|ref knob| {
-                            let patch = KnobPatch::Clock { node: node.id, id: knob.id };
-                            self.patches.insert(patch, knob.value);
-                            patch
-                      }).collect();
+            node.knobs()
+                .iter()
+                .map(|ref knob| {
+                    let patch = KnobPatch::Clock { node: node.index(), id: knob.id };
+                    self.patches.insert(patch, knob.value);
+                    patch
+                }).collect();
         KnobEvent::KnobPatchesAdded(patches)
     }
 
@@ -181,12 +187,13 @@ impl PatchBay {
     /// been removed.
     pub fn remove_clock_node(&mut self, node: &ClockNode) -> KnobEvent {
         let patches: Vec<_> =
-            node.knobs.iter()
-                      .map(|ref knob| {
-                            let patch = KnobPatch::Clock { node: node.id, id: knob.id };
-                            self.patches.remove(&patch);
-                            patch
-                      }).collect();
+            node.knobs()
+                .iter()
+                .map(|ref knob| {
+                    let patch = KnobPatch::Clock { node: node.index(), id: knob.id() };
+                    self.patches.remove(&patch);
+                    patch
+                }).collect();
         KnobEvent::KnobPatchesDeleted(patches)
     }
 
