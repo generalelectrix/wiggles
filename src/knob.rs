@@ -3,9 +3,18 @@ use std::collections::HashMap;
 use std::error;
 use std::fmt;
 
-use datatypes::Rate;
+use datatypes::{Rate, ErrorMessage};
 use clock_network::{ClockNodeIndex, ClockNode, ClockGraph};
 
+/// Message enum encompassing knob-related events.
+pub enum KnobEvent {
+    /// Request to set a new value for the provided knob patch.
+    ChangeValue { patch: KnobPatch, value: KnobValue },
+    /// Announce that a knob patch has successfully changed value.
+    ValueChanged { patch: KnobPatch, value: KnobValue },
+    KnobPatchesAdded(Vec<KnobPatch>),
+    KnobPatchesDeleted(Vec<KnobPatch>),
+}
 
 /// A trait expressing that an entity exposes a Knob-based interface.
 pub trait Knobs {
@@ -18,21 +27,23 @@ pub trait Knobs {
     /// Set a new value on the given knob id.
     /// Returns an error if the id doesn't exist or the value doesn't have the
     /// right type.
-    fn set_knob_value(&mut self, id: KnobId, value: KnobValue) -> Result<(), KnobMessage> {
+    fn set_knob_value(&mut self, id: KnobId, value: KnobValue) -> Result<(), KnobError> {
         if let Some(knob) = self.knobs_mut().get_mut(id) {
             knob.set(value)
         } else {
-            Err(KnobMessage::InvalidId(id))
+            Err(KnobError
+        ::InvalidId(id))
         }
     }
 
     /// Get the current value of a given knob id.
     /// Returns an error if the id doesn't exist.
-    fn get_knob_value(&self, id: KnobId) -> Result<KnobValue, KnobMessage> {
+    fn get_knob_value(&self, id: KnobId) -> Result<KnobValue, KnobError> {
         if let Some(knob) = self.knobs().get(id) {
             Ok(knob.value)
         } else {
-            Err(KnobMessage::InvalidId(id))
+            Err(KnobError
+        ::InvalidId(id))
         }
     }
 }
@@ -90,12 +101,13 @@ impl Knob {
 
     /// Assign a new value to this knob.  Only allow if the incoming value is
     /// the same as that which currently contained.
-    pub fn set(&mut self, value: KnobValue) -> Result<(), KnobMessage> {
+    pub fn set(&mut self, value: KnobValue) -> Result<(), KnobError> {
         if self.value.same_variant(&value) {
             self.value = value;
             Ok(())
         } else {
-            Err(KnobMessage::TypeMismatch {
+            Err(KnobError
+        ::TypeMismatch {
                 expected: self.value,
                 actual: value,
                 name: self.name.to_string()})
@@ -144,12 +156,14 @@ impl Knob {
     }
 }
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, Copy, Clone)]
 pub enum KnobPatch {
     Clock { node: ClockNodeIndex, id: KnobId },
 }
 
 /// Keep track of all of the knobs and how to find them.
+/// Responsible for routing knob updates to the appropriate place, and emitting
+/// events to indicate that various things have happened.
 pub struct PatchBay {
     /// Hold onto a prototype value for each knob so we can find out its type.
     patches: HashMap<KnobPatch, KnobValue>,
@@ -158,53 +172,60 @@ pub struct PatchBay {
 impl PatchBay {
     pub fn new() -> Self { PatchBay { patches: HashMap::new() }}
 
-    pub fn add_clock_node(&mut self, node: &ClockNode) {
-        for knob in node.knobs.iter() {
-            let patch = KnobPatch::Clock { node: node.id, id: knob.id };
-            self.patches.insert(patch, knob.value);
-        }
+    pub fn add_clock_node(&mut self, node: &ClockNode) -> KnobEvent {
+        let new_patches: Vec<_> =
+            node.knobs.iter()
+                      .map(|ref knob| {
+                            let patch = KnobPatch::Clock { node: node.id, id: knob.id };
+                            self.patches.insert(patch, knob.value);
+                            patch
+                      }).collect();
+        KnobEvent::KnobPatchesAdded(new_patches)
     }
 
     pub fn set_knob_value(&self,
                           patch: KnobPatch,
                           value: KnobValue,
-                          cg: &ClockGraph)
-                          -> Result<(), KnobMessage> {
+                          cg: &mut ClockGraph)
+                          -> Result<(), ErrorMessage> {
         // determine which graph to patch into
-        // match patch {
-        //     Clock { node: node, id: id } => {
-        //         cg.
-        //     }
-        // }
-        Ok(())
+        match patch {
+            KnobPatch::Clock { node: node, id: id } => {
+                Ok(cg.get_node_mut(node)?.set_knob_value(id, value)?)
+            }
+        }
     }
 }
 
 #[derive(Debug)]
-pub enum KnobMessage {
+pub enum KnobError {
     TypeMismatch { expected: KnobValue, actual: KnobValue, name: String },
     InvalidId(KnobId),
 }
 
-impl fmt::Display for KnobMessage {
+impl fmt::Display for KnobError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            KnobMessage::TypeMismatch{ref expected, ref actual, ref name} => 
+            KnobError
+        ::TypeMismatch{ref expected, ref actual, ref name} => 
                 write!(f,
                        "Type mismatch for knob '{}': knob is a {}, but received a {},",
                        name,
                        expected.type_name(),
                        actual.type_name()),
-            KnobMessage::InvalidId(id) => write!(f, "Invalid knob id: {}", id),
+            KnobError
+        ::InvalidId(id) => write!(f, "Invalid knob id: {}", id),
         }
     }
 }
 
-impl error::Error for KnobMessage {
+impl error::Error for KnobError {
     fn description(&self) -> &str { 
         match *self {
-            KnobMessage::TypeMismatch{..} => "Knob type mismatch.",
-            KnobMessage::InvalidId(_) => "Invalid knob id.",
+            KnobError
+        ::TypeMismatch{..} => "Knob type mismatch.",
+            KnobError
+        ::InvalidId(_) => "Invalid knob id.",
         }
      }
 

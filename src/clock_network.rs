@@ -12,7 +12,7 @@ use petgraph::stable_graph::StableDiGraph;
 use petgraph::graph::{NodeIndex, EdgeIndex, IndexType, DefaultIx};
 use utils::modulo_one;
 use update::{Update, DeltaT};
-use knob::{Knob, Knobs, KnobId, KnobValue, KnobMessage};
+use knob::{Knob, Knobs, KnobId, KnobValue, KnobError};
 use interconnect::Interconnector;
 
 #[derive(Clone, Copy, Debug)]
@@ -91,14 +91,14 @@ impl ClockGraph {
     }
 
     /// Return an error if any of the provided nodes is not part of this graph.
-    pub fn check_nodes(&self, nodes: &[ClockNodeIndex]) -> Result<(), ClockMessage> {
+    pub fn check_nodes(&self, nodes: &[ClockNodeIndex]) -> Result<(), ClockError> {
         let bad_nodes =
             nodes.iter().cloned()
                  .filter_map(|ix| {
                      if self.contains_node(ix) { None }
-                     else { Some(ClockMessage::InvalidNodeIndex(ix)) }})
+                     else { Some(ClockError::InvalidNodeIndex(ix)) }})
                  .collect::<Vec<_>>();
-        if bad_nodes.len() == 0 { Err(ClockMessage::MessageCollection(bad_nodes)) }
+        if bad_nodes.len() == 0 { Err(ClockError::MessageCollection(bad_nodes)) }
         else { Ok(()) }
     }
 
@@ -109,7 +109,7 @@ impl ClockGraph {
                     prototype: &ClockNodePrototype,
                     name: String,
                     input_nodes: &[ClockNodeIndex])
-                    -> Result<&ClockNode, ClockMessage> {
+                    -> Result<&ClockNode, ClockError> {
         // check that all the input nodes exist
         try!(self.check_nodes(input_nodes));
         // create the node with a placeholder index
@@ -123,7 +123,7 @@ impl ClockGraph {
         // Return an error, though we might want to panic instead.
         if self.external_connections.has_connections(ClockNodeIndex(node_index)) {
             self.g.remove_node(node_index);
-            return Err(ClockMessage::ExistingListenerCollection(ClockNodeIndex(node_index)));
+            return Err(ClockError::ExistingListenerCollection(ClockNodeIndex(node_index)));
         }
 
         // add edges to the input nodes
@@ -137,32 +137,32 @@ impl ClockGraph {
     }
 
     /// Get a reference to a node in the graph, if it exists.
-    pub fn get_node(&self, ClockNodeIndex(idx): ClockNodeIndex) -> Result<&ClockNode, ClockMessage> {
-        self.g.node_weight(idx).ok_or(ClockMessage::InvalidNodeIndex(ClockNodeIndex(idx)))
+    pub fn get_node(&self, ClockNodeIndex(idx): ClockNodeIndex) -> Result<&ClockNode, ClockError> {
+        self.g.node_weight(idx).ok_or(ClockError::InvalidNodeIndex(ClockNodeIndex(idx)))
     }
 
         /// Get a reference to a node in the graph, if it exists.
-    pub fn get_node_mut(&mut self, ClockNodeIndex(idx): ClockNodeIndex) -> Result<&mut ClockNode, ClockMessage> {
-        self.g.node_weight_mut(idx).ok_or(ClockMessage::InvalidNodeIndex(ClockNodeIndex(idx)))
+    pub fn get_node_mut(&mut self, ClockNodeIndex(idx): ClockNodeIndex) -> Result<&mut ClockNode, ClockError> {
+        self.g.node_weight_mut(idx).ok_or(ClockError::InvalidNodeIndex(ClockNodeIndex(idx)))
     }
 
     /// Remove a node from the graph, including all edges coming in to the node.
     /// If the graph has any *outgoing* edges or external listeners, return an error.
     /// Incoming edges are always safe to eliminate.
     /// The removed node is returned if removal was successful.
-    pub fn remove_node(&mut self, node: ClockNodeIndex) -> Result<ClockNode, ClockMessage> {
+    pub fn remove_node(&mut self, node: ClockNodeIndex) -> Result<ClockNode, ClockError> {
         if self.has_listeners(node) {
-            return Err(ClockMessage::NodeHasListeners(node));
+            return Err(ClockError::NodeHasListeners(node));
         }
         // this node isn't feeding anything downstream, so we can safely delete it
         // first eliminate all of the incoming edges
         let ClockNodeIndex(idx) = node;
-        self.g.remove_node(idx).ok_or(ClockMessage::InvalidNodeIndex(node))
+        self.g.remove_node(idx).ok_or(ClockError::InvalidNodeIndex(node))
     }
 
     /// Get the current clock value from any node in the graph.
     /// Return an error if the node doesn't exist or is invalid.
-    fn get_value_from_node(&self, node: ClockNodeIndex) -> Result<ClockValue, ClockMessage> {
+    fn get_value_from_node(&self, node: ClockNodeIndex) -> Result<ClockValue, ClockError> {
         Ok(self.get_node(node)?.get_value(&self))
     }
 }
@@ -201,10 +201,10 @@ impl ClockNodePrototype {
                        name: String,
                        id: ClockNodeIndex,
                        input_nodes: &[ClockNodeIndex])
-                       -> Result<ClockNode, ClockMessage> {
+                       -> Result<ClockNode, ClockError> {
         if input_nodes.len() != self.inputs.len() {
             return Err(
-                ClockMessage::MismatchedInputs {
+                ClockError::MismatchedInputs {
                     type_name: self.type_name,
                     expected: self.inputs.len(),
                     provided: input_nodes.len()});
@@ -219,12 +219,12 @@ impl ClockNodePrototype {
                                 debug_assert!(input_id == i);
                                 ClockInputSocket::new(name, input_id, *node_id)
                             })
-                       .collect::<Vec<_>>().into_boxed_slice();
+                       .collect::<Vec<_>>();
         Ok(ClockNode {
             name: name,
             id: id,
             inputs: connected_inputs,
-            knobs: self.knobs.clone(),
+            knobs: self.knobs.clone().into_vec(),
             current_value: Cell::new(None),
             clock: (self.clock)(),
         })
@@ -241,9 +241,9 @@ pub struct ClockNode {
     /// The graph implementation must ensure that these indices remain stable.
     pub id: ClockNodeIndex,
     /// Named input sockets that connect this node to upstream clocks.
-    inputs: Box<[ClockInputSocket]>,
+    inputs: Vec<ClockInputSocket>,
     /// Named knobs that provide control parameters.
-    pub knobs: Box<[Knob]>,
+    pub knobs: Vec<Knob>,
     /// The current, memoized value of this clock.
     current_value: Cell<Option<ClockValue>>,
     /// The stored behavior used to update the current value based on the
@@ -329,8 +329,8 @@ impl ClockInputSocket {
 
 #[derive(Debug)]
 /// Message type to convey error conditions related to clock network operations.
-pub enum ClockMessage {
-    MessageCollection(Vec<ClockMessage>),
+pub enum ClockError {
+    MessageCollection(Vec<ClockError>),
     WouldCycle { source: ClockNodeIndex, sink: ClockNodeIndex },
     InvalidInputId(ClockNodeIndex, InputId),
     InvalidNodeIndex(ClockNodeIndex),
@@ -339,29 +339,29 @@ pub enum ClockMessage {
     ExistingListenerCollection(ClockNodeIndex),
 }
 
-impl fmt::Display for ClockMessage {
+impl fmt::Display for ClockError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ClockMessage::WouldCycle{ source, sink } => 
+            ClockError::WouldCycle{ source, sink } => 
                 write!(f, "Connecting clock node {:?} to {:?} would create a cycle.", source, sink),
-            ClockMessage::InvalidInputId(node, id) =>
+            ClockError::InvalidInputId(node, id) =>
                 write!(f, "Clock node {:?} has no input with id {:?}.", node, id),
-            ClockMessage::InvalidNodeIndex(node) =>
+            ClockError::InvalidNodeIndex(node) =>
                 write!(f, "Invalid clock node {:?}.", node),
-            ClockMessage::MismatchedInputs { type_name, expected, provided } =>
+            ClockError::MismatchedInputs { type_name, expected, provided } =>
                 write!(f, "Clock type {} expects {} inputs but was provided {}.", type_name, expected, provided),
-            ClockMessage::NodeHasListeners(node) =>
+            ClockError::NodeHasListeners(node) =>
                 write!(f, "Clock node {:?} has listeners connected.", node),
-            ClockMessage::ExistingListenerCollection(node) =>
+            ClockError::ExistingListenerCollection(node) =>
                 write!(f, "Tried to create a listener collection for node {:?} but it already has a non-empty one.", node),
-            ClockMessage::MessageCollection(ref msgs) => {
+            ClockError::MessageCollection(ref msgs) => {
                 write!(f, "Multiple messages:\n{}", msgs.iter().format("\n"))
             }
         }
     }
 }
 
-impl error::Error for ClockMessage {
+impl error::Error for ClockError {
     // TODO: description messages, though we may never need them
     fn description(&self) -> &str { "" }
 

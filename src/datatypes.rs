@@ -1,8 +1,8 @@
 //! Declarations of various re-used dataflow types and type aliases.
 use std::fmt;
 use std::error;
-use knob::KnobMessage;
-use clock_network::ClockMessage;
+use knob::KnobError;
+use clock_network::ClockError;
 
 #[derive(Clone, Copy, Debug)]
 /// Floating-point representation of a rate, permitting the use of various
@@ -28,8 +28,9 @@ impl Rate {
 #[derive(Debug)]
 /// Top-level wrapper for all subdomain errors.
 pub enum ErrorMessage {
-    Clock(ClockMessage),
-    Knob(KnobMessage),
+    Clock(ClockError),
+    Knob(KnobError
+),
 }
 
 impl fmt::Display for ErrorMessage {
@@ -57,14 +58,15 @@ impl error::Error for ErrorMessage {
      }
 }
 
-impl From<KnobMessage> for ErrorMessage {
-    fn from(err: KnobMessage) -> Self {
+impl From<KnobError> for ErrorMessage {
+    fn from(err: KnobError
+) -> Self {
         ErrorMessage::Knob(err)
     }
 }
 
-impl From<ClockMessage> for ErrorMessage {
-    fn from(err: ClockMessage) -> Self {
+impl From<ClockError> for ErrorMessage {
+    fn from(err: ClockError) -> Self {
         ErrorMessage::Clock(err)
     }
 }
