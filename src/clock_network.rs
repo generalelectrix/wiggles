@@ -99,8 +99,8 @@ impl ClockGraph {
                      if self.contains_node(ix) { None }
                      else { Some(ClockError::InvalidNodeIndex(ix)) }})
                  .collect::<Vec<_>>();
-        if bad_nodes.len() == 0 { Err(ClockError::MessageCollection(bad_nodes)) }
-        else { Ok(()) }
+        if bad_nodes.is_empty() { Ok(()) }
+        else { Err(ClockError::MessageCollection(bad_nodes)) }
     }
 
     /// Add a new node to the graph using a prototype and a list of input
