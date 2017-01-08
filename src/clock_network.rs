@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use itertools::Itertools;
 use petgraph::stable_graph::StableDiGraph;
 use petgraph::graph::{NodeIndex, EdgeIndex, IndexType, DefaultIx};
+use petgraph::Direction;
 use utils::modulo_one;
 use update::{Update, DeltaT};
 use knob::{Knob, Knobs, KnobId, KnobValue, KnobPatch, KnobEvent};
@@ -165,6 +166,23 @@ impl ClockGraph {
     /// Return an error if the node doesn't exist or is invalid.
     fn get_value_from_node(&self, node: ClockNodeIndex) -> Result<ClockValue, ClockError> {
         Ok(self.get_node(node)?.get_value(&self))
+    }
+
+    /// Return true if connecting source to sink might create a cycle in the graph.
+    /// If the source itself has no upstream sources or the sink has no downstream sinks,
+    /// connecting them can't create a cycle.  Similarly, if source and sink are already
+    /// connected, adding a parallel connection can't create a cycle.
+    fn must_check_for_cycle(&self,
+                            ClockNodeIndex(source): ClockNodeIndex,
+                            ClockNodeIndex(sink): ClockNodeIndex)
+                            -> bool {
+        // if the source has sources
+        self.g.edges_directed(source, Direction::Incoming).next().is_some()
+        // and if the sink has sinks
+        && self.g.edges_directed(sink, Direction::Outgoing).next().is_some()
+        // and if there isn't already an edge connecting source to sink
+        && self.g.find_edge(source, sink).is_none()
+        // then we need to check for a potential cycle.
     }
 }
 
