@@ -138,7 +138,7 @@ impl ClockGraph {
 
         // add edges to the input nodes
         for input_node in input_nodes.iter() {
-            self.g.add_edge(*input_node, *node_index, ());
+            self.g.add_edge(**input_node, *node_index, ());
         }
         // write the index back into the new node
         let new_node = self.g.node_weight_mut(*node_index).unwrap();
@@ -181,18 +181,24 @@ impl ClockGraph {
                       id: InputId,
                       new_source: ClockNodeIndex)
                       -> Result<ClockResponse, ClockError> {
-        let node = self.get_node_mut(node_index)?;
         // identify the current node connected to this input
-        let current_source = node.get_input(id)?;
+        let current_source = self.get_node(node_index)?.get_input(id)?;
 
         // make sure this won't create a cycle
         self.check_cycle(new_source, node_index)?;
 
         // first swap the input at the node level
-        node.set_input(id, new_source)?;
+        self.get_node_mut(node_index)?.set_input(id, new_source)?;
 
         // remove old edge, create new edge
+        // if there wasn't an edge there, the graph state was inconsistent...
+        // for now, just ignore this.
+        // TODO: log this inconsistency or something
         self.g.find_edge(*current_source, *node_index)
+            .map(|edge| self.g.remove_edge(edge));
+        
+        self.g.add_edge(*new_source, *node_index, ());
+        Ok(ClockResponse::InputSwaped{ node: node_index, input_id: id, new_input: new_source })
     }
 
     /// Return an error if connecting source to sink would create a cycle.
