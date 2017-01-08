@@ -7,6 +7,7 @@ use std::fmt;
 use std::error;
 use std::cell::Cell;
 use std::collections::HashMap;
+use std::ops::Deref;
 use itertools::Itertools;
 use petgraph::stable_graph::StableDiGraph;
 use petgraph::graph::{NodeIndex, EdgeIndex, IndexType, DefaultIx};
@@ -44,6 +45,11 @@ impl ClockValue {
 /// Newtype declaration to ensure we don't mix up nodes between different graph domains.
 pub struct ClockNodeIndex(NodeIndex);
 
+impl Deref for ClockNodeIndex {
+    type Target = NodeIndex;
+    fn deref(&self) -> &NodeIndex { &self.0 }
+}
+
 /// This implementation is not unsafe, though since the trait is unsafe the unsafety
 /// here is only coming from our reliance on the underlying type itself.
 unsafe impl IndexType for ClockNodeIndex {
@@ -56,10 +62,6 @@ unsafe impl IndexType for ClockNodeIndex {
     #[inline(always)]
     fn max() -> Self { ClockNodeIndex::new(DefaultIx::max() as usize) }
 }
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Default)]
-/// Newtype declaration to ensure we don't mix up edges between different graph domains.
-pub struct ClockEdgeIndex(EdgeIndex);
 
 /// Placeholder type for keeping track of other domains listening to the clock domain.
 type ExternalListener = usize;
@@ -87,15 +89,14 @@ impl ClockGraph {
     }
 
     /// Return true if this graph contains the provided node index.
-    pub fn contains_node(&self, ClockNodeIndex(idx): ClockNodeIndex) -> bool {
-        self.g.contains_node(idx)
+    pub fn contains_node(&self, node: ClockNodeIndex) -> bool {
+        self.g.contains_node(*node)
     }
 
     /// Return true if this node has one or more outgoing edges or external listeners.
     /// Returns false if the node does not exist.
     pub fn has_listeners(&self, node: ClockNodeIndex) -> bool {
-        let ClockNodeIndex(idx) = node;
-        self.g.edges(idx).next().is_some()
+        self.g.edges(*node).next().is_some()
         || self.external_connections.has_connections(node)
     }
 
@@ -125,34 +126,34 @@ impl ClockGraph {
         let new_node = try!(prototype.create_node(name, placeholder_index(), input_nodes));
 
         // add the node to the graph
-        let node_index = self.g.add_node(new_node);
+        let node_index = ClockNodeIndex(self.g.add_node(new_node));
         
         // If a collection of listeners already exists for this node id, some cleanup failed somewhere.
         // Remove the node we just added.
         // Return an error, though we might want to panic instead.
-        if self.external_connections.has_connections(ClockNodeIndex(node_index)) {
-            self.g.remove_node(node_index);
-            return Err(ClockError::ExistingListenerCollection(ClockNodeIndex(node_index)));
+        if self.external_connections.has_connections(node_index) {
+            self.g.remove_node(*node_index);
+            return Err(ClockError::ExistingListenerCollection(node_index));
         }
 
         // add edges to the input nodes
-        for &ClockNodeIndex(input_node) in input_nodes.iter() {
-            self.g.add_edge(input_node, node_index, ());
+        for input_node in input_nodes.iter() {
+            self.g.add_edge(*input_node, *node_index, ());
         }
         // write the index back into the new node
-        let new_node = self.g.node_weight_mut(node_index).unwrap();
-        new_node.id = ClockNodeIndex(node_index);
+        let new_node = self.g.node_weight_mut(*node_index).unwrap();
+        new_node.id = node_index;
         Ok(new_node)
     }
 
     /// Get a reference to a node in the graph, if it exists.
-    pub fn get_node(&self, ClockNodeIndex(idx): ClockNodeIndex) -> Result<&ClockNode, ClockError> {
-        self.g.node_weight(idx).ok_or(ClockError::InvalidNodeIndex(ClockNodeIndex(idx)))
+    pub fn get_node(&self, node: ClockNodeIndex) -> Result<&ClockNode, ClockError> {
+        self.g.node_weight(*node).ok_or(ClockError::InvalidNodeIndex(node))
     }
 
         /// Get a reference to a node in the graph, if it exists.
-    pub fn get_node_mut(&mut self, ClockNodeIndex(idx): ClockNodeIndex) -> Result<&mut ClockNode, ClockError> {
-        self.g.node_weight_mut(idx).ok_or(ClockError::InvalidNodeIndex(ClockNodeIndex(idx)))
+    pub fn get_node_mut(&mut self, node: ClockNodeIndex) -> Result<&mut ClockNode, ClockError> {
+        self.g.node_weight_mut(*node).ok_or(ClockError::InvalidNodeIndex(node))
     }
 
     /// Remove a node from the graph, including all edges coming in to the node.
@@ -165,8 +166,7 @@ impl ClockGraph {
         }
         // this node isn't feeding anything downstream, so we can safely delete it
         // first eliminate all of the incoming edges
-        let ClockNodeIndex(idx) = node;
-        self.g.remove_node(idx).ok_or(ClockError::InvalidNodeIndex(node))
+        self.g.remove_node(*node).ok_or(ClockError::InvalidNodeIndex(node))
     }
 
     /// Get the current clock value from any node in the graph.
@@ -182,33 +182,32 @@ impl ClockGraph {
                       new_source: ClockNodeIndex)
                       -> Result<ClockResponse, ClockError> {
         let node = self.get_node_mut(node_index)?;
+        // identify the current node connected to this input
+        let current_source = node.get_input(id)?;
+
         // make sure this won't create a cycle
         self.check_cycle(new_source, node_index)?;
 
-        // first swap the input at the node level; this will blow up if the input
-        // id is invalid.
+        // first swap the input at the node level
         node.set_input(id, new_source)?;
 
-        // TODO: remove old edge, create new edge
-        
+        // remove old edge, create new edge
+        self.g.find_edge(*current_source, *node_index)
     }
 
     /// Return an error if connecting source to sink would create a cycle.
-    fn check_cycle(&self,
-                   ClockNodeIndex(source): ClockNodeIndex,
-                   ClockNodeIndex(sink): ClockNodeIndex)
-                   -> Result<(), ClockError> {
+    fn check_cycle(&self, source: ClockNodeIndex, sink: ClockNodeIndex) -> Result<(), ClockError> {
         let would_cycle =
             // if the source has sources
-            self.g.edges_directed(source, Direction::Incoming).next().is_some()
+            self.g.edges_directed(*source, Direction::Incoming).next().is_some()
             // and if the sink has sinks
-            && self.g.edges_directed(sink, Direction::Outgoing).next().is_some()
+            && self.g.edges_directed(*sink, Direction::Outgoing).next().is_some()
             // and if there isn't already an edge connecting source to sink
-            && self.g.find_edge(source, sink).is_none()
+            && self.g.find_edge(*source, *sink).is_none()
             // then we need to check if sink is already upstream from source.
-            && has_path_connecting(&self.g, sink, source, None);
+            && has_path_connecting(&self.g, *sink, *source, None);
         if would_cycle {
-            Err(ClockError::WouldCycle {source: ClockNodeIndex(source), sink: ClockNodeIndex(sink)})
+            Err(ClockError::WouldCycle {source: source, sink: sink})
         } else {
             Ok(())
         }
@@ -314,6 +313,13 @@ impl ClockNode {
             self.current_value.set(Some(v));
             v
         }
+    }
+    
+    /// Return the node index that an input is listening to.
+    pub fn get_input(&self, id: InputId) -> Result<ClockNodeIndex, ClockError> {
+        self.inputs.get(id)
+                   .map(|input| input.input_node)
+                   .ok_or(ClockError::InvalidInputId(self.index(), id))
     }
 
     /// Set an input to a particular node.
