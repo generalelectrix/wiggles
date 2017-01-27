@@ -4,7 +4,7 @@ use std::cell::Cell;
 use std::cmp::max;
 use clock_network::{
     ClockValue,
-    ClockGraph,
+    ClockNetwork,
     ComputeClock,
     UpdateClock,
     CompleteClock,
@@ -56,7 +56,7 @@ impl ComputeClock for ClockMultiplier {
     fn compute_clock(&self,
                      inputs: &[ClockInputSocket],
                      knobs: &[Knob],
-                     g: &ClockGraph)
+                     g: &ClockNetwork)
                      -> ClockValue {
         // get current time from upstream clock
         let upstream_val = inputs[SOURCE_INPUT_ID].get_value(g);
@@ -106,25 +106,6 @@ mod tests {
     use utils::assert_almost_eq;
     use std::rc::Rc;
     use std::cell::RefCell;
-
-    #[test]
-    fn test_clock() {
-        let mut source = Clock::new(Hz(1.0));
-
-        // update clock 3/4 of a period
-        source.update(0.75);
-
-        assert_almost_eq(0.75, source.phase());
-        assert_eq!(0, source.ticks());
-        assert!(! source.ticked());
-
-        // update clock another 3/4 of a period
-        source.update(0.75);
-        assert_almost_eq(0.5, source.phase());
-        assert_eq!(1, source.ticks());
-        assert!(source.ticked());
-
-    }
 
     #[test]
     fn test_clock_multiplication() {

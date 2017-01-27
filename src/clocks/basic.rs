@@ -3,7 +3,7 @@ use update::DeltaT;
 use utils::modulo_one;
 use clock_network::{
     ClockValue,
-    ClockGraph,
+    ClockNetwork,
     ComputeClock,
     UpdateClock,
     CompleteClock,
@@ -46,7 +46,7 @@ impl ComputeClock for Clock {
     fn compute_clock(&self,
                      _: &[ClockInputSocket],
                      _: &[Knob],
-                     _: &ClockGraph)
+                     _: &ClockNetwork)
                      -> ClockValue { self.value }
 }
 

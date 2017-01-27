@@ -4,7 +4,7 @@ use std::error;
 use std::fmt;
 
 use datatypes::{Rate, ErrorMessage};
-use clock_network::{ClockNodeIndex, ClockNode, ClockGraph};
+use clock_network::{ClockNodeIndex, ClockNode, ClockNetwork};
 
 /// Message enum encompassing knob-related events.
 pub enum KnobEvent {
@@ -200,7 +200,7 @@ impl PatchBay {
     pub fn set_knob_value(&self,
                           patch: KnobPatch,
                           value: KnobValue,
-                          cg: &mut ClockGraph)
+                          cg: &mut ClockNetwork)
                           -> Result<KnobEvent, ErrorMessage> {
         // determine which graph to patch into
         match patch {

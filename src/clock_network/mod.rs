@@ -19,10 +19,13 @@ use knob::{Knob, Knobs, KnobId, KnobValue, KnobPatch, KnobEvent};
 use interconnect::Interconnector;
 use event::Event;
 
+#[cfg(test)]
+mod test;
+
 /// Events related to clocks and the clock graph.
 pub enum ClockResponse {
     /// Inform the world that this clock node has swapped an input
-    InputSwaped { node: ClockNodeIndex, input_id: InputId, new_input: ClockNodeIndex },
+    InputSwapped { node: ClockNodeIndex, input_id: InputId, new_input: ClockNodeIndex },
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -67,7 +70,7 @@ unsafe impl IndexType for ClockNodeIndex {
 type ExternalListener = usize;
 
 /// A clock graph is composed of nodes and dumb edges that just act as wires.
-pub struct ClockGraph {
+pub struct ClockNetwork {
     /// The backing graph that holds the individual nodes.
     g: StableDiGraph<ClockNode, ()>,
     /// A hash to loop up clock nodes by name.
@@ -79,10 +82,10 @@ pub struct ClockGraph {
 
 fn placeholder_index() -> ClockNodeIndex { ClockNodeIndex(NodeIndex::new(0)) }
 
-impl ClockGraph {
+impl ClockNetwork {
     /// Create an empty clock graph.
     pub fn new() -> Self {
-        ClockGraph {
+        ClockNetwork {
             g: StableDiGraph::new(),
             node_lookup: HashMap::new(),
             external_connections: Interconnector::new() }
@@ -198,7 +201,7 @@ impl ClockGraph {
             .map(|edge| self.g.remove_edge(edge));
         
         self.g.add_edge(*new_source, *node_index, ());
-        Ok(ClockResponse::InputSwaped{ node: node_index, input_id: id, new_input: new_source })
+        Ok(ClockResponse::InputSwapped{ node: node_index, input_id: id, new_input: new_source })
     }
 
     /// Return an error if connecting source to sink would create a cycle.
@@ -310,7 +313,7 @@ impl ClockNode {
     pub fn index(&self) -> ClockNodeIndex { self.id }
 
     /// Return the current value of this clock node.
-    pub fn get_value(&self, g: &ClockGraph) -> ClockValue {
+    pub fn get_value(&self, g: &ClockNetwork) -> ClockValue {
         // If we have memoized the value, get it.
         if let Some(v) = self.current_value.get() {
             v
@@ -370,7 +373,7 @@ pub trait ComputeClock {
     fn compute_clock(&self,
                      inputs: &[ClockInputSocket],
                      knobs: &[Knob],
-                     g: &ClockGraph)
+                     g: &ClockNetwork)
                      -> ClockValue;
 }
 
@@ -403,7 +406,7 @@ impl ClockInputSocket {
     /// # Panics
     /// 
     /// If the upstream node doesn't exist.
-    pub fn get_value(&self, g: &ClockGraph) -> ClockValue {
+    pub fn get_value(&self, g: &ClockNetwork) -> ClockValue {
         g.get_value_from_node(self.input_node).unwrap()
     }
 
