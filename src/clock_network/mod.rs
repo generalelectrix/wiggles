@@ -13,7 +13,7 @@ use petgraph::stable_graph::StableDiGraph;
 use petgraph::graph::{NodeIndex, EdgeIndex, IndexType, DefaultIx};
 use petgraph::algo::has_path_connecting;
 use petgraph::Direction;
-use utils::modulo_one;
+use utils::{modulo_one, almost_eq};
 use update::{Update, DeltaT};
 use knob::{Knob, Knobs, KnobId, KnobValue, KnobPatch, KnobEvent};
 use interconnect::Interconnector;
@@ -42,6 +42,24 @@ impl ClockValue {
         ClockValue { phase: modulo_one(val), tick_count: val.trunc() as i64, ticked: ticked }
     }
     pub fn float_value(&self) -> f64 { self.tick_count as f64 + self.phase }
+
+    /// Assert that this clock value is equivalent to another.
+    pub fn assert_almost_eq_to(&self, other: &ClockValue) {
+        assert!(almost_eq(self.phase, other.phase),
+                "clock a phase = {} but clock b phase = {}",
+                self.phase,
+                other.phase);
+        assert_eq!(self.tick_count,
+                   other.tick_count,
+                   "clock a ticks = {} but clock b ticks = {}",
+                   self.tick_count,
+                   other.tick_count);
+        assert_eq!(self.ticked,
+                   other.ticked,
+                   "clock a ticked: {} but clock b ticked: {}",
+                   self.ticked,
+                   other.ticked);
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Default)]
@@ -174,7 +192,7 @@ impl ClockNetwork {
 
     /// Get the current clock value from any node in the graph.
     /// Return an error if the node doesn't exist or is invalid.
-    fn get_value_from_node(&self, node: ClockNodeIndex) -> Result<ClockValue, ClockError> {
+    pub fn get_value_from_node(&self, node: ClockNodeIndex) -> Result<ClockValue, ClockError> {
         Ok(self.get_node(node)?.get_value(&self))
     }
 

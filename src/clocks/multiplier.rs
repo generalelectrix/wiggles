@@ -15,9 +15,9 @@ use clock_network::{
 use knob::{Knob, KnobValue, KnobId};
 use event::Event;
 
-const MULT_KNOB_ID: KnobId = 0;
-const INIT_MULT_FACTOR: f64 = 1.0;
-const SOURCE_INPUT_ID: InputId = 0;
+pub const MULT_KNOB_ID: KnobId = 0;
+pub const INIT_MULT_FACTOR: f64 = 1.0;
+pub const SOURCE_INPUT_ID: InputId = 0;
 
 /// Multiply another clock signal to produce a clock that runs at a different rate.
 pub struct ClockMultiplier {
@@ -96,40 +96,4 @@ impl UpdateClock for ClockMultiplier {
         self.prev_value_age.set(new_age);
         None
     }
-}
-
-mod tests {
-    #![allow(unused_imports)]
-    use update::*;
-    use super::*;
-    use datatypes::Rate::Hz;
-    use utils::assert_almost_eq;
-    use std::rc::Rc;
-    use std::cell::RefCell;
-
-    #[test]
-    fn test_clock_multiplication() {
-        // clock that ticks at 1 Hz.
-        let source = Rc::new(RefCell::new(Clock::new(Hz(1.0))));
-
-        // clock that should tick at 2 Hz.
-        let mut mult = ClockMultiplier::new(source.clone(), 2.0);
-
-        let dt = 0.75;
-
-        assert_eq!(0.0, mult.phase());
-
-        source.borrow_mut().update(dt);
-        mult.update(dt);
-
-        assert_almost_eq(0.5, mult.phase());
-        assert!(mult.ticked());
-
-        source.borrow_mut().update(dt);
-        mult.update(dt);
-
-        source.borrow_mut().update(dt);
-        mult.update(dt);
-    }
-
 }

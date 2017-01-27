@@ -15,10 +15,10 @@ use knob::{Knob, KnobValue, KnobId, KnobPatch, KnobEvent};
 use datatypes::Rate;
 use event::Event;
 
-const RATE_KNOB_ID: KnobId = 0;
-const RESET_KNOB_ID: KnobId = 1;
-const INIT_CLOCK_VAL: ClockValue = ClockValue { phase: 0.0, tick_count: 0, ticked: true };
-const INIT_RATE: Rate = Rate::Hz(1.0);
+pub const RATE_KNOB_ID: KnobId = 0;
+pub const RESET_KNOB_ID: KnobId = 1;
+pub const INIT_CLOCK_VAL: ClockValue = ClockValue { phase: 0.0, tick_count: 0, ticked: true };
+pub const INIT_RATE: Rate = Rate::Hz(1.0);
 
 /// The most basic clock, which ticks at a rate controlled by a knob.
 pub struct Clock {
@@ -80,35 +80,6 @@ impl UpdateClock for Clock {
             None
         }
 
-
-    }
-}
-
-mod tests {
-    #![allow(unused_imports)]
-    use update::*;
-    use super::*;
-    use datatypes::Rate::Hz;
-    use utils::assert_almost_eq;
-    use std::rc::Rc;
-    use std::cell::RefCell;
-
-    #[test]
-    fn test_clock() {
-        let mut source = Clock::new(Hz(1.0));
-
-        // update clock 3/4 of a period
-        source.update(0.75);
-
-        assert_almost_eq(0.75, source.phase());
-        assert_eq!(0, source.ticks());
-        assert!(! source.ticked());
-
-        // update clock another 3/4 of a period
-        source.update(0.75);
-        assert_almost_eq(0.5, source.phase());
-        assert_eq!(1, source.ticks());
-        assert!(source.ticked());
 
     }
 }
