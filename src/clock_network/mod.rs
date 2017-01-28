@@ -241,6 +241,14 @@ impl ClockNetwork {
     }
 }
 
+impl Update for ClockNetwork {
+    fn update(&mut self, dt: DeltaT) {
+        for index in self.g.node_indices() {
+            self.get_node_mut(index).map(|node| node.update(dt));
+        }
+    }
+}
+
 pub type ClockImplProducer = Box<Fn() -> Box<CompleteClock>>;
 
 /// Serve as a persistent prototype which can be used to create new instances of clock nodes.

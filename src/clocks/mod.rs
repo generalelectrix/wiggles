@@ -3,9 +3,9 @@ mod basic;
 mod multiplier;
 mod triggered;
 
-use self::basic::Clock;
-use self::multiplier::ClockMultiplier;
-use self::triggered::TriggeredClock;
+pub use self::basic::Clock;
+pub use self::multiplier::ClockMultiplier;
+pub use self::triggered::TriggeredClock;
 
 use clock_network::ClockNodePrototype;
 
