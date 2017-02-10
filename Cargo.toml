@@ -7,3 +7,4 @@ authors = ["general electrix <general.electrix@gmail.com>"]
 petgraph = "*"
 log = "*"
 itertools = "*"
+smallvec = "*"

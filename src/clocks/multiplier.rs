@@ -13,7 +13,7 @@ use clock_network::{
     InputId,
     ClockNodeIndex};
 use knob::{Knob, KnobValue, KnobId};
-use event::Event;
+use event::Events;
 
 pub const MULT_KNOB_ID: KnobId = 0;
 pub const INIT_MULT_FACTOR: f64 = 1.0;
@@ -90,10 +90,10 @@ impl ComputeClock for ClockMultiplier {
 }
 
 impl UpdateClock for ClockMultiplier {
-    fn update(&mut self, _: ClockNodeIndex, _: &mut [Knob], _: DeltaT) -> Option<Event> {
+    fn update(&mut self, _: ClockNodeIndex, _: &mut [Knob], _: DeltaT) -> Events {
         // age our stored previous value by one
         let new_age = self.prev_value_age.get() + 1;
         self.prev_value_age.set(new_age);
-        None
+        Events::new()
     }
 }

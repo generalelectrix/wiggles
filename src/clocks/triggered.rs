@@ -14,7 +14,7 @@ use clock_network::{
     clock_button_update};
 use knob::{Knob, KnobValue, KnobId};
 use datatypes::Rate;
-use event::Event;
+use event::{Events};
 
 const RATE_KNOB_ID: KnobId = 0;
 const TRIGGER_KNOB_ID: KnobId = 1;
@@ -53,7 +53,7 @@ impl ComputeClock for TriggeredClock {
 }
 
 impl UpdateClock for TriggeredClock {
-    fn update(&mut self, id: ClockNodeIndex, knobs: &mut [Knob], dt: DeltaT) -> Option<Event> {
+    fn update(&mut self, id: ClockNodeIndex, knobs: &mut [Knob], dt: DeltaT) -> Events {
         debug_assert!(knobs.len() == 2);
         // if someone hit the trigger button, register it and swap the knob value
         // FIXME: should emit an event announcing the change in button state.
@@ -83,6 +83,6 @@ impl UpdateClock for TriggeredClock {
                 self.value.phase = phase_unwrapped;
             }
             None
-        } else { None }
+        } else { None }.into()
     }
 }

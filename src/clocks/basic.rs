@@ -13,7 +13,7 @@ use clock_network::{
     clock_button_update};
 use knob::{Knob, KnobValue, KnobId, KnobPatch, KnobEvent};
 use datatypes::Rate;
-use event::Event;
+use event::Events;
 
 pub const RATE_KNOB_ID: KnobId = 0;
 pub const RESET_KNOB_ID: KnobId = 1;
@@ -51,7 +51,7 @@ impl ComputeClock for Clock {
 }
 
 impl UpdateClock for Clock {
-    fn update(&mut self, id: ClockNodeIndex, knobs: &mut [Knob], dt: DeltaT) -> Option<Event> {
+    fn update(&mut self, id: ClockNodeIndex, knobs: &mut [Knob], dt: DeltaT) -> Events {
         debug_assert!(knobs.len() == 2);
         // if someone hit the reset button, register it and swap the knob value
         if knobs[RESET_KNOB_ID].get_button_state() {
@@ -78,7 +78,7 @@ impl UpdateClock for Clock {
 
             self.value.phase = modulo_one(phase_unwrapped);
             None
-        }
+        }.into()
 
 
     }

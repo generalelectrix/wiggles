@@ -9,7 +9,7 @@ use std::cell::Cell;
 use std::collections::HashMap;
 use std::ops::Deref;
 use itertools::Itertools;
-use petgraph::stable_graph::StableDiGraph;
+use petgraph::stable_graph::{StableDiGraph, NodeIndices};
 use petgraph::graph::{NodeIndex, EdgeIndex, IndexType, DefaultIx};
 use petgraph::algo::has_path_connecting;
 use petgraph::Direction;
@@ -17,7 +17,7 @@ use utils::{modulo_one, almost_eq};
 use update::{Update, DeltaT};
 use knob::{Knob, Knobs, KnobId, KnobValue, KnobPatch, KnobEvent};
 use interconnect::Interconnector;
-use event::Event;
+use event::{Event, Events};
 
 #[cfg(test)]
 mod test;
@@ -87,10 +87,12 @@ unsafe impl IndexType for ClockNodeIndex {
 /// Placeholder type for keeping track of other domains listening to the clock domain.
 type ExternalListener = usize;
 
+type ClockGraph = StableDiGraph<ClockNode, ()>;
+
 /// A clock graph is composed of nodes and dumb edges that just act as wires.
 pub struct ClockNetwork {
     /// The backing graph that holds the individual nodes.
-    g: StableDiGraph<ClockNode, ()>,
+    g: ClockGraph,
     /// A hash to loop up clock nodes by name.
     node_lookup: HashMap<String, ClockNodeIndex>,
     /// A collection of connections from nodes to other dataflow domains.
@@ -172,7 +174,7 @@ impl ClockNetwork {
         self.g.node_weight(*node).ok_or(ClockError::InvalidNodeIndex(node))
     }
 
-        /// Get a reference to a node in the graph, if it exists.
+    /// Get a reference to a node in the graph, if it exists.
     pub fn get_node_mut(&mut self, node: ClockNodeIndex) -> Result<&mut ClockNode, ClockError> {
         self.g.node_weight_mut(*node).ok_or(ClockError::InvalidNodeIndex(node))
     }
@@ -242,12 +244,14 @@ impl ClockNetwork {
 }
 
 impl Update for ClockNetwork {
-    fn update(&mut self, dt: DeltaT) {
-        for index in self.g.node_indices() {
-            self.get_node_mut(index).map(|node| node.update(dt));
-        }
+    fn update(&mut self, dt: DeltaT) -> Events {
+        let all_indices: Vec<NodeIndex> = self.g.node_indices().collect();
+        all_indices.iter()
+                   .flat_map(|ni| self.get_node_mut(ClockNodeIndex(*ni)).unwrap().update(dt))
+                   .collect()
     }
 }
+
 
 pub type ClockImplProducer = Box<Fn() -> Box<CompleteClock>>;
 
@@ -366,7 +370,7 @@ impl ClockNode {
 }
 
 impl Update for ClockNode {
-    fn update(&mut self, dt: DeltaT) -> Option<Event> {
+    fn update(&mut self, dt: DeltaT) -> Events {
         self.current_value.set(None);
         self.clock.update(self.id, &mut self.knobs, dt)
     }
@@ -391,7 +395,7 @@ pub fn clock_button_update(node: ClockNodeIndex, knob: &Knob, state: bool) -> Ev
 /// of events.  The id of the node that owns this clock is passed in as it
 /// is needed for emitting certain events.
 pub trait UpdateClock {
-    fn update(&mut self, id: ClockNodeIndex, knobs: &mut [Knob], dt: DeltaT) -> Option<Event>;
+    fn update(&mut self, id: ClockNodeIndex, knobs: &mut [Knob], dt: DeltaT) -> Events;
 }
 
 /// Given some inputs and knobs, compute a clock value.

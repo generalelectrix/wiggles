@@ -1,10 +1,10 @@
 //! Trait for the state update mechanism.
-use event::Event;
+use event::Events;
 
 /// Floating-point duration, in units of seconds.
 pub type DeltaT = f64;
 
 pub trait Update {
-    /// Updating something may optionally return an event.
-    fn update(&mut self, delta_t: DeltaT) -> Option<Event>;
+    /// Updating something may optionally return events.
+    fn update(&mut self, delta_t: DeltaT) -> Events;
 }

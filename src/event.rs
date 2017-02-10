@@ -1,32 +1,51 @@
 //! Master type for dispatching all application events.
 use knob::KnobEvent;
 use clock_network::ClockResponse;
-use std::iter::FromIterator;
+use std::iter::{FromIterator, IntoIterator};
 
 /// Top-level container for classes of events the dataflow networks may emit.
 pub enum Event {
-    /// Generically allow multiple events to be grouped together.
-    /// This allows returning either a single event or multiple events from
-    /// APIs without requiring a memory allocation for a single event.
-    EventCollection(Vec<Event>),
     Knob(KnobEvent),
     ClockResponse(ClockResponse),
 }
 
-/// Iterator over a sequence of events.
-pub struct Events {
+pub struct Events(Vec<Event>);
 
+impl Events {
+    pub fn new() -> Self {
+        Events(Vec::new())
+    }
+
+    pub fn single(e: Event) -> Self {
+        Events(vec!(e))
+    }
+
+    pub fn extend(&mut self, es: Events) {
+        self.0.extend(es.0);
+    }
 }
 
-/// Collect an iterator of Events into the right variant.
-impl FromIterator<Event> for Event {
-    fn from_iter<I: IntoIterator<Item=Event>>(iter: I) -> Self {
-        let mut events = Vec::new();
-        for event in iter:
-            match event {
-                Event::EventCollection(incoming) => events.append(incoming);,
-                single => events.push(single);
-            }
-        if events.len()
+impl From<Option<Event>> for Events {
+    fn from(event: Option<Event>) -> Self {
+        match event {
+            Some(e) => Events::single(e),
+            None => Events::new()
+        }
+    }
+}
+
+impl FromIterator<Event> for Events {
+    fn from_iter<I: IntoIterator<Item=Event>>(i: I) -> Self {
+        let event_vec: Vec<Event> = i.into_iter().collect();
+        Events(event_vec)
+    }
+}
+
+impl IntoIterator for Events {
+    type Item = Event;
+    type IntoIter = ::std::vec::IntoIter<Event>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
