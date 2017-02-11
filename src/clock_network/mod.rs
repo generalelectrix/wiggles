@@ -396,7 +396,7 @@ impl Knobs for ClockNode {
 pub fn clock_button_update(node: ClockNodeIndex, knob: &Knob, state: bool) -> Event {
     let patch = KnobPatch::Clock { node: node, id: knob.id() };
     let value = KnobValue::Button(state);
-    Event::Knob(KnobEvent::ValueChanged { patch: patch, value: value })
+    KnobEvent::ValueChanged { patch: patch, value: value }.into()
 }
 
 /// Given a timestep and the current state of a clock's control knobs, update

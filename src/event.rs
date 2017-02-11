@@ -11,6 +11,18 @@ pub enum Event {
     ClockResponse(ClockResponse),
 }
 
+impl From<KnobEvent> for Event {
+    fn from(event: KnobEvent) -> Self {
+        Event::Knob(event)
+    }
+}
+
+impl From<ClockResponse> for Event {
+    fn from(event: ClockResponse) -> Self {
+        Event::ClockResponse(event)
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Events(Vec<Event>);
 
@@ -19,8 +31,9 @@ impl Events {
         Events(Vec::new())
     }
 
-    pub fn single(e: Event) -> Self {
-        Events(vec!(e))
+    pub fn single<E>(e: E) -> Self 
+            where E: Into<Event> {
+        Events(vec!(e.into()))
     }
 
     pub fn extend(&mut self, es: Events) {

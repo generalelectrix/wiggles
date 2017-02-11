@@ -29,8 +29,7 @@ impl Rate {
 /// Top-level wrapper for all subdomain errors.
 pub enum ErrorMessage {
     Clock(ClockError),
-    Knob(KnobError
-),
+    Knob(KnobError),
 }
 
 impl fmt::Display for ErrorMessage {
