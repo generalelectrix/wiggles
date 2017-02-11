@@ -6,6 +6,8 @@ use super::*;
 use super::basic::{INIT_RATE, RESET_KNOB_ID as BASIC_RESET_KNOB_ID};
 use super::multiplier::{MULT_KNOB_ID, RESET_KNOB_ID as MULT_RESET_KNOB_ID};
 use super::triggered::{TRIGGER_KNOB_ID};
+use event::Event;
+use knob::{KnobEvent, KnobPatch};
 
 #[test]
 fn test_basic_clock() {
@@ -27,6 +29,22 @@ fn test_basic_clock() {
     update_and_check(0.0, (1.6, false));
     update_and_check(0.5, (2.1, true));
     update_and_check(0.0, (2.1, false));
+}
+
+#[test]
+fn test_basic_clock_reset_emit_event() {
+    let mut network = ClockNetwork::new();
+    let proto = Clock::create_prototype();
+    let node_id = network.add_node(&proto, "test".to_string(), &[]).unwrap().index();
+
+    network.get_node_mut(node_id).unwrap().knob_mut(BASIC_RESET_KNOB_ID).unwrap().set_button_state(true);
+    //updating should emit a knob state change event
+    let events = network.update(0.5);
+    let correct_event = Event::Knob(KnobEvent::ValueChanged {
+        patch: KnobPatch::Clock {node: node_id, id: BASIC_RESET_KNOB_ID },
+        value: KnobValue::Button(false)
+    });
+    assert_eq!(events, Events::single(correct_event));
 }
 
 #[test]
@@ -79,13 +97,13 @@ fn test_triggered_clock() {
     let proto = TriggeredClock::create_prototype();
     let node_id = network.add_node(&proto, "test".to_string(), &[]).unwrap().index();
 
-    let mut update_and_check = |interval, (float_val, ticked), network: &mut ClockNetwork| {
+    let update_and_check = |interval, (float_val, ticked), network: &mut ClockNetwork| {
         network.update(interval);
         let res = network.get_value_from_node(node_id).unwrap();
         ClockValue::from_float_value(float_val, ticked).assert_almost_eq_to(&res);
     };
 
-    let mut trigger = |network: &mut ClockNetwork| {
+    let trigger = |network: &mut ClockNetwork| {
         network.get_node_mut(node_id).unwrap().knob_mut(TRIGGER_KNOB_ID).unwrap().set_button_state(true);
     };
 

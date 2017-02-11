@@ -6,6 +6,7 @@ use std::fmt;
 use datatypes::{Rate, ErrorMessage};
 use clock_network::{ClockNodeIndex, ClockNode, ClockNetwork};
 
+#[derive(PartialEq, Debug)]
 /// Message enum encompassing knob-related events.
 pub enum KnobEvent {
     /// Request to set a new value for the provided knob patch.
@@ -50,7 +51,7 @@ pub trait Knobs {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum KnobValue {
     /// A boolean flag indicating if a button press occurred.
     /// The consumer of a knob is expected to reset this after registering the event.
@@ -163,7 +164,7 @@ impl Knob {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
 pub enum KnobPatch {
     Clock { node: ClockNodeIndex, id: KnobId },
 }

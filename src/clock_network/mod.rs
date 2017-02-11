@@ -22,6 +22,7 @@ use event::{Event, Events};
 #[cfg(test)]
 mod test;
 
+#[derive(PartialEq, Debug)]
 /// Events related to clocks and the clock graph.
 pub enum ClockResponse {
     /// Inform the world that this clock node has swapped an input

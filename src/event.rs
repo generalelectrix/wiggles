@@ -2,13 +2,16 @@
 use knob::KnobEvent;
 use clock_network::ClockResponse;
 use std::iter::{FromIterator, IntoIterator};
+use std::ops::Index;
 
+#[derive(Debug, PartialEq)]
 /// Top-level container for classes of events the dataflow networks may emit.
 pub enum Event {
     Knob(KnobEvent),
     ClockResponse(ClockResponse),
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Events(Vec<Event>);
 
 impl Events {
@@ -22,6 +25,10 @@ impl Events {
 
     pub fn extend(&mut self, es: Events) {
         self.0.extend(es.0);
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
     }
 }
 
@@ -47,5 +54,12 @@ impl IntoIterator for Events {
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
+    }
+}
+
+impl Index<usize> for Events {
+    type Output = Event;
+    fn index(&self, i: usize) -> &Event {
+        &self.0[i]
     }
 }

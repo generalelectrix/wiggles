@@ -4,7 +4,7 @@ use std::error;
 use knob::KnobError;
 use clock_network::ClockError;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 /// Floating-point representation of a rate, permitting the use of various
 /// unit semantics.
 pub enum Rate {
