@@ -169,6 +169,7 @@ pub enum KnobPatch {
     Clock { node: ClockNodeIndex, id: KnobId },
 }
 
+#[derive(Debug)]
 /// Keep track of all of the knobs and how to find them.
 /// Responsible for routing knob updates to the appropriate place, and emitting
 /// events to indicate that various things have happened.

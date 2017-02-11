@@ -21,6 +21,7 @@ pub const RESET_KNOB_ID: KnobId = 1;
 pub const INIT_CLOCK_VAL: ClockValue = ClockValue { phase: 0.0, tick_count: 0, ticked: true };
 pub const INIT_RATE: Rate = Rate::Hz(1.0);
 
+#[derive(Debug)]
 /// The most basic clock, which ticks at a rate controlled by a knob.
 pub struct Clock {
     value: ClockValue,

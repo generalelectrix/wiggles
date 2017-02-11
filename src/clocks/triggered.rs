@@ -21,6 +21,7 @@ pub const TRIGGER_KNOB_ID: KnobId = 1;
 pub const INIT_CLOCK_VAL: ClockValue = ClockValue { phase: 0.0, tick_count: 0, ticked: false };
 pub const INIT_RATE: Rate = Rate::Hz(1.0);
 
+#[derive(Debug)]
 /// A clock that runs for one cycle when triggered.
 pub struct TriggeredClock {
     value: ClockValue,

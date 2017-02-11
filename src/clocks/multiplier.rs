@@ -22,6 +22,7 @@ pub const INIT_MULT_FACTOR: f64 = 1.0;
 pub const RESET_KNOB_ID: KnobId = 1;
 pub const SOURCE_INPUT_ID: InputId = 0;
 
+#[derive(Debug)]
 /// Multiply another clock signal to produce a clock that runs at a different rate.
 pub struct ClockMultiplier {
     // Implementation note: these values are Cells because a clock multiplier

@@ -11,3 +11,4 @@ mod clock_network;
 mod clocks;
 mod event;
 mod interconnect;
+mod master;

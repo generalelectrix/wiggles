@@ -25,8 +25,12 @@ mod test;
 #[derive(PartialEq, Debug)]
 /// Events related to clocks and the clock graph.
 pub enum ClockResponse {
-    /// Inform the world that this clock node has swapped an input
+    /// This clock node has swapped an input.
     InputSwapped { node: ClockNodeIndex, input_id: InputId, new_input: ClockNodeIndex },
+    /// A new clock node has been added.
+    ClockNodeAdded { node: ClockNodeIndex, name: String },
+    /// A clock node has been removed.
+    ClockNodeRemoved { node: ClockNodeIndex, name: String },
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -94,6 +98,7 @@ type ExternalListener = usize;
 
 type ClockGraph = StableDiGraph<ClockNode, ()>;
 
+#[derive(Debug)]
 /// A clock graph is composed of nodes and dumb edges that just act as wires.
 pub struct ClockNetwork {
     /// The backing graph that holds the individual nodes.
@@ -321,6 +326,7 @@ impl ClockNodePrototype {
     }
 }
 
+#[derive(Debug)]
 /// A single node in an arbitrary clock graph, accepting inputs, listening to
 /// knobs, and with a stored behavior that uses these values to produce a
 /// clock value when called upon.
@@ -412,12 +418,13 @@ pub trait ComputeClock {
 }
 
 /// A clock needs to implement these traits to function as a node in the clock network.
-pub trait CompleteClock: ComputeClock + UpdateClock {}
-impl<T> CompleteClock for T where T: ComputeClock + UpdateClock {}
+pub trait CompleteClock: ComputeClock + UpdateClock + fmt::Debug {}
+impl<T> CompleteClock for T where T: ComputeClock + UpdateClock + fmt::Debug {}
 
 /// Type alias for indexing input sockets.
 pub type InputId = usize;
 
+#[derive(Debug)]
 /// Specify an upstream clock via an incoming edge to this clock graph node.
 pub struct ClockInputSocket {
     /// The local name of this input socket.

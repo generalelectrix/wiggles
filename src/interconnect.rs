@@ -5,6 +5,7 @@
 use std::marker::PhantomData;
 use petgraph::graph::IndexType;
 
+#[derive(Debug)]
 pub struct Interconnector<IntId: IndexType, ExtId: Eq + Copy> {
     connections: Vec<Vec<ExtId>>,
     _marker: PhantomData<IntId>,
