@@ -5,6 +5,7 @@ use clock_network::{ClockNetwork, ClockNodePrototype, ClockValue, ClockNode};
 use super::*;
 use super::basic::{INIT_RATE, RESET_KNOB_ID as BASIC_RESET_KNOB_ID};
 use super::multiplier::{MULT_KNOB_ID, RESET_KNOB_ID as MULT_RESET_KNOB_ID};
+use super::triggered::{TRIGGER_KNOB_ID};
 
 #[test]
 fn test_basic_clock() {
@@ -36,8 +37,7 @@ fn test_multiplier() {
     let mult_id = network.add_node(&mp, "mult".to_string(), &vec!(basic_id).into_boxed_slice()).unwrap().index();
     
     let set_mult_factor = |val, cn: &mut ClockNetwork| {
-        let node: &mut ClockNode = cn.get_node_mut(mult_id).unwrap();
-        node.set_knob_value(MULT_KNOB_ID, KnobValue::PositiveFloat(val)).unwrap();
+        cn.get_node_mut(mult_id).unwrap().set_knob_value(MULT_KNOB_ID, KnobValue::PositiveFloat(val)).unwrap();
     };
 
     let dt = 0.75;
@@ -70,4 +70,30 @@ fn test_multiplier() {
     // might want to change this if it proves to be artistically annoying
     update_and_check(0.0, (1.9, true), &mut network);
     update_and_check(0.0, (1.9, false), &mut network);
+}
+
+
+#[test]
+fn test_triggered_clock() {
+    let mut network = ClockNetwork::new();
+    let proto = TriggeredClock::create_prototype();
+    let node_id = network.add_node(&proto, "test".to_string(), &[]).unwrap().index();
+
+    let mut update_and_check = |interval, (float_val, ticked), network: &mut ClockNetwork| {
+        network.update(interval);
+        let res = network.get_value_from_node(node_id).unwrap();
+        ClockValue::from_float_value(float_val, ticked).assert_almost_eq_to(&res);
+    };
+
+    let mut trigger = |network: &mut ClockNetwork| {
+        network.get_node_mut(node_id).unwrap().knob_mut(TRIGGER_KNOB_ID).unwrap().set_button_state(true);
+    };
+
+    update_and_check(0.25, (0.0, false), &mut network);
+    trigger(&mut network);
+    update_and_check(0.25, (0.0, true), &mut network);
+    update_and_check(0.25, (0.25, false), &mut network);
+    update_and_check(0.25, (0.5, false), &mut network);
+    update_and_check(0.25, (0.75, false), &mut network);
+    update_and_check(0.25, (1.0, false), &mut network);
 }
