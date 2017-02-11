@@ -45,20 +45,24 @@ impl ClockValue {
 
     /// Assert that this clock value is equivalent to another.
     pub fn assert_almost_eq_to(&self, other: &ClockValue) {
+        let clock_info_dump = format!("clock a: {:?}, clock b: {:?}", *self, *other);
         assert!(almost_eq(self.phase, other.phase),
-                "clock a phase = {} but clock b phase = {}",
+                "clock a phase = {} but clock b phase = {}\n{}",
                 self.phase,
-                other.phase);
+                other.phase,
+                clock_info_dump);
         assert_eq!(self.tick_count,
                    other.tick_count,
-                   "clock a ticks = {} but clock b ticks = {}",
+                   "clock a ticks = {} but clock b ticks = {}\n{}",
                    self.tick_count,
-                   other.tick_count);
+                   other.tick_count,
+                   clock_info_dump);
         assert_eq!(self.ticked,
                    other.ticked,
-                   "clock a ticked: {} but clock b ticked: {}",
+                   "clock a ticked: {} but clock b ticked: {}\n{}",
                    self.ticked,
-                   other.ticked);
+                   other.ticked,
+                   clock_info_dump);
     }
 }
 
@@ -251,7 +255,6 @@ impl Update for ClockNetwork {
                    .collect()
     }
 }
-
 
 pub type ClockImplProducer = Box<Fn() -> Box<CompleteClock>>;
 
