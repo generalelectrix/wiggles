@@ -28,17 +28,25 @@ pub trait Knobs {
     /// Returns an error if the id doesn't exist or the value doesn't have the
     /// right type.
     fn set_knob_value(&mut self, id: KnobId, value: KnobValue) -> Result<(), KnobError> {
-        if let Some(knob) = self.knobs_mut().get_mut(id) {
-            knob.set(value)
-        } else {
-            Err(KnobError::InvalidId(id))
-        }
+        self.knob_mut(id).and_then(|knob| knob.set(value))
     }
 
     /// Get the current value of a given knob id.
     /// Returns an error if the id doesn't exist.
     fn get_knob_value(&self, id: KnobId) -> Result<KnobValue, KnobError> {
-        self.knobs().get(id).map(|ref k| k.value).ok_or(KnobError::InvalidId(id))
+        self.knob(id).map(|ref k| k.value)
+    }
+
+    /// Get a reference to a knob, given an id.
+    /// Returns an error if the id doesn't exist.
+    fn knob(&self, id: KnobId) -> Result<&Knob, KnobError> {
+        self.knobs().get(id).ok_or(KnobError::InvalidId(id))
+    }
+
+    /// Get a mutable reference to a knob, given an id.
+    /// Returns an error if the id doesn't exist.
+    fn knob_mut(&mut self, id: KnobId) -> Result<&mut Knob, KnobError> {
+        self.knobs_mut().get_mut(id).ok_or(KnobError::InvalidId(id))
     }
 }
 

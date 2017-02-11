@@ -11,9 +11,11 @@ use clock_network::{
     ClockInputSocket,
     ClockNodePrototype,
     InputId,
-    ClockNodeIndex};
+    ClockNodeIndex,
+};
 use knob::{Knob, KnobValue, KnobId};
 use event::Events;
+use super::action_if_button_pressed;
 
 pub const MULT_KNOB_ID: KnobId = 0;
 pub const INIT_MULT_FACTOR: f64 = 1.0;
@@ -105,24 +107,24 @@ impl ComputeClock for ClockMultiplier {
 }
 
 impl UpdateClock for ClockMultiplier {
-    fn update(&mut self, id: ClockNodeIndex, _: &mut [Knob], _: DeltaT) -> Events {
-        // // if someone mashed reset, forget all of our accumulated state so next
-        // // update syncs back with the master
-        // if knobs[RESET_KNOB_ID].get_button_state() {
-        //     self.value = INIT_CLOCK_VAL;
-
-        //     // set the knob back to the unpushed state
-        //     let reset_knob = &mut knobs[RESET_KNOB_ID];
-        //     reset_knob.set_button_state(false);
-
-        //     // emit an event for the knob value change
-        //     Some(clock_button_update(id, reset_knob, false))
-        // } else {
-        //     // age our stored previous value by one
-        //     let new_age = self.prev_value_age.get() + 1;
-        //     self.prev_value_age.set(new_age);
-        //     None.into()
-        // }
-        None.into()
+    fn update(&mut self, id: ClockNodeIndex, knobs: &mut [Knob], _: DeltaT) -> Events {
+        // if someone mashed reset, forget all of our accumulated state so next
+        // update syncs back with the master
+        if let Some(reset_events) = {
+                let reset_action = || {
+                    self.prev_upstream.set(None);
+                    self.prev_value.set(None);
+                    self.prev_value_age.set(0);
+                    None.into()
+                };
+                action_if_button_pressed(id, knobs, RESET_KNOB_ID, reset_action)
+            }
+        { reset_events }
+        else {
+            // age our stored previous value by one
+            let new_age = self.prev_value_age.get() + 1;
+            self.prev_value_age.set(new_age);
+            None.into()
+        }
     }
 }
