@@ -29,18 +29,37 @@ impl Master {
                               .map(Events::single)
             },
             KnobEvent::ValueChanged{patch, value} => {
-                Ok(None.into())
+                unimplemented!()
             },
             KnobEvent::KnobPatchesAdded(patches) => {
-                Ok(None.into())
+                unimplemented!()
             },
             KnobEvent::KnobPatchesDeleted(patches) => {
-                Ok(None.into())
+                unimplemented!()
             },
         }
     }
 
     fn handle_clock_response(&mut self, e: ClockResponse) -> EventHandleResult {
-        Ok(None.into())
+        match e {
+            ClockResponse::ClockNodeAdded{node, name} => {
+                // need to add all of the relevant patches to the patch bay
+                let node = self.clock_network.get_node(node)?;
+                let knob_event = self.patch_bay.add_clock_node(node);
+                // TODO: other actions taken from a new clock node appearing
+                Ok(Events::single(knob_event))
+            },
+            ClockResponse::ClockNodeRemoved{node, name} => {
+                // delete all patches from the patch bay
+                let node = self.clock_network.get_node(node)?;
+                let knob_event = self.patch_bay.remove_clock_node(node);
+                // TODO: other actions taken from a clock node disappearing
+                Ok(Events::single(knob_event))
+            }
+            ClockResponse::InputSwapped{node, input_id, new_input} => {
+                // inform listeners about the change in input
+                unimplemented!()
+            }
+        }
     }
 }
