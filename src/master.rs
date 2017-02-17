@@ -10,8 +10,20 @@ use clock_network::{
 };
 use clocks::create_prototypes;
 use event::{Event, Events};
-use knob::{KnobEvent, PatchBay};
+use knob::{KnobEvent, PatchBay, KnobPatch, KnobValue};
 use datatypes::{ErrorMessage, DeltaT};
+
+macro_rules! events {
+    ( $( $event:expr ),* ) => (
+        {
+            let mut events = Events::new();
+            $(
+                events.push($event);
+            )*
+            Ok(events)
+        }
+    )
+}
 
 pub struct Master {
     patch_bay: PatchBay,
@@ -54,6 +66,8 @@ impl Master {
         RenderResponse { clock_values: clock_values }
     }
 
+    // methods relating to adding, removing, or modifying clocks
+
     pub fn new_clock(
             &mut self,
             prototype_name: &str,
@@ -67,23 +81,31 @@ impl Master {
                 .ok_or(ClockError::UnknownPrototype(prototype_name.to_string()))?;
         // Create the new node.
         let node = self.clock_network.add_node(proto, name.clone(), inputs)?;
-        let mut events = Events::single(ClockEvent::NodeAdded{node: node.index(), name: name});
+        let ce = ClockEvent::NodeAdded{node: node.index(), name: name};
 
         // Add knob patches for the new node.
         // Since we already added the node to the network, this operation must not fail or we
         // have a data integrity issue.
-        events.push(self.patch_bay.add_clock_node(node));
-
-        Ok(events)
+        let ke = self.patch_bay.add_clock_node(node);
+        events!(ce, ke)
     }
 
     pub fn delete_clock(&mut self, node: ClockNodeIndex) -> ApiResult {
         let removed_node = self.clock_network.remove_node(node)?;
         // remove all related patches
-        let mut events =
-            Events::single(self.patch_bay.remove_clock_node(&removed_node));
+        let ke = self.patch_bay.remove_clock_node(&removed_node);
         // signal the now-removed node
-        events.push(ClockEvent::NodeRemoved{node: node, name: removed_node.name});
-        Ok(events)
+        let ce = ClockEvent::NodeRemoved{node: node, name: removed_node.name};
+        events!(ke, ce)
+    }
+
+    pub fn rename_clock(&mut self, node: ClockNodeIndex, name: String) -> ApiResult {
+        self.clock_network.get_node_mut(node)?.name = name.clone();
+        events!(ClockEvent::NodeRenamed {node: node, name: name})
+    }
+
+    pub fn set_knob(&mut self, patch: KnobPatch, value: KnobValue) -> ApiResult {
+        let e = self.patch_bay.set_knob_value(patch, value, &mut self.clock_network)?;
+        events!(e)
     }
 }

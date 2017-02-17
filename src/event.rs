@@ -51,6 +51,12 @@ impl Events {
     }
 }
 
+impl From<Event> for Events {
+    fn from(event: Event) -> Self {
+        Events::single(event)
+    }
+}
+
 impl From<Option<Event>> for Events {
     fn from(event: Option<Event>) -> Self {
         match event {

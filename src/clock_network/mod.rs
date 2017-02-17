@@ -31,6 +31,8 @@ pub enum ClockEvent {
     NodeAdded { node: ClockNodeIndex, name: String },
     /// A clock node has been removed.
     NodeRemoved { node: ClockNodeIndex, name: String },
+    /// A clock node has been renamed.
+    NodeRenamed { node: ClockNodeIndex, name: String},
 }
 
 #[derive(Clone, Copy, Debug)]
