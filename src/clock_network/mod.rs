@@ -24,7 +24,7 @@ mod test;
 
 #[derive(PartialEq, Debug)]
 /// Events related to clocks and the clock graph.
-pub enum ClockResponse {
+pub enum ClockEvent {
     /// This clock node has swapped an input.
     InputSwapped { node: ClockNodeIndex, input_id: InputId, new_input: ClockNodeIndex },
     /// A new clock node has been added.
@@ -213,7 +213,7 @@ impl ClockNetwork {
                       node_index: ClockNodeIndex,
                       id: InputId,
                       new_source: ClockNodeIndex)
-                      -> Result<ClockResponse, ClockError> {
+                      -> Result<ClockEvent, ClockError> {
         // identify the current node connected to this input
         let current_source = self.get_node(node_index)?.get_input(id)?;
 
@@ -231,7 +231,7 @@ impl ClockNetwork {
             .map(|edge| self.g.remove_edge(edge));
         
         self.g.add_edge(*new_source, *node_index, ());
-        Ok(ClockResponse::InputSwapped{ node: node_index, input_id: id, new_input: new_source })
+        Ok(ClockEvent::InputSwapped{ node: node_index, input_id: id, new_input: new_source })
     }
 
     /// Return an error if connecting source to sink would create a cycle.

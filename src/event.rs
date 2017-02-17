@@ -1,6 +1,7 @@
-//! Master type for dispatching all application events.
+//! Master type encalsulating all of the various events which may be emiited
+//! as the result of servicing some request.
 use knob::KnobEvent;
-use clock_network::ClockResponse;
+use clock_network::ClockEvent;
 use std::iter::{FromIterator, IntoIterator};
 use std::ops::Index;
 
@@ -8,7 +9,7 @@ use std::ops::Index;
 /// Top-level container for classes of events the dataflow networks may emit.
 pub enum Event {
     Knob(KnobEvent),
-    ClockResponse(ClockResponse),
+    Clock(ClockEvent),
 }
 
 impl From<KnobEvent> for Event {
@@ -17,9 +18,9 @@ impl From<KnobEvent> for Event {
     }
 }
 
-impl From<ClockResponse> for Event {
-    fn from(event: ClockResponse) -> Self {
-        Event::ClockResponse(event)
+impl From<ClockEvent> for Event {
+    fn from(event: ClockEvent) -> Self {
+        Event::Clock(event)
     }
 }
 

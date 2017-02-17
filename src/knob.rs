@@ -9,8 +9,6 @@ use clock_network::{ClockNodeIndex, ClockNode, ClockNetwork};
 #[derive(PartialEq, Debug)]
 /// Message enum encompassing knob-related events.
 pub enum KnobEvent {
-    /// Request to set a new value for the provided knob patch.
-    ChangeValue { patch: KnobPatch, value: KnobValue },
     /// Announce that a knob patch has successfully changed value.
     ValueChanged { patch: KnobPatch, value: KnobValue },
     KnobPatchesAdded(Vec<KnobPatch>),
