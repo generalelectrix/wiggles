@@ -330,7 +330,7 @@ impl ClockNodePrototype {
 /// clock value when called upon.
 pub struct ClockNode {
     /// Unique name for this clock.
-    name: String,
+    pub name: String,
     /// The index of this node in the enclosing graph.
     /// The graph implementation must ensure that these indices remain stable.
     id: ClockNodeIndex,

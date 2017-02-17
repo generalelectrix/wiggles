@@ -76,4 +76,14 @@ impl Master {
 
         Ok(events)
     }
+
+    pub fn delete_clock(&mut self, node: ClockNodeIndex) -> ApiResult {
+        let removed_node = self.clock_network.remove_node(node)?;
+        // remove all related patches
+        let mut events =
+            Events::single(self.patch_bay.remove_clock_node(&removed_node));
+        // signal the now-removed node
+        events.push(ClockEvent::NodeRemoved{node: node, name: removed_node.name});
+        Ok(events)
+    }
 }
