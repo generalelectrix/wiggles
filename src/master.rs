@@ -6,10 +6,11 @@ use clock_network::{
     ClockNodeIndex,
     ClockNodePrototype,
     ClockError,
-    ClockEvent
+    ClockEvent,
+    InputId,
 };
 use clocks::create_prototypes;
-use event::{Event, Events};
+use event::Events;
 use knob::{KnobEvent, PatchBay, KnobPatch, KnobValue};
 use datatypes::{ErrorMessage, DeltaT};
 
@@ -102,6 +103,15 @@ impl Master {
     pub fn rename_clock(&mut self, node: ClockNodeIndex, name: String) -> ApiResult {
         self.clock_network.get_node_mut(node)?.name = name.clone();
         events!(ClockEvent::NodeRenamed {node: node, name: name})
+    }
+
+    pub fn swap_clock_input(
+        &mut self,
+        node: ClockNodeIndex,
+        input: InputId,
+        new_source: ClockNodeIndex)
+        -> ApiResult {
+            events!(self.clock_network.swap_input(node, input, new_source)?)
     }
 
     pub fn set_knob(&mut self, patch: KnobPatch, value: KnobValue) -> ApiResult {
