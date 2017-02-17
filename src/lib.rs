@@ -8,6 +8,7 @@ mod knob;
 mod datatypes;
 mod clock_network;
 mod clocks;
+mod data_network;
 mod event;
 mod interconnect;
 mod master;
