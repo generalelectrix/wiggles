@@ -37,6 +37,11 @@ impl Events {
         Events(vec!(e.into()))
     }
 
+    pub fn push<E>(&mut self, e: E)
+            where E: Into<Event> {
+        self.0.push(e.into())
+    }
+
     pub fn extend(&mut self, es: Events) {
         self.0.extend(es.0);
     }

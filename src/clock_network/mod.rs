@@ -28,9 +28,9 @@ pub enum ClockEvent {
     /// This clock node has swapped an input.
     InputSwapped { node: ClockNodeIndex, input_id: InputId, new_input: ClockNodeIndex },
     /// A new clock node has been added.
-    ClockNodeAdded { node: ClockNodeIndex, name: String },
+    NodeAdded { node: ClockNodeIndex, name: String },
     /// A clock node has been removed.
-    ClockNodeRemoved { node: ClockNodeIndex, name: String },
+    NodeRemoved { node: ClockNodeIndex, name: String },
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -154,9 +154,9 @@ impl ClockNetwork {
                     input_nodes: &[ClockNodeIndex])
                     -> Result<&ClockNode, ClockError> {
         // check that all the input nodes exist
-        try!(self.check_nodes(input_nodes));
+        self.check_nodes(input_nodes)?;
         // create the node with a placeholder index
-        let new_node = try!(prototype.create_node(name, placeholder_index(), input_nodes));
+        let new_node = prototype.create_node(name, placeholder_index(), input_nodes)?;
 
         // add the node to the graph
         let node_index = ClockNodeIndex(self.g.add_node(new_node));
@@ -460,6 +460,7 @@ pub enum ClockError {
     MismatchedInputs { type_name: &'static str, expected: usize, provided: usize },
     NodeHasListeners(ClockNodeIndex),
     ExistingListenerCollection(ClockNodeIndex),
+    UnknownPrototype(String),
 }
 
 impl fmt::Display for ClockError {
@@ -477,6 +478,8 @@ impl fmt::Display for ClockError {
                 write!(f, "Clock node {:?} has listeners connected.", node),
             ClockError::ExistingListenerCollection(node) =>
                 write!(f, "Tried to create a listener collection for node {:?} but it already has a non-empty one.", node),
+            ClockError::UnknownPrototype(ref name) =>
+                write!(f, "Unknown clock node prototype: '{}'.", name),
             ClockError::MessageCollection(ref msgs) => {
                 write!(f, "Multiple messages:\n{}", msgs.iter().format("\n"))
             }
