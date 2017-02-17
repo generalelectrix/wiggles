@@ -4,6 +4,9 @@ use std::error;
 use knob::KnobError;
 use clock_network::ClockError;
 
+/// Floating-point duration, in units of seconds.
+pub type DeltaT = f64;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 /// Floating-point representation of a rate, permitting the use of various
 /// unit semantics.

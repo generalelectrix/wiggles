@@ -14,10 +14,10 @@ use petgraph::graph::{NodeIndex, EdgeIndex, IndexType, DefaultIx};
 use petgraph::algo::has_path_connecting;
 use petgraph::Direction;
 use utils::{modulo_one, almost_eq};
-use update::{Update, DeltaT};
 use knob::{Knob, Knobs, KnobId, KnobValue, KnobPatch, KnobEvent};
 use interconnect::Interconnector;
 use event::{Event, Events};
+use datatypes::DeltaT;
 
 #[cfg(test)]
 mod test;
@@ -251,10 +251,8 @@ impl ClockNetwork {
             Ok(())
         }
     }
-}
 
-impl Update for ClockNetwork {
-    fn update(&mut self, dt: DeltaT) -> Events {
+    pub fn update(&mut self, dt: DeltaT) -> Events {
         let all_indices: Vec<NodeIndex> = self.g.node_indices().collect();
         all_indices.iter()
                    .flat_map(|ni| self.get_node_mut(ClockNodeIndex(*ni)).unwrap().update(dt))
@@ -377,9 +375,7 @@ impl ClockNode {
                    .map(|input| { input.input_node = source; })
                    .ok_or(ClockError::InvalidInputId(self.index(), id))
     }
-}
 
-impl Update for ClockNode {
     fn update(&mut self, dt: DeltaT) -> Events {
         self.current_value.set(None);
         self.clock.update(self.id, &mut self.knobs, dt)

@@ -4,7 +4,6 @@ extern crate log;
 extern crate petgraph;
 extern crate itertools;
 mod utils;
-mod update;
 mod knob;
 mod datatypes;
 mod clock_network;

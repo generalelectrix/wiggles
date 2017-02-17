@@ -1,7 +1,6 @@
 //! A clock that sits doing nothing until it receives a trigger.
 //! It then ticks and runs for one period, then stops without ticking again.
 //! Receiving a trigger while the clock is running causes it to reset, tick, and run.
-use update::DeltaT;
 use clock_network::{
     ClockValue,
     ClockNetwork,
@@ -12,7 +11,7 @@ use clock_network::{
     ClockNodePrototype,
     ClockNodeIndex};
 use knob::{Knob, KnobValue, KnobId};
-use datatypes::Rate;
+use datatypes::{Rate, DeltaT};
 use event::{Events};
 use super::action_if_button_pressed;
 

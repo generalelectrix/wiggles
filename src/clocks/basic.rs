@@ -1,5 +1,4 @@
 //! Implementation of a clock that runs at a constant rate, controlled by a knob.
-use update::DeltaT;
 use utils::modulo_one;
 use clock_network::{
     ClockValue,
@@ -12,7 +11,7 @@ use clock_network::{
     ClockNodeIndex,
 };
 use knob::{Knob, KnobValue, KnobId};
-use datatypes::Rate;
+use datatypes::{Rate, DeltaT};
 use event::Events;
 use super::action_if_button_pressed;
 

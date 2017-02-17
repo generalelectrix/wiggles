@@ -1,7 +1,7 @@
 //! A clock that performs quasi-stateless clock multiplication and division.
-use update::DeltaT;
 use std::cell::Cell;
 use std::cmp::max;
+use datatypes::DeltaT;
 use clock_network::{
     ClockValue,
     ClockNetwork,

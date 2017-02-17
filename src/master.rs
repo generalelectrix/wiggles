@@ -2,7 +2,7 @@
 use clock_network::{ClockNetwork, ClockEvent};
 use event::{Event, Events};
 use knob::{KnobEvent, PatchBay};
-use datatypes::ErrorMessage;
+use datatypes::{ErrorMessage, DeltaT};
 
 #[derive(Debug)]
 pub struct Master {
@@ -13,5 +13,7 @@ pub struct Master {
 type EventHandleResult = Result<Events,ErrorMessage>;
 
 impl Master {
-
+    fn update(&mut self, dt: DeltaT) -> Events {
+        self.clock_network.update(dt)
+    }
 }
