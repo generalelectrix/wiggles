@@ -15,10 +15,10 @@ use event::Events;
 mod test;
 
 /// Return all of the clock prototypes.
-pub fn create_prototypes() -> Box<[ClockNodePrototype]> {
+pub fn create_prototypes() -> Vec<ClockNodePrototype> {
     vec![Clock::create_prototype(),
          ClockMultiplier::create_prototype(),
-         TriggeredClock::create_prototype(),].into_boxed_slice()
+         TriggeredClock::create_prototype(),]
 }
 
 /// If the selected knob id was a button press, swap the state of the button to false, run the

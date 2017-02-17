@@ -8,6 +8,7 @@ use clock_network::{
     ClockError,
     ClockEvent
 };
+use clocks::create_prototypes;
 use event::{Event, Events};
 use knob::{KnobEvent, PatchBay};
 use datatypes::{ErrorMessage, DeltaT};
@@ -27,6 +28,18 @@ pub struct RenderResponse {
 
 // These methods represent the public API for this package.
 impl Master {
+    pub fn new() -> Self {
+        let proto_map: HashMap<String,ClockNodePrototype> =
+            create_prototypes()
+            .into_iter()
+            .map(|p| (p.type_name().to_string(), p))
+            .collect();
+        Master {
+            patch_bay: PatchBay::new(),
+            clock_network: ClockNetwork::new(),
+            clock_types: proto_map }
+    }
+
     pub fn update(&mut self, dt: DeltaT) -> Events {
         self.clock_network.update(dt)
     }
@@ -47,17 +60,17 @@ impl Master {
             name: String,
             inputs: &[ClockNodeIndex])
             -> ApiResult {
-        // get a valid prototype or fail
+        // Get a valid prototype or fail.
         let proto =
             self.clock_types
                 .get(prototype_name)
                 .ok_or(ClockError::UnknownPrototype(prototype_name.to_string()))?;
-        // create the new node
+        // Create the new node.
         let node = self.clock_network.add_node(proto, name.clone(), inputs)?;
         let mut events = Events::single(ClockEvent::NodeAdded{node: node.index(), name: name});
 
-        // add knob patches for the new node
-        // since we already added the node to the network, this operation must not fail or we
+        // Add knob patches for the new node.
+        // Since we already added the node to the network, this operation must not fail or we
         // have a data integrity issue.
         events.push(self.patch_bay.add_clock_node(node));
 
