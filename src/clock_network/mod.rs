@@ -121,8 +121,6 @@ type ClockGraph = StableDiGraph<ClockNode, ()>;
 pub struct ClockNetwork {
     /// The backing graph that holds the individual nodes.
     g: ClockGraph,
-    /// A hash to loop up clock nodes by name.
-    node_lookup: HashMap<String, ClockNodeIndex>,
     /// A collection of connections from nodes to other dataflow domains.
     /// Indexed using the same node indices as the main graph.
     external_connections: Interconnector<ClockNodeIndex, ExternalListener>,
@@ -135,7 +133,6 @@ impl ClockNetwork {
     pub fn new() -> Self {
         ClockNetwork {
             g: StableDiGraph::new(),
-            node_lookup: HashMap::new(),
             external_connections: Interconnector::new() }
     }
 

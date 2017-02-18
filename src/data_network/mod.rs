@@ -8,6 +8,7 @@ use petgraph::graph::{NodeIndex, IndexType, DefaultIx};
 use petgraph::algo::has_path_connecting;
 use petgraph::Direction;
 
+use network::InputSocket;
 use knob::Knob;
 use clock_network::{ClockNetwork, ClockNodeIndex};
 use self::data::*;
@@ -38,33 +39,14 @@ unsafe impl IndexType for DataNodeIndex {
 
 pub type InputId = usize;
 
-pub struct DataInputSocket {
-    /// The local name of this input socket.
-    name: &'static str,
-    /// A locally-unique numeric id for this socket.  For each node, these should
-    /// start at 0 and increase monotonically.
-    id: InputId,
-    /// The index of the source node.
-    pub input_node: DataNodeIndex,
-}
+pub type DataInputSocket = InputSocket<DataNodeIndex>;
 
 pub enum DataClockInputNode {
     Clock(ClockNodeIndex),
     Data{node: DataNodeIndex, input: InputId, clock_input: bool}
 }
 
-pub struct DataClockInputSocket {
-    /// The local name of this input socket.
-    name: &'static str,
-    /// A locally-unique numeric id for this socket.  For each node, these should
-    /// start at 0 and increase monotonically.
-    id: InputId,
-    /// The index of the source; if a DataNodeIndex, this node is slaving itself
-    /// to another node's input.
-    pub input_node: DataClockInputNode,
-}
-
-
+pub type DataClockInputSocket = InputSocket<DataClockInputNode>;
 
 pub struct DataNetwork {}
 
@@ -92,23 +74,4 @@ pub trait ComputeData {
     /// Actual conversions to explicit types are left up to the generic conversion method on Data;
     /// these should then fall through as no-ops where necessary.
     fn get_as_kind(&self, kind: Datatype, reqs: ComputeDataReqs) -> Data;
-
-}
-
-enum Bar {
-    Hello,
-    Goodbye,
-}
-
-impl Bar {
-    fn hi(&self) {}
-}
-
-struct Test<T> {
-    foo: T,
-}
-
-fn test() {
-    let a = Test { foo: Bar::Hello };
-    a.foo.hi();
 }
