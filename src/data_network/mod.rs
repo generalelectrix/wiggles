@@ -8,6 +8,12 @@ use petgraph::graph::{NodeIndex, IndexType, DefaultIx};
 use petgraph::algo::has_path_connecting;
 use petgraph::Direction;
 
+use knob::Knob;
+use clock_network::ClockNetwork;
+use self::data::*;
+
+mod data;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Default)]
 /// Newtype declaration to ensure we don't mix up nodes between different graph domains.
 pub struct DataNodeIndex(NodeIndex);
@@ -40,4 +46,37 @@ pub struct DataInputSocket {
     id: InputId,
     /// The index of the source node.
     pub input_node: DataNodeIndex,
+}
+
+
+
+pub struct DataNetwork {}
+
+pub trait ComputeData {
+    /// Get this node's value in whatever internal format makes sense for it,
+    /// possibly delegating that format to an upstream source.
+    fn get(
+        &self,
+        inputs: &[DataInputSocket],
+        knobs: &[Knob],
+        cg: &ClockNetwork,
+        dg: &DataNetwork,
+        ) -> Data;
+
+    /// Get this node's value as a particular datatype.  This type will be passed upstream if
+    /// necessary to attempt to preserve type semantics as much as possible.  The return type is
+    /// left generic, so this method makes no type-level guarantee about fulfilling this contract.
+    /// Actual conversions to explicit types are left up to the generic conversion method on Data;
+    /// these should then fall through as no-ops where necessary.
+    fn get_as(
+        &self,
+        kind: Datatype,
+        inputs: &[DataInputSocket],
+        knobs: &[Knob],
+        cg: &ClockNetwork,
+        dg: &DataNetwork,
+        ) -> Data;
+
+
+
 }
