@@ -7,12 +7,15 @@ use super::multiplier::{MULT_KNOB_ID, RESET_KNOB_ID as MULT_RESET_KNOB_ID};
 use super::triggered::{TRIGGER_KNOB_ID};
 use event::Event;
 use knob::{KnobEvent, KnobPatch};
+use datatypes::Update;
+use network::{NetworkNode};
 
 #[test]
 fn test_basic_clock() {
     let mut network = ClockNetwork::new();
     let proto = Clock::create_prototype();
-    let node_id = network.add_node(&proto, "test".to_string(), &[]).unwrap().index();
+    let node = proto.create_node("test".to_string(), &[]).unwrap();
+    let node_id = network.add_node(node).unwrap().id();
 
     assert!(INIT_RATE.in_hz() == 1.0);
 
@@ -34,7 +37,8 @@ fn test_basic_clock() {
 fn test_basic_clock_reset_emit_event() {
     let mut network = ClockNetwork::new();
     let proto = Clock::create_prototype();
-    let node_id = network.add_node(&proto, "test".to_string(), &[]).unwrap().index();
+    let node = proto.create_node("test".to_string(), &[]).unwrap();
+    let node_id = network.add_node(node).unwrap().id();
 
     network.get_node_mut(node_id).unwrap().knob_mut(BASIC_RESET_KNOB_ID).unwrap().set_button_state(true);
     //updating should emit a knob state change event
@@ -50,8 +54,10 @@ fn test_basic_clock_reset_emit_event() {
 fn test_multiplier() {
     let mut network = ClockNetwork::new();
     let (bp, mp) = (Clock::create_prototype(), ClockMultiplier::create_prototype());
-    let basic_id = network.add_node(&bp, "basic".to_string(), &[]).unwrap().index();
-    let mult_id = network.add_node(&mp, "mult".to_string(), &vec!(basic_id).into_boxed_slice()).unwrap().index();
+    let basic_id = network.add_node(bp.create_node("basic".to_string(), &[]).unwrap()).unwrap().id();
+    let mult_id = network.add_node(
+        mp.create_node("mult".to_string(), &vec!(basic_id).into_boxed_slice()).unwrap())
+        .unwrap().id();
     
     let set_mult_factor = |val, cn: &mut ClockNetwork| {
         cn.get_node_mut(mult_id).unwrap().set_knob_value(MULT_KNOB_ID, KnobValue::PositiveFloat(val)).unwrap();
@@ -94,7 +100,8 @@ fn test_multiplier() {
 fn test_triggered_clock() {
     let mut network = ClockNetwork::new();
     let proto = TriggeredClock::create_prototype();
-    let node_id = network.add_node(&proto, "test".to_string(), &[]).unwrap().index();
+    let node = proto.create_node("test".to_string(), &[]).unwrap();
+    let node_id = network.add_node(node).unwrap().id();
 
     let update_and_check = |interval, (float_val, ticked), network: &mut ClockNetwork| {
         network.update(interval);

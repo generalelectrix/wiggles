@@ -126,10 +126,7 @@ unsafe impl IndexType for ClockNodeIndex {
     fn max() -> Self { ClockNodeIndex::new(DefaultIx::max() as usize) }
 }
 
-
 pub type ClockNetwork = Network<ClockNode, ClockNodeIndex>;
-
-const placeholder_index: ClockNodeIndex = ClockNodeIndex(NodeIndex::new(0));
 
 impl ClockNetwork {
     /// Get the current clock value from any node in the graph.
@@ -171,7 +168,6 @@ impl ClockNodePrototype {
 
     pub fn create_node(&self,
                        name: String,
-                       id: ClockNodeIndex,
                        input_nodes: &[ClockNodeIndex])
                        -> Result<ClockNode, ClockError> {
         if input_nodes.len() != self.inputs.len() {
@@ -194,7 +190,7 @@ impl ClockNodePrototype {
                        .collect::<Vec<_>>();
         Ok(ClockNode {
             name: name,
-            id: id,
+            id: ClockNodeIndex(NodeIndex::new(0)), // use a placeholder id for now
             inputs: connected_inputs,
             knobs: self.knobs.clone().into_vec(),
             current_value: Cell::new(None),
@@ -236,7 +232,7 @@ impl NetworkNode<ClockNodeIndex> for ClockNode {
 
     fn input_socket_mut(
             &mut self, id: InputId) -> Result<&mut ClockInputSocket, ClockNetworkError> {
-        self.inputs.get_mut(id).ok_or(NetworkError::InvalidInputId(self.id(), id))
+        self.inputs.get_mut(id).ok_or(NetworkError::InvalidInputId(self.id, id))
     }
 
     fn id(&self) -> ClockNodeIndex {

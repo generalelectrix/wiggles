@@ -1,7 +1,7 @@
 //! Master type encalsulating all of the various events which may be emiited
 //! as the result of servicing some request.
 use knob::KnobEvent;
-use clock_network::ClockEvent;
+use clock_network::{ClockEvent, ClockNetworkEvent};
 use std::iter::{FromIterator, IntoIterator};
 use std::ops::Index;
 
@@ -21,6 +21,12 @@ impl From<KnobEvent> for Event {
 impl From<ClockEvent> for Event {
     fn from(event: ClockEvent) -> Self {
         Event::Clock(event)
+    }
+}
+
+impl From<ClockNetworkEvent> for Event {
+    fn from(event: ClockNetworkEvent) -> Self {
+        Event::Clock(event.into())
     }
 }
 

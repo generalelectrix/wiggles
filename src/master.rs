@@ -1,6 +1,6 @@
 //! Top-level entity that owns all data and routes events.
 use std::collections::HashMap;
-use network::InputId;
+use network::{NetworkNode, InputId};
 use clock_network::{
     ClockValue,
     ClockNetwork,
@@ -82,8 +82,9 @@ impl Master {
                 .get(prototype_name)
                 .ok_or(ClockError::UnknownPrototype(prototype_name.to_string()))?;
         // Create the new node.
-        let node = self.clock_network.add_node(proto, name.clone(), inputs)?;
-        let ce = ClockEvent::NodeAdded{node: node.index(), name: name};
+        let node = proto.create_node(name.clone(), inputs)?;
+        let node = self.clock_network.add_node(node)?;
+        let ce = ClockEvent::NodeAdded{node: node.id(), name: name};
 
         // Add knob patches for the new node.
         // Since we already added the node to the network, this operation must not fail or we
