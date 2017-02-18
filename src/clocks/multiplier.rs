@@ -2,6 +2,7 @@
 use std::cell::Cell;
 use std::cmp::max;
 use datatypes::DeltaT;
+use network::InputId;
 use clock_network::{
     ClockValue,
     ClockNetwork,
@@ -10,7 +11,6 @@ use clock_network::{
     CompleteClock,
     ClockInputSocket,
     ClockNodePrototype,
-    InputId,
     ClockNodeIndex,
 };
 use knob::{Knob, KnobValue, KnobId};
@@ -71,7 +71,7 @@ impl ComputeClock for ClockMultiplier {
                      g: &ClockNetwork)
                      -> ClockValue {
         // get current time from upstream clock
-        let upstream_val = inputs[SOURCE_INPUT_ID].get_value(g);
+        let upstream_val = inputs[SOURCE_INPUT_ID].input.get_value(g);
         // get current multiplier from control knob
         let multiplier = knobs[MULT_KNOB_ID].positive_float();
 

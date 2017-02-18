@@ -2,19 +2,19 @@
 use std::ops::Deref;
 
 pub enum DataError {
-    EnumSizeCannotBeZero,
+    EnumSizeLessThanTwo,
 }
 
 pub type EnumValue = u32;
 
-// must be non-zero
+// must be greater than 1 to make sense
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct EnumSize(EnumValue);
 
 impl EnumSize {
     pub fn create(size: EnumValue) -> Result<Self,DataError> {
-        if size == 0 {
-            Err(DataError::EnumSizeCannotBeZero)
+        if size < 1 {
+            Err(DataError::EnumSizeLessThanTwo)
         }
         else {
             Ok(EnumSize(size))
@@ -37,7 +37,7 @@ pub enum Datatype {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
-pub struct Unipolar(f64);
+pub struct Unipolar(pub f64);
 
 impl From<Bipolar> for Unipolar {
     fn from(bp: Bipolar) -> Self {
@@ -69,7 +69,7 @@ impl Unipolar {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
-pub struct Bipolar(f64);
+pub struct Bipolar(pub f64);
 
 impl From<Unipolar> for Bipolar {
     fn from(up: Unipolar) -> Self {
@@ -103,9 +103,10 @@ impl From<Data> for Bipolar {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
-pub struct IntegerEnum {value: EnumValue, size: EnumSize}
+pub struct IntegerEnum {pub value: EnumValue, pub size: EnumSize}
 
 impl IntegerEnum {
+
     pub fn into_uint(self, size: EnumSize) -> IntegerEnum {
         if size == self.size {
             self
@@ -114,7 +115,6 @@ impl IntegerEnum {
             let as_unipolar: Unipolar = self.into();
             as_unipolar.into_uint(size)
         }
-        
     }
 }
 

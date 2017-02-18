@@ -9,7 +9,7 @@ use petgraph::algo::has_path_connecting;
 use petgraph::Direction;
 
 use knob::Knob;
-use clock_network::ClockNetwork;
+use clock_network::{ClockNetwork, ClockNodeIndex};
 use self::data::*;
 
 mod data;
@@ -48,36 +48,67 @@ pub struct DataInputSocket {
     pub input_node: DataNodeIndex,
 }
 
+pub enum DataClockInputNode {
+    Clock(ClockNodeIndex),
+    Data{node: DataNodeIndex, input: InputId, clock_input: bool}
+}
+
+pub struct DataClockInputSocket {
+    /// The local name of this input socket.
+    name: &'static str,
+    /// A locally-unique numeric id for this socket.  For each node, these should
+    /// start at 0 and increase monotonically.
+    id: InputId,
+    /// The index of the source; if a DataNodeIndex, this node is slaving itself
+    /// to another node's input.
+    pub input_node: DataClockInputNode,
+}
+
 
 
 pub struct DataNetwork {}
 
+pub struct ComputeDataReqs<'a> {
+    clock_inputs: &'a [DataClockInputSocket],
+    data_inputs: &'a [DataInputSocket],
+    knobs: &'a [Knob],
+    cg: &'a ClockNetwork,
+    dg: &'a DataNetwork,
+}
+
 pub trait ComputeData {
-    /// Get this node's value in whatever internal format makes sense for it,
-    /// possibly delegating that format to an upstream source, or to some eventual
-    /// default.
-    fn get(
-        &self,
-        inputs: &[DataInputSocket],
-        knobs: &[Knob],
-        cg: &ClockNetwork,
-        dg: &DataNetwork,
-        ) -> Data;
+    /// Get this node's value with a phase offset, in whatever internal format makes sense for it,
+    /// possibly delegating that format to an upstream source, or to some eventual default.
+    fn get(&self, phase: Unipolar, reqs: ComputeDataReqs) -> Data;
+
+    /// Get value with no phase offset.
+    fn get_zero(&self, reqs: ComputeDataReqs) -> Data {
+        self.get(Unipolar(0.0), reqs)
+    }
 
     /// Get this node's value as a particular datatype.  This type will be passed upstream if
     /// necessary to attempt to preserve type semantics as much as possible.  The return type is
     /// left generic, so this method makes no type-level guarantee about fulfilling this contract.
     /// Actual conversions to explicit types are left up to the generic conversion method on Data;
     /// these should then fall through as no-ops where necessary.
-    fn get_as(
-        &self,
-        kind: Datatype,
-        inputs: &[DataInputSocket],
-        knobs: &[Knob],
-        cg: &ClockNetwork,
-        dg: &DataNetwork,
-        ) -> Data;
+    fn get_as_kind(&self, kind: Datatype, reqs: ComputeDataReqs) -> Data;
 
+}
 
+enum Bar {
+    Hello,
+    Goodbye,
+}
 
+impl Bar {
+    fn hi(&self) {}
+}
+
+struct Test<T> {
+    foo: T,
+}
+
+fn test() {
+    let a = Test { foo: Bar::Hello };
+    a.foo.hi();
 }

@@ -12,3 +12,4 @@ mod data_network;
 mod event;
 mod interconnect;
 mod master;
+mod network;

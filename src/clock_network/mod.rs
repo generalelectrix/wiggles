@@ -18,9 +18,16 @@ use knob::{Knob, Knobs, KnobValue, KnobPatch, KnobEvent};
 use interconnect::Interconnector;
 use event::{Event, Events};
 use datatypes::DeltaT;
+use network::{InputId, InputSocket};
 
 #[cfg(test)]
 mod test;
+
+/// A clock needs to implement these traits to function as a node in the clock network.
+pub trait CompleteClock: ComputeClock + UpdateClock + fmt::Debug {}
+impl<T> CompleteClock for T where T: ComputeClock + UpdateClock + fmt::Debug {}
+
+pub type ClockInputSocket = InputSocket<ClockNodeIndex>;
 
 #[derive(PartialEq, Debug)]
 /// Events related to clocks and the clock graph.
@@ -76,6 +83,15 @@ impl ClockValue {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Default)]
 /// Newtype declaration to ensure we don't mix up nodes between different graph domains.
 pub struct ClockNodeIndex(NodeIndex);
+
+impl ClockNodeIndex {
+    /// Get the value from this input.
+    /// Panics if the node does not exist.
+    pub fn get_value(&self, clock_network: &ClockNetwork) -> ClockValue {
+        debug_assert!(clock_network.contains_node(*self));
+        clock_network.get_value_from_node(*self).unwrap()
+    }
+}
 
 impl Deref for ClockNodeIndex {
     type Target = NodeIndex;
@@ -367,14 +383,14 @@ impl ClockNode {
     /// Return the node index that an input is listening to.
     pub fn get_input(&self, id: InputId) -> Result<ClockNodeIndex, ClockError> {
         self.inputs.get(id)
-                   .map(|input| input.input_node)
+                   .map(|socket| socket.input)
                    .ok_or(ClockError::InvalidInputId(self.index(), id))
     }
 
     /// Set an input to a particular node.
     pub fn set_input(&mut self, id: InputId, source: ClockNodeIndex) -> Result<(), ClockError> {
         self.inputs.get_mut(id)
-                   .map(|input| { input.input_node = source; })
+                   .map(|socket| { socket.input = source; })
                    .ok_or(ClockError::InvalidInputId(self.index(), id))
     }
 
@@ -413,43 +429,6 @@ pub trait ComputeClock {
                      knobs: &[Knob],
                      g: &ClockNetwork)
                      -> ClockValue;
-}
-
-/// A clock needs to implement these traits to function as a node in the clock network.
-pub trait CompleteClock: ComputeClock + UpdateClock + fmt::Debug {}
-impl<T> CompleteClock for T where T: ComputeClock + UpdateClock + fmt::Debug {}
-
-/// Type alias for indexing input sockets.
-pub type InputId = usize;
-
-#[derive(Debug)]
-/// Specify an upstream clock via an incoming edge to this clock graph node.
-pub struct ClockInputSocket {
-    /// The local name of this input socket.
-    name: &'static str,
-    /// A locally-unique numeric id for this socket.  For each node, these should
-    /// start at 0 and increase monotonically.
-    id: InputId,
-    /// The index of the source node.
-    pub input_node: ClockNodeIndex,
-}
-
-impl ClockInputSocket {
-    pub fn new(name: &'static str, id: InputId, input_node: ClockNodeIndex) -> Self {
-        ClockInputSocket { name: name, id: id, input_node: input_node }
-    }
-
-    pub fn name(&self) -> &'static str { self.name }
-
-    /// Fetch the upstream value from the source for this socket.
-    /// # Panics
-    /// 
-    /// If the upstream node doesn't exist.
-    pub fn get_value(&self, g: &ClockNetwork) -> ClockValue {
-        g.get_value_from_node(self.input_node).unwrap()
-    }
-
-
 }
 
 #[derive(Debug)]

@@ -1,5 +1,6 @@
 //! Top-level entity that owns all data and routes events.
 use std::collections::HashMap;
+use network::InputId;
 use clock_network::{
     ClockValue,
     ClockNetwork,
@@ -7,7 +8,6 @@ use clock_network::{
     ClockNodePrototype,
     ClockError,
     ClockEvent,
-    InputId,
 };
 use clocks::create_prototypes;
 use event::Events;
