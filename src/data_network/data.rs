@@ -1,6 +1,33 @@
 //! Types for dataflow.
+use std::ops::Deref;
 
-pub type EnumSize = u32;
+pub enum DataError {
+    EnumSizeCannotBeZero,
+}
+
+pub type EnumValue = u32;
+
+// must be non-zero
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+pub struct EnumSize(EnumValue);
+
+impl EnumSize {
+    pub fn create(size: EnumValue) -> Result<Self,DataError> {
+        if size == 0 {
+            Err(DataError::EnumSizeCannotBeZero)
+        }
+        else {
+            Ok(EnumSize(size))
+        }
+    }
+}
+
+impl Deref for EnumSize {
+    type Target = u32;
+    fn deref(&self) -> &u32 {
+        &self.0
+    }
+}
 
 /// Tag for describing datatypes in requests or other data structures.
 pub enum Datatype {
@@ -20,7 +47,7 @@ impl From<Bipolar> for Unipolar {
 
 impl From<IntegerEnum> for Unipolar {
     fn from(IntegerEnum {value, size}: IntegerEnum) -> Self {
-        Unipolar(value as f64 / (size - 1) as f64)
+        Unipolar(value as f64 / (size.0 - 1) as f64)
     }
 }
 
@@ -36,7 +63,7 @@ impl From<Data> for Unipolar {
 
 impl Unipolar {
     fn into_uint(self, size: EnumSize) -> IntegerEnum {
-        let val = (self.0 * (size - 1) as f64) as EnumSize;
+        let val = (self.0 * (size.0 - 1) as f64) as EnumValue;
         IntegerEnum {value: val, size: size}
     }
 }
@@ -76,7 +103,7 @@ impl From<Data> for Bipolar {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
-pub struct IntegerEnum {value: EnumSize, size: EnumSize}
+pub struct IntegerEnum {value: EnumValue, size: EnumSize}
 
 impl IntegerEnum {
     pub fn into_uint(self, size: EnumSize) -> IntegerEnum {
