@@ -54,7 +54,8 @@ pub struct DataNetwork {}
 
 pub trait ComputeData {
     /// Get this node's value in whatever internal format makes sense for it,
-    /// possibly delegating that format to an upstream source.
+    /// possibly delegating that format to an upstream source, or to some eventual
+    /// default.
     fn get(
         &self,
         inputs: &[DataInputSocket],
