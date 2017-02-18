@@ -1,6 +1,7 @@
 //! Attempt to generalize some features of dataflow network into generic types.
 use std::{ops, fmt, iter, slice, marker};
 
+use itertools::Itertools;
 use petgraph::graph::{NodeIndex, IndexType, DefaultIx};
 use petgraph::stable_graph::StableDiGraph;
 use petgraph::Direction;
@@ -10,18 +11,9 @@ use datatypes::{Update, DeltaT};
 use event::Events;
 use interconnect::Interconnector;
 
+#[derive(PartialEq, Debug)]
 pub enum NetworkEvent<I> {
     InputSwapped{node: I, input_id: InputId, new_input: I},
-}
-
-#[derive(Debug)]
-pub enum NetworkError<I> {
-    InvalidNodeId(I),
-    MessageCollection(Vec<NetworkError<I>>),
-    ExistingListenerCollection(I),
-    NodeHasListeners(I),
-    InvalidInputId(I, InputId),
-    WouldCycle { source: I, sink: I }
 }
 
 pub type InputId = usize;
@@ -46,6 +38,12 @@ impl<T> InputSocket<T> {
 type ExternalListener = usize;
 
 pub trait NetworkNodeId:
+    IndexType
+    + Copy
+    + fmt::Debug
+    + ops::Deref<Target = NodeIndex>
+    + From<NodeIndex> {}
+impl<T> NetworkNodeId for T where T:
     IndexType
     + Copy
     + fmt::Debug
@@ -223,5 +221,36 @@ impl<N: NetworkNode<I>, I: NetworkNodeId> Update for Network<N, I> {
         all_indices.iter()
                    .flat_map(|ni| self.get_node_mut(I::from(*ni)).unwrap().update(dt))
                    .collect()
+    }
+}
+
+
+#[derive(Debug)]
+pub enum NetworkError<I: NetworkNodeId> {
+    InvalidNodeId(I),
+    MessageCollection(Vec<NetworkError<I>>),
+    ExistingListenerCollection(I),
+    NodeHasListeners(I),
+    InvalidInputId(I, InputId),
+    WouldCycle { source: I, sink: I }
+}
+
+impl<I: NetworkNodeId> fmt::Display for NetworkError<I> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            NetworkError::WouldCycle{ source, sink } => 
+                write!(f, "Connecting node {:?} to {:?} would create a cycle.", source, sink),
+            NetworkError::InvalidInputId(node, id) =>
+                write!(f, "Node {:?} has no input with id {:?}.", node, id),
+            NetworkError::InvalidNodeId(node) =>
+                write!(f, "Invalid node id {:?}.", node),
+            NetworkError::NodeHasListeners(node) =>
+                write!(f, "Node {:?} has listeners connected.", node),
+            NetworkError::ExistingListenerCollection(node) =>
+                write!(f, "Tried to create a listener collection for node {:?} but it already has a non-empty one.", node),
+            NetworkError::MessageCollection(ref msgs) => {
+                write!(f, "Multiple messages:\n{}", msgs.iter().format("\n"))
+            }
+        }
     }
 }

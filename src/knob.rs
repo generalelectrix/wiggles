@@ -3,8 +3,10 @@ use std::collections::HashMap;
 use std::error;
 use std::fmt;
 
-use datatypes::{Rate, ErrorMessage};
 use clock_network::{ClockNodeIndex, ClockNode, ClockNetwork};
+use datatypes::{Rate, ErrorMessage};
+use network::NetworkNode;
+
 
 #[derive(PartialEq, Debug)]
 /// Message enum encompassing knob-related events.
@@ -184,7 +186,7 @@ impl PatchBay {
             node.knobs()
                 .iter()
                 .map(|ref knob| {
-                    let patch = KnobPatch::Clock { node: node.index(), id: knob.id };
+                    let patch = KnobPatch::Clock { node: node.id(), id: knob.id };
                     self.patches.insert(patch, knob.value);
                     patch
                 }).collect();
@@ -198,7 +200,7 @@ impl PatchBay {
             node.knobs()
                 .iter()
                 .map(|ref knob| {
-                    let patch = KnobPatch::Clock { node: node.index(), id: knob.id() };
+                    let patch = KnobPatch::Clock { node: node.id(), id: knob.id() };
                     self.patches.remove(&patch);
                     patch
                 }).collect();

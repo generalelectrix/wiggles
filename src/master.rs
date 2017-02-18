@@ -10,6 +10,7 @@ use clock_network::{
     ClockEvent,
 };
 use clocks::create_prototypes;
+use datatypes::Update;
 use event::Events;
 use knob::{KnobEvent, PatchBay, KnobPatch, KnobValue};
 use datatypes::{ErrorMessage, DeltaT};

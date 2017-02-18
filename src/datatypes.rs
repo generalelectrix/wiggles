@@ -4,7 +4,7 @@ use std::error;
 
 use event::Events;
 use knob::KnobError;
-use clock_network::ClockError;
+use clock_network::{ClockError, ClockNetworkError};
 
 /// Floating-point duration, in units of seconds.
 pub type DeltaT = f64;
@@ -77,5 +77,11 @@ impl From<KnobError> for ErrorMessage {
 impl From<ClockError> for ErrorMessage {
     fn from(err: ClockError) -> Self {
         ErrorMessage::Clock(err)
+    }
+}
+
+impl From<ClockNetworkError> for ErrorMessage {
+    fn from(e: ClockNetworkError) -> Self {
+        ClockError::Network(e).into()
     }
 }
