@@ -3,12 +3,17 @@
 //! Nodes have no access to upstream data during the update step, but can access their upstream
 //! dependencies during rendering.
 use std::ops::Deref;
-use petgraph::stable_graph::StableDiGraph;
 use petgraph::graph::{NodeIndex, IndexType, DefaultIx};
-use petgraph::algo::has_path_connecting;
-use petgraph::Direction;
 
-use network::InputSocket;
+use network::{
+    InputId,
+    InputSocket,
+    NetworkNode,
+    NetworkNodeId,
+    Network,
+    NetworkError,
+    NetworkEvent,
+};
 use knob::Knob;
 use clock_network::{ClockNetwork, ClockNodeIndex};
 use self::data::*;
@@ -37,8 +42,6 @@ unsafe impl IndexType for DataNodeIndex {
     fn max() -> Self { DataNodeIndex::new(DefaultIx::max() as usize) }
 }
 
-pub type InputId = usize;
-
 pub type DataInputSocket = InputSocket<DataNodeIndex>;
 
 pub enum DataClockInputNode {
@@ -48,7 +51,7 @@ pub enum DataClockInputNode {
 
 pub type DataClockInputSocket = InputSocket<DataClockInputNode>;
 
-pub struct DataNetwork {}
+pub type DataNetwork = Network<DataNode, DataNodeIndex>;
 
 pub struct ComputeDataReqs<'a> {
     clock_inputs: &'a [DataClockInputSocket],

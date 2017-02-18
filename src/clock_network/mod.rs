@@ -6,17 +6,11 @@
 use std::fmt;
 use std::error;
 use std::cell::Cell;
-use std::collections::HashMap;
 use std::ops::Deref;
-use itertools::Itertools;
-use petgraph::stable_graph::StableDiGraph;
 use petgraph::graph::{NodeIndex, IndexType, DefaultIx};
-use petgraph::algo::has_path_connecting;
-use petgraph::Direction;
 
 use utils::{modulo_one, almost_eq};
 use knob::{Knob, Knobs, KnobValue, KnobPatch, KnobEvent};
-use interconnect::Interconnector;
 use event::{Event, Events};
 use datatypes::{Update, DeltaT};
 use network::{Network, NetworkNode, InputId, InputSocket, NetworkError, NetworkEvent};
