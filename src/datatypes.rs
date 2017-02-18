@@ -1,11 +1,18 @@
-//! Declarations of various re-used dataflow types and type aliases.
+//! Declarations of various re-used dataflow types, type aliases, and traits.
 use std::fmt;
 use std::error;
+
+use event::Events;
 use knob::KnobError;
 use clock_network::ClockError;
 
 /// Floating-point duration, in units of seconds.
 pub type DeltaT = f64;
+
+pub trait Update {
+    /// Update an entity, possibly emitting events as a result.
+    fn update(&mut self, df: DeltaT) -> Events;
+}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 /// Floating-point representation of a rate, permitting the use of various

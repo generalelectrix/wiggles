@@ -325,7 +325,7 @@ impl ClockNodePrototype {
                                 // make sure the input IDs are consistent and
                                 // monotonically increasing.
                                 debug_assert!(input_id == i);
-                                ClockInputSocket::new(name, input_id, *node_id)
+                                ClockInputSocket::new(name, *node_id)
                             })
                        .collect::<Vec<_>>();
         Ok(ClockNode {
