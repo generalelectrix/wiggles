@@ -2,7 +2,7 @@
 use std::cell::Cell;
 use std::cmp::max;
 use datatypes::DeltaT;
-use network::InputId;
+use network::{InputId, NetworkNode};
 use clock_network::{
     ClockValue,
     ClockNetwork,
@@ -70,8 +70,13 @@ impl ComputeClock for ClockMultiplier {
                      knobs: &[Knob],
                      g: &ClockNetwork)
                      -> ClockValue {
-        // get current time from upstream clock
-        let upstream_val = inputs[SOURCE_INPUT_ID].input.get_value(g);
+        // Get current time from upstream clock.
+        // Panic if the node doesn't exist; this invariant needs to be upheld by the public API of
+        // this package.
+        let upstream_id = inputs[SOURCE_INPUT_ID].input;
+        let upstream_val =
+            g.get_value_from_node(upstream_id)
+             .expect(&format!("Invalid upstream clock id: {:?}", upstream_id));
         // get current multiplier from control knob
         let multiplier = knobs[MULT_KNOB_ID].positive_float();
 

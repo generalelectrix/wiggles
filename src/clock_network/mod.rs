@@ -87,15 +87,6 @@ impl ClockValue {
 /// Newtype declaration to ensure we don't mix up nodes between different graph domains.
 pub struct ClockNodeIndex(pub NodeIndex);
 
-impl ClockNodeIndex {
-    /// Get the value from this input.
-    /// Panics if the node does not exist.
-    pub fn get_value(&self, clock_network: &ClockNetwork) -> ClockValue {
-        debug_assert!(clock_network.contains_node(*self));
-        clock_network.get_value_from_node(*self).unwrap()
-    }
-}
-
 impl From<NodeIndex> for ClockNodeIndex {
     fn from(n: NodeIndex) -> Self {
         ClockNodeIndex(n)
