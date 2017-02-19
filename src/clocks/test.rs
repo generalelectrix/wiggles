@@ -44,7 +44,7 @@ fn test_basic_clock_reset_emit_event() {
     //updating should emit a knob state change event
     let events = network.update(0.5);
     let correct_event = Event::Knob(KnobEvent::ValueChanged {
-        patch: KnobPatch::Clock {node: node_id, id: BASIC_RESET_KNOB_ID },
+        patch: KnobPatch::new(node_id, BASIC_RESET_KNOB_ID),
         value: KnobValue::Button(false)
     });
     assert_eq!(events, Events::single(correct_event));
