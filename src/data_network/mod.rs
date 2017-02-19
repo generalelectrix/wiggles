@@ -180,7 +180,13 @@ pub trait UpdateData {
 }
 
 pub enum DataflowEvent {
-    ClockInputSwapped{ node: DataNodeIndex, input_id: InputId, new_input: ClockNodeIndex },
+    ClockInputSwapped{ node: DataNodeIndex, input_id: InputId, new_input: ClockNodeIndex },\
+    /// A dataflow node has been added.
+    NodeAdded { node: DataNodeIndex, name: String },
+    /// A node has been removed.
+    NodeRemoved { node: DataNodeIndex, name: String },
+    /// A node has been renamed.
+    NodeRenamed { node: DataNodeIndex, name: String},
 }
 
 pub enum DataflowError {
