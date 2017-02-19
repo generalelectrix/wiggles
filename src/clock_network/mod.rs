@@ -270,7 +270,7 @@ impl Knobs for ClockNode {
 /// Helper function to create an event to register a clock changing the state of
 /// a button-type knob as a result of registering a transient button press.
 pub fn clock_button_update(node: ClockNodeIndex, knob: &Knob, state: bool) -> Event {
-    let patch = KnobPatch::Clock { node: node, id: knob.id() };
+    let patch = KnobPatch::new(node, knob.id());
     let value = KnobValue::Button(state);
     KnobEvent::ValueChanged { patch: patch, value: value }.into()
 }

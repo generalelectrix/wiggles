@@ -10,6 +10,12 @@ use clock_network::{
     ClockEvent,
 };
 use clocks::create_prototypes;
+use data_network::{
+    DataNetwork,
+    DataNodeIndex,
+    DataflowError,
+    DataflowEvent,
+};
 use datatypes::Update;
 use event::Events;
 use knob::{KnobEvent, PatchBay, KnobPatch, KnobValue};
@@ -31,6 +37,7 @@ pub struct Master {
     patch_bay: PatchBay,
     clock_network: ClockNetwork,
     clock_types: HashMap<String,ClockNodePrototype>,
+    data_network: DataNetwork,
 }
 
 type ApiResult = Result<Events,ErrorMessage>;
@@ -51,11 +58,16 @@ impl Master {
         Master {
             patch_bay: PatchBay::new(),
             clock_network: ClockNetwork::new(),
-            clock_types: proto_map }
+            clock_types: proto_map,
+            data_network: DataNetwork::new(),
+         }
     }
 
     pub fn update(&mut self, dt: DeltaT) -> Events {
-        self.clock_network.update(dt)
+        let mut clock_events = self.clock_network.update(dt);
+        let data_events = self.data_network.update(dt);
+        clock_events.extend(data_events);
+        clock_events
     }
 
     pub fn render(&self, clock_nodes: &[ClockNodeIndex]) -> RenderResponse {
@@ -117,7 +129,8 @@ impl Master {
     }
 
     pub fn set_knob(&mut self, patch: KnobPatch, value: KnobValue) -> ApiResult {
-        let e = self.patch_bay.set_knob_value(patch, value, &mut self.clock_network)?;
+        let e = self.patch_bay.set_knob_value(
+            patch, value, &mut self.clock_network, &mut self.data_network)?;
         events!(e)
     }
 }

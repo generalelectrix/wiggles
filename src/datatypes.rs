@@ -5,6 +5,7 @@ use std::error;
 use event::Events;
 use knob::KnobError;
 use clock_network::{ClockError, ClockNetworkError};
+use data_network::{DataflowError, DataNetworkError};
 
 /// Floating-point duration, in units of seconds.
 pub type DeltaT = f64;
@@ -39,6 +40,7 @@ impl Rate {
 /// Top-level wrapper for all subdomain errors.
 pub enum ErrorMessage {
     Clock(ClockError),
+    Data(DataflowError),
     Knob(KnobError),
 }
 
@@ -46,6 +48,7 @@ impl fmt::Display for ErrorMessage {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ErrorMessage::Clock(ref msg) => msg.fmt(f),
+            ErrorMessage::Data(ref msg) => msg.fmt(f),
             ErrorMessage::Knob(ref msg) => msg.fmt(f),
         }
     }
@@ -55,6 +58,7 @@ impl error::Error for ErrorMessage {
     fn description(&self) -> &str { 
         match *self {
             ErrorMessage::Clock(ref msg) => msg.description(),
+            ErrorMessage::Data(ref msg) => msg.description(),
             ErrorMessage::Knob(ref msg) => msg.description(),
         }
      }
@@ -62,6 +66,7 @@ impl error::Error for ErrorMessage {
      fn cause(&self) -> Option<&error::Error> {
         match *self {
             ErrorMessage::Clock(ref msg) => Some(msg),
+            ErrorMessage::Data(ref msg) => Some(msg),
             ErrorMessage::Knob(ref msg) => Some(msg),
         }
      }
@@ -83,5 +88,17 @@ impl From<ClockError> for ErrorMessage {
 impl From<ClockNetworkError> for ErrorMessage {
     fn from(e: ClockNetworkError) -> Self {
         ClockError::Network(e).into()
+    }
+}
+
+impl From<DataflowError> for ErrorMessage {
+    fn from(err: DataflowError) -> Self {
+        ErrorMessage::Data(err)
+    }
+}
+
+impl From<DataNetworkError> for ErrorMessage {
+    fn from(e: DataNetworkError) -> Self {
+        DataflowError::Network(e).into()
     }
 }

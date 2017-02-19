@@ -4,8 +4,9 @@ use std::error;
 use std::fmt;
 
 use clock_network::{ClockNodeIndex, ClockNode, ClockNetwork};
+use data_network::{DataNodeIndex, DataNode, DataNetwork};
 use datatypes::{Rate, ErrorMessage};
-use network::NetworkNode;
+use network::{NetworkNode, NetworkNodeId};
 
 
 #[derive(PartialEq, Debug)]
@@ -165,8 +166,36 @@ impl Knob {
 }
 
 #[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
-pub enum KnobPatch {
-    Clock { node: ClockNodeIndex, id: KnobId },
+pub struct KnobPatch {
+    node: KnobNode,
+    id: KnobId,
+}
+
+impl KnobPatch {
+    pub fn new<N: Into<KnobNode>>(node: N, id: KnobId) -> Self {
+        KnobPatch {
+            node: node.into(),
+            id: id,
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
+pub enum KnobNode {
+    Clock(ClockNodeIndex),
+    Data(DataNodeIndex),
+}
+
+impl From<ClockNodeIndex> for KnobNode {
+    fn from(n: ClockNodeIndex) -> Self {
+        KnobNode::Clock(n)
+    }
+}
+
+impl From<DataNodeIndex> for KnobNode {
+    fn from(n: DataNodeIndex) -> Self {
+        KnobNode::Data(n)
+    }
 }
 
 #[derive(Debug)]
@@ -181,41 +210,62 @@ pub struct PatchBay {
 impl PatchBay {
     pub fn new() -> Self { PatchBay { patches: HashMap::new() }}
 
-    pub fn add_clock_node(&mut self, node: &ClockNode) -> KnobEvent {
+    fn add_node<N: Into<KnobNode>>(&mut self, node_id: N, knobs: &[Knob]) -> KnobEvent {
+        let node_id = node_id.into();
         let patches: Vec<_> =
-            node.knobs()
-                .iter()
+            knobs.iter()
                 .map(|ref knob| {
-                    let patch = KnobPatch::Clock { node: node.id(), id: knob.id };
+                    let patch = KnobPatch::new(node_id, knob.id);
                     self.patches.insert(patch, knob.value);
                     patch
                 }).collect();
         KnobEvent::KnobPatchesAdded(patches)
     }
 
+    pub fn add_clock_node(&mut self, node: &ClockNode) -> KnobEvent {
+        self.add_node(node.id(), node.knobs())
+    }
+
+    pub fn add_data_node(&mut self, node: &DataNode) -> KnobEvent {
+        self.add_node(node.id(), node.knobs())
+    }
+
     /// Remove all patches from a provided clock node, presumably because it has
     /// been removed.
-    pub fn remove_clock_node(&mut self, node: &ClockNode) -> KnobEvent {
+    fn remove_node<N: Into<KnobNode>>(&mut self, node_id: N, knobs: &[Knob]) -> KnobEvent {
+        let node_id = node_id.into();
         let patches: Vec<_> =
-            node.knobs()
-                .iter()
+            knobs.iter()
                 .map(|ref knob| {
-                    let patch = KnobPatch::Clock { node: node.id(), id: knob.id() };
+                    let patch = KnobPatch::new(node_id, knob.id());
                     self.patches.remove(&patch);
                     patch
                 }).collect();
         KnobEvent::KnobPatchesDeleted(patches)
     }
 
+    pub fn remove_clock_node(&mut self, node: &ClockNode) -> KnobEvent {
+        self.remove_node(node.id(), node.knobs())
+    }
+
+    pub fn remove_data_node(&mut self, node: &DataNode) -> KnobEvent {
+        self.remove_node(node.id(), node.knobs())
+    }
+
     pub fn set_knob_value(&self,
                           patch: KnobPatch,
                           value: KnobValue,
-                          cg: &mut ClockNetwork)
-                          -> Result<KnobEvent, ErrorMessage> {
+                          clock_network: &mut ClockNetwork,
+                          data_network: &mut DataNetwork,
+                          ) -> Result<KnobEvent, ErrorMessage> {
         // determine which graph to patch into
-        match patch {
-            KnobPatch::Clock { node, id } => {
-                cg.get_node_mut(node)?.set_knob_value(id, value)?;
+        match patch.node {
+            KnobNode::Clock(node) => {
+                clock_network.get_node_mut(node)?.set_knob_value(patch.id, value)?;
+                Ok(KnobEvent::ValueChanged { patch: patch, value: value })
+            }
+            KnobNode::Data(node) => {
+                data_network.get_node_mut(node)?.set_knob_value(patch.id, value)?;
                 Ok(KnobEvent::ValueChanged { patch: patch, value: value })
             }
         }

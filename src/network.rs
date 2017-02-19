@@ -10,6 +10,7 @@ use petgraph::algo::has_path_connecting;
 use datatypes::{Update, DeltaT};
 use event::Events;
 use interconnect::{Interconnector, ListenerId};
+use knob::Knobs;
 
 #[derive(PartialEq, Debug)]
 pub enum NetworkEvent<I> {
@@ -47,7 +48,7 @@ impl<T> NetworkNodeId for T where T:
     + ops::Deref<Target = NodeIndex>
     + From<NodeIndex> {}
 
-pub trait NetworkNode<I: NetworkNodeId>: Update {
+pub trait NetworkNode<I: NetworkNodeId>: Update + Knobs {
 
     /// Return a slice of the intra-network connections from this node.
     fn input_sockets(&self) -> &[InputSocket<I>];

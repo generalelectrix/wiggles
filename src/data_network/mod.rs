@@ -2,8 +2,7 @@
 //! Each node can be driven by zero or more clocks as well as upstream dataflow nodes.
 //! Nodes have no access to upstream data during the update step, but can access their upstream
 //! dependencies during rendering.
-use std::fmt::Debug;
-use std::ops::Deref;
+use std::{fmt, error, ops};
 use petgraph::graph::{NodeIndex, IndexType, DefaultIx};
 
 use datatypes::{DeltaT, Update};
@@ -17,7 +16,7 @@ use network::{
     NetworkError,
     NetworkEvent,
 };
-use knob::Knob;
+use knob::{Knob, Knobs};
 use clock_network::{ClockNetwork, ClockNodeIndex, ClockInputSocket, ClockNetworkError};
 use self::data::*;
 
@@ -33,7 +32,7 @@ impl From<NodeIndex> for DataNodeIndex {
     }
 }
 
-impl Deref for DataNodeIndex {
+impl ops::Deref for DataNodeIndex {
     type Target = NodeIndex;
     fn deref(&self) -> &NodeIndex { &self.0 }
 }
@@ -86,6 +85,11 @@ impl DataNode {
             &mut self, id: InputId) -> Result<&mut ClockInputSocket, DataflowError> {
         self.clock_inputs.get_mut(id).ok_or(DataflowError::InvalidClockInputId(self.id, id))
     }
+}
+
+impl Knobs for DataNode {
+    fn knobs(&self) -> &[Knob] { &self.knobs }
+    fn knobs_mut(&mut self) -> &mut [Knob] { &mut self.knobs }
 }
 
 impl NetworkNode<DataNodeIndex> for DataNode {
@@ -141,7 +145,6 @@ impl DataNetwork {
         self.get_node_mut(node_index)?.clock_input_socket_mut(id)?.input = new_source;
 
         Ok(DataflowEvent::ClockInputSwapped{ node: node_index, input_id: id, new_input: new_source })
-
     }
 
 }
@@ -154,7 +157,7 @@ pub struct ComputeDataReqs<'a> {
     dg: &'a DataNetwork,
 }
 
-pub trait DataProvider: ComputeData + UpdateData + Debug {}
+pub trait DataProvider: ComputeData + UpdateData + fmt::Debug {}
 
 pub trait ComputeData {
     /// Get this node's value with a phase offset, in whatever internal format makes sense for it,
@@ -180,7 +183,7 @@ pub trait UpdateData {
 }
 
 pub enum DataflowEvent {
-    ClockInputSwapped{ node: DataNodeIndex, input_id: InputId, new_input: ClockNodeIndex },\
+    ClockInputSwapped{ node: DataNodeIndex, input_id: InputId, new_input: ClockNodeIndex },
     /// A dataflow node has been added.
     NodeAdded { node: DataNodeIndex, name: String },
     /// A node has been removed.
@@ -189,10 +192,34 @@ pub enum DataflowEvent {
     NodeRenamed { node: DataNodeIndex, name: String},
 }
 
+#[derive(Debug)]
 pub enum DataflowError {
     InvalidClockInputId(DataNodeIndex, InputId),
     Network(DataNetworkError),
     Clock(ClockNetworkError),
+}
+
+impl fmt::Display for DataflowError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            DataflowError::InvalidClockInputId(node, input) =>
+                write!(f, "Invalid clock input id {:?} for data node {}.", node, input),
+            DataflowError::Network(ref err) => {
+                write!(f, "Data network error. ")?;
+                err.fmt(f)
+            }
+            DataflowError::Clock(ref err) => {
+                write!(f, "Clock network error resulting from dataflow operation. ")?;
+                err.fmt(f)
+            }
+        }
+    }
+}
+
+impl error::Error for DataflowError {
+    // TODO: description messages, though we may never need them
+    fn description(&self) -> &str { "TODO: descriptions for DataflowError" }
+    fn cause(&self) -> Option<&error::Error> { None }
 }
 
 impl From<DataNetworkError> for DataflowError {
