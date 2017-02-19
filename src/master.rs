@@ -5,7 +5,7 @@ use clock_network::{
     ClockValue,
     ClockNetwork,
     ClockNodeIndex,
-    ClockNodePrototype,
+    ClockNode,
     ClockError,
     ClockEvent,
 };
@@ -36,7 +36,6 @@ macro_rules! events {
 pub struct Master {
     patch_bay: PatchBay,
     clock_network: ClockNetwork,
-    clock_types: HashMap<String,ClockNodePrototype>,
     data_network: DataNetwork,
 }
 
@@ -47,18 +46,13 @@ pub struct RenderResponse {
     clock_values: Vec<Result<ClockValue,ErrorMessage>>,
 }
 
-// These methods represent the public API for this package.
+// These methods represent the public API for the interlocking dataflow networks and knob patch
+// system.
 impl Master {
     pub fn new() -> Self {
-        let proto_map: HashMap<String,ClockNodePrototype> =
-            create_prototypes()
-            .into_iter()
-            .map(|p| (p.type_name().to_string(), p))
-            .collect();
         Master {
             patch_bay: PatchBay::new(),
             clock_network: ClockNetwork::new(),
-            clock_types: proto_map,
             data_network: DataNetwork::new(),
          }
     }
@@ -82,21 +76,9 @@ impl Master {
 
     // methods relating to adding, removing, or modifying nodes from either network
 
-    pub fn new_clock(
-            &mut self,
-            prototype_name: &str,
-            name: String,
-            inputs: &[ClockNodeIndex])
-            -> ApiResult {
-        // Get a valid prototype or fail.
-        let proto =
-            self.clock_types
-                .get(prototype_name)
-                .ok_or(ClockError::UnknownPrototype(prototype_name.to_string()))?;
-        // Create the new node.
-        let node = proto.create_node(name.clone(), inputs)?;
+    pub fn new_clock(&mut self, node: ClockNode) -> ApiResult {
         let node = self.clock_network.add_node(node)?;
-        let ce = ClockEvent::NodeAdded{node: node.id(), name: name};
+        let ce = ClockEvent::NodeAdded{node: node.id(), name: node.name.clone()};
 
         // Add knob patches for the new node.
         // Since we already added the node to the network, this operation must not fail or we
