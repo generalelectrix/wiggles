@@ -18,7 +18,7 @@ use network::{
     NetworkEvent,
 };
 use knob::Knob;
-use clock_network::{ClockNetwork, ClockNodeIndex};
+use clock_network::{ClockNetwork, ClockNodeIndex, ClockInputSocket, ClockNetworkError};
 use self::data::*;
 
 mod data;
@@ -53,13 +53,6 @@ unsafe impl IndexType for DataNodeIndex {
 
 pub type DataInputSocket = InputSocket<DataNodeIndex>;
 
-#[derive(Debug)]
-pub enum DataClockInputNode {
-    Clock(ClockNodeIndex),
-    Data{node: DataNodeIndex, input: InputId, clock_input: bool}
-}
-
-pub type DataClockInputSocket = InputSocket<DataClockInputNode>;
 pub type DataNetworkEvent = NetworkEvent<DataNodeIndex>;
 pub type DataNetworkError = NetworkError<DataNodeIndex>;
 
@@ -76,12 +69,23 @@ pub struct DataNode {
     /// Named input sockets that connect this node to upstream clocks.
     inputs: Vec<DataInputSocket>,
     /// Named input sockets that provide this node with clock signals.
-    clock_inputs: Vec<DataClockInputSocket>,
+    clock_inputs: Vec<ClockInputSocket>,
     /// Named knobs that provide control parameters.
     knobs: Vec<Knob>,
     /// The stored behavior used to provide data.  It may have internal state
     /// that will be updated during the global timestep update.
     data_provider: Box<DataProvider>,
+}
+
+impl DataNode {
+    pub fn clock_input_socket(&self, id: InputId) -> Result<&ClockInputSocket, DataflowError> {
+        self.clock_inputs.get(id).ok_or(DataflowError::InvalidClockInputId(self.id, id))
+    }
+
+    pub fn clock_input_socket_mut(
+            &mut self, id: InputId) -> Result<&mut ClockInputSocket, DataflowError> {
+        self.clock_inputs.get_mut(id).ok_or(DataflowError::InvalidClockInputId(self.id, id))
+    }
 }
 
 impl NetworkNode<DataNodeIndex> for DataNode {
@@ -112,10 +116,38 @@ impl Update for DataNode {
     }
 }
 
-pub type DataNetwork = Network<DataNode, DataNodeIndex>;
+// placeholder type for registering an external dependency on a dataflow node
+pub type DataListener = usize;
+
+pub type DataNetwork = Network<DataNode, DataNodeIndex, DataListener>;
+
+impl DataNetwork {
+    pub fn swap_clock_input(
+            &mut self,
+            node_index: DataNodeIndex,
+            id: InputId,
+            new_source: ClockNodeIndex,
+            clock_network: &mut ClockNetwork)
+            -> Result<DataflowEvent, DataflowError> {
+        // identify the current node connected to this input
+        let current_source = self.get_node(node_index)?.clock_input_socket(id)?.input;
+
+        // register this node with the clock network as a dependency
+        clock_network.add_listener(new_source, node_index)?;
+        // unregister the old connection
+        clock_network.remove_listener(current_source, node_index);
+        
+        // swap the input at the node level
+        self.get_node_mut(node_index)?.clock_input_socket_mut(id)?.input = new_source;
+
+        Ok(DataflowEvent::ClockInputSwapped{ node: node_index, input_id: id, new_input: new_source })
+
+    }
+
+}
 
 pub struct ComputeDataReqs<'a> {
-    clock_inputs: &'a [DataClockInputSocket],
+    clock_inputs: &'a [ClockInputSocket],
     data_inputs: &'a [DataInputSocket],
     knobs: &'a [Knob],
     cg: &'a ClockNetwork,
@@ -145,4 +177,26 @@ pub trait ComputeData {
 pub trait UpdateData {
     /// Update this data provider's state by a specified timestep.
     fn update(&mut self, id: DataNodeIndex, knobs: &mut [Knob], dt: DeltaT) -> Events;
+}
+
+pub enum DataflowEvent {
+    ClockInputSwapped{ node: DataNodeIndex, input_id: InputId, new_input: ClockNodeIndex },
+}
+
+pub enum DataflowError {
+    InvalidClockInputId(DataNodeIndex, InputId),
+    Network(DataNetworkError),
+    Clock(ClockNetworkError),
+}
+
+impl From<DataNetworkError> for DataflowError {
+    fn from(err: DataNetworkError) -> Self {
+        DataflowError::Network(err)
+    }
+}
+
+impl From<ClockNetworkError> for DataflowError {
+    fn from(e: ClockNetworkError) -> Self {
+        DataflowError::Clock(e)
+    }
 }

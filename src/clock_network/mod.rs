@@ -12,6 +12,7 @@ use petgraph::graph::{NodeIndex, IndexType, DefaultIx};
 use utils::{modulo_one, almost_eq};
 use knob::{Knob, Knobs, KnobValue, KnobPatch, KnobEvent};
 use event::{Event, Events};
+use data_network::DataNodeIndex;
 use datatypes::{Update, DeltaT};
 use network::{Network, NetworkNode, InputId, InputSocket, NetworkError, NetworkEvent};
 
@@ -111,7 +112,19 @@ unsafe impl IndexType for ClockNodeIndex {
     fn max() -> Self { ClockNodeIndex::new(DefaultIx::max() as usize) }
 }
 
-pub type ClockNetwork = Network<ClockNode, ClockNodeIndex>;
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub enum ClockListener {
+    Dataflow(DataNodeIndex),
+    External, // TODO: decide how to keep track/identify external listeners
+}
+
+impl From<DataNodeIndex> for ClockListener {
+    fn from(node: DataNodeIndex) -> Self {
+        ClockListener::Dataflow(node)
+    }
+}
+
+pub type ClockNetwork = Network<ClockNode, ClockNodeIndex, ClockListener>;
 
 impl ClockNetwork {
     /// Get the current clock value from any node in the graph.

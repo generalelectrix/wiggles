@@ -11,6 +11,9 @@ pub struct Interconnector<IntId: IndexType, ExtId: Eq + Copy> {
     _marker: PhantomData<IntId>,
 }
 
+pub trait ListenerId: Eq + Copy {}
+impl<T> ListenerId for T where T: Eq + Copy {}
+
 impl<IntId: IndexType, ExtId: Eq + Copy> Interconnector<IntId, ExtId> {
     pub fn new() -> Self { Interconnector { connections: Vec::new(), _marker: PhantomData } }
 

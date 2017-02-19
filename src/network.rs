@@ -9,7 +9,7 @@ use petgraph::algo::has_path_connecting;
 
 use datatypes::{Update, DeltaT};
 use event::Events;
-use interconnect::Interconnector;
+use interconnect::{Interconnector, ListenerId};
 
 #[derive(PartialEq, Debug)]
 pub enum NetworkEvent<I> {
@@ -33,9 +33,6 @@ impl<T> InputSocket<T> {
 
     pub fn name(&self) -> &'static str { self.name }
 }
-
-/// Placeholder type for keeping track of other domains listening to the clock domain.
-type ExternalListener = usize;
 
 pub trait NetworkNodeId:
     IndexType
@@ -75,15 +72,15 @@ pub trait NetworkNode<I: NetworkNodeId>: Update {
 
 #[derive(Debug)]
 /// A network is composed of nodes and dumb edges that just act as wires.
-pub struct Network<N: NetworkNode<I>, I: NetworkNodeId> {
+pub struct Network<N: NetworkNode<I>, I: NetworkNodeId, E: ListenerId> {
     /// The backing graph that holds the individual nodes.
     g:  StableDiGraph<N, ()>,
     /// A collection of connections from nodes to other dataflow domains.
     /// Indexed using the same node indices as the main graph.
-    external_connections: Interconnector<I, ExternalListener>,
+    external_connections: Interconnector<I, E>,
 }
 
-impl<N: NetworkNode<I>, I: NetworkNodeId> Network<N, I> {
+impl<N: NetworkNode<I>, I: NetworkNodeId, E: ListenerId> Network<N, I, E> {
     /// Create an empty network.
     pub fn new() -> Self {
         Network {
@@ -186,18 +183,12 @@ impl<N: NetworkNode<I>, I: NetworkNodeId> Network<N, I> {
         self.get_node_mut(node_index)?.set_input(id, new_source)?;
 
         // remove old edge, create new edge
-        // if there wasn't an edge there, the graph state was inconsistent...
-        // for now, just ignore this.
-        // TODO: log this inconsistency or something
-        self.g.find_edge(*current_source, *node_index)
-            .map(|edge| self.g.remove_edge(edge));
-        
-        self.g.add_edge(*new_source, *node_index, ());
+        self.move_edge(node_index, current_source, new_source);
         Ok(NetworkEvent::InputSwapped{ node: node_index, input_id: id, new_input: new_source })
     }
 
     /// Return an error if connecting source to sink would create a cycle.
-    fn check_cycle(&self, source: I, sink: I) -> Result<(), NetworkError<I>> {
+    pub fn check_cycle(&self, source: I, sink: I) -> Result<(), NetworkError<I>> {
         let would_cycle =
             // if the source has sources
             self.g.edges_directed(*source, Direction::Incoming).next().is_some()
@@ -213,9 +204,35 @@ impl<N: NetworkNode<I>, I: NetworkNodeId> Network<N, I> {
             Ok(())
         }
     }
+
+    /// Move an edge entering a node to a different upstream source.
+    /// If the node doesn't have an edge connected to the given source, this inconsistency is
+    /// ignored.
+    fn move_edge(&mut self, node_index: I, curr_source: I, new_source: I) {
+        self.g.find_edge(*curr_source, *node_index).map(|edge| self.g.remove_edge(edge));
+        self.g.add_edge(*new_source, *node_index, ());
+    }
+
+    /// Add an external listener to a node, if that node exists.
+    pub fn add_listener<T: Into<E>>(&mut self, node: I, ext_id: T) -> Result<(), NetworkError<I>> {
+        if self.contains_node(node) {
+            self.external_connections.add(node, ext_id.into());
+            Ok(())
+        }
+        else {
+            Err(NetworkError::InvalidNodeId(node))
+        }
+    }
+
+    /// Remove a specified external listener from a node.
+    /// Does nothing if the node ID is invalid or if that listener was not registered.
+    // TODO: log this inconsistency.
+    pub fn remove_listener<T: Into<E>>(&mut self, node: I, ext_id: T) {
+        self.external_connections.remove(node, ext_id.into());
+    }
 }
 
-impl<N: NetworkNode<I>, I: NetworkNodeId> Update for Network<N, I> {
+impl<N: NetworkNode<I>, I: NetworkNodeId, E: ListenerId> Update for Network<N, I, E> {
     fn update(&mut self, dt: DeltaT) -> Events {
         let all_indices: Vec<NodeIndex> = self.g.node_indices().collect();
         all_indices.iter()
