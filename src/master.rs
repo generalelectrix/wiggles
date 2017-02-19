@@ -13,6 +13,7 @@ use clocks::create_prototypes;
 use data_network::{
     DataNetwork,
     DataNodeIndex,
+    DataNode,
     DataflowError,
     DataflowEvent,
 };
@@ -77,7 +78,7 @@ impl Master {
 
     // methods relating to adding, removing, or modifying nodes from either network
 
-    pub fn new_clock(&mut self, node: ClockNode) -> ApiResult {
+    pub fn add_clock(&mut self, node: ClockNode) -> ApiResult {
         let node = self.clock_network.add_node(node)?;
         let ce = ClockEvent::NodeAdded{node: node.id(), name: node.name.clone()};
 
@@ -109,6 +110,26 @@ impl Master {
         // Add knob patches for the incoming node.
         let ke_added = self.patch_bay.add_clock_node(self.clock_network.get_node(node_id)?);
         events!(node_removed, node_added, ke_removed, ke_added)
+    }
+
+    pub fn add_data_node(&mut self, node: DataNode) -> ApiResult {
+        // first validate that all of the requested clock inputs are OK
+        let clock_input_ids = node.clock_input_node_ids();
+        self.clock_network.check_nodes(&clock_input_ids)?;
+
+        let node = self.data_network.add_node(node)?;
+        let ce = DataflowEvent::NodeAdded{node: node.id(), name: node.name.clone()};
+
+        // Register all of the clock listeners.
+        for clock in clock_input_ids {
+            self.clock_network.add_listener(clock, node.id());
+        }
+
+        // Add knob patches for the new node.
+        // Since we already added the node to the network, this operation must not fail or we
+        // have a data integrity issue.
+        let ke = self.patch_bay.add_data_node(node);
+        events!(ce, ke)
     }
 
     pub fn delete_data_node(&mut self, node: DataNodeIndex) -> ApiResult {

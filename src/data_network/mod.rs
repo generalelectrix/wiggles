@@ -89,6 +89,10 @@ impl DataNode {
             &mut self, id: InputId) -> Result<&mut ClockInputSocket, DataflowError> {
         self.clock_inputs.get_mut(id).ok_or(DataflowError::InvalidClockInputId(self.id, id))
     }
+
+    pub fn clock_input_node_ids(&self) -> Vec<ClockNodeIndex> {
+        self.clock_input_sockets().iter().map(|socket| socket.input).collect()
+    }
 }
 
 impl Knobs for DataNode {
