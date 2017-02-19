@@ -261,11 +261,32 @@ impl<N: NetworkNode<I>, I: NetworkNodeId, E: ListenerId> Network<N, I, E> {
         }
     }
 
+    /// Register an external listener with an iterable of nodes.
+    pub fn add_listeners<T: IntoIterator<Item = I>, U: Into<E>>(
+            &mut self,
+            nodes: T,
+            ext_id: U,
+            ) -> Result<(), NetworkError<I>> {
+        let ext_id = ext_id.into();
+        for node in nodes {
+            self.add_listener(node, ext_id)?;
+        }
+        Ok(())
+    }
+
     /// Remove a specified external listener from a node.
     /// Does nothing if the node ID is invalid or if that listener was not registered.
     // TODO: log this inconsistency.
     pub fn remove_listener<T: Into<E>>(&mut self, node: I, ext_id: T) {
         self.external_connections.remove(node, ext_id.into());
+    }
+
+    /// Remove registrations from a single external id from an iterable of nodes.
+    pub fn remove_listeners<T: IntoIterator<Item = I>, U: Into<E>>(&mut self, nodes: T, ext_id: U) {
+        let ext_id = ext_id.into();
+        for node in nodes {
+            self.remove_listener(node, ext_id);
+        }
     }
 }
 

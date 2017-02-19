@@ -121,9 +121,7 @@ impl Master {
         let ce = DataflowEvent::NodeAdded{node: node.id(), name: node.name.clone()};
 
         // Register all of the clock listeners.
-        for clock in clock_input_ids {
-            self.clock_network.add_listener(clock, node.id());
-        }
+        self.clock_network.add_listeners(clock_input_ids, node.id());
 
         // Add knob patches for the new node.
         // Since we already added the node to the network, this operation must not fail or we
@@ -137,12 +135,37 @@ impl Master {
         // remove all related patches
         let ke = self.patch_bay.remove_data_node(&removed_node);
         // unregister this node from the clock network
-        for socket in removed_node.clock_input_sockets() {
-            self.clock_network.remove_listener(socket.input, removed_node.id());
-        }
+        self.clock_network.remove_listeners(removed_node.clock_input_node_ids(), removed_node.id());
+
         // signal the now-removed node
         let ce = DataflowEvent::NodeRemoved{node: node, name: removed_node.name};
         events!(ke, ce)
+    }
+
+    pub fn swap_data_node(&mut self, node_id: DataNodeIndex, node: DataNode) -> ApiResult {
+        // first validate that all of the requested clock inputs are OK
+        let clock_input_ids = node.clock_input_node_ids();
+        self.clock_network.check_nodes(&clock_input_ids)?;
+
+        let new_node_name = node.name.clone();
+        let old_node = self.data_network.swap_node(node_id, node)?;
+
+        let node_added = DataflowEvent::NodeAdded{node: node_id, name: new_node_name};
+        let node_removed = DataflowEvent::NodeRemoved{node: node_id, name: old_node.name.clone()};
+
+        let new_node = self.data_network.get_node(node_id)?;
+
+        // Unregister all of the old clock listeners.
+        self.clock_network.remove_listeners(old_node.clock_input_node_ids(), old_node.id());
+
+        // Register all of the clock listeners.
+        self.clock_network.add_listeners(clock_input_ids, new_node.id())?;
+
+        // Remove the knob patches for the departing node.
+        let ke_removed = self.patch_bay.remove_data_node(&old_node);
+        // Add knob patches for the incoming node.
+        let ke_added = self.patch_bay.add_data_node(new_node);
+        events!(node_removed, node_added, ke_removed, ke_added)
     }
 
     pub fn rename_clock(&mut self, node: ClockNodeIndex, name: String) -> ApiResult {
