@@ -284,7 +284,6 @@ pub trait ComputeClock {
 /// Message type to convey error conditions related to clock network operations.
 pub enum ClockError {
     MismatchedInputs { type_name: &'static str, expected: usize, provided: usize },
-    ExistingListenerCollection(ClockNodeIndex),
     UnknownPrototype(String),
     Network(ClockNetworkError),
 }
@@ -294,8 +293,6 @@ impl fmt::Display for ClockError {
         match *self {
             ClockError::MismatchedInputs { type_name, expected, provided } =>
                 write!(f, "Clock type {} expects {} inputs but was provided {}.", type_name, expected, provided),
-            ClockError::ExistingListenerCollection(node) =>
-                write!(f, "Tried to create a listener collection for node {:?} but it already has a non-empty one.", node),
             ClockError::UnknownPrototype(ref name) =>
                 write!(f, "Unknown clock node prototype: '{}'.", name),
             ClockError::Network(ref err) => {

@@ -1,4 +1,5 @@
 //! Types for dataflow.
+use std::cmp::{min, max};
 use std::ops::Deref;
 
 pub enum DataError {
@@ -39,6 +40,12 @@ pub enum Datatype {
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct Unipolar(pub f64);
 
+impl Unipolar {
+    pub fn coerce(self) -> Self {
+        Unipolar(self.0.min(1.0).max(0.0))
+    }
+}
+
 impl From<Bipolar> for Unipolar {
     fn from(bp: Bipolar) -> Self {
         Unipolar((bp.0 + 1.0) / 2.0)
@@ -70,6 +77,12 @@ impl Unipolar {
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct Bipolar(pub f64);
+
+impl Bipolar {
+    pub fn coerce(self) -> Self {
+        Bipolar(self.0.min(1.0).max(-1.0))
+    }
+}
 
 impl From<Unipolar> for Bipolar {
     fn from(up: Unipolar) -> Self {
@@ -106,6 +119,9 @@ impl From<Data> for Bipolar {
 pub struct IntegerEnum {pub value: EnumValue, pub size: EnumSize}
 
 impl IntegerEnum {
+    pub fn coerce(self) -> Self {
+        IntegerEnum{value: max(min(self.value, self.size.0-1), 0), size: self.size}
+    }
 
     pub fn into_uint(self, size: EnumSize) -> IntegerEnum {
         if size == self.size {
@@ -134,6 +150,15 @@ impl Data {
             Data::Unipolar(up) => up.into_uint(size),
             Data::Bipolar(bp) => bp.into_uint(size),
             Data::UInt(ie) => ie.into_uint(size),
+        }
+    }
+
+    /// Get a copy of this data with its value clipped to be inside the valid range.
+    pub fn coerce(self) -> Data {
+        match self {
+            Data::Unipolar(up) => Data::Unipolar(up.coerce()),
+            Data::Bipolar(bp) => Data::Bipolar(bp.coerce()),
+            Data::UInt(ie) => Data::UInt(ie.coerce()),
         }
     }
 }
