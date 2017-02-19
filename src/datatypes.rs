@@ -55,7 +55,7 @@ impl fmt::Display for ErrorMessage {
 }
 
 impl error::Error for ErrorMessage {
-    fn description(&self) -> &str { 
+    fn description(&self) -> &str {
         match *self {
             ErrorMessage::Clock(ref msg) => msg.description(),
             ErrorMessage::Data(ref msg) => msg.description(),

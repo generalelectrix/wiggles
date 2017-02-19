@@ -33,6 +33,7 @@ macro_rules! events {
     )
 }
 
+
 pub struct Master {
     patch_bay: PatchBay,
     clock_network: ClockNetwork,
@@ -66,7 +67,7 @@ impl Master {
 
     pub fn render(&self, clock_nodes: &[ClockNodeIndex]) -> RenderResponse {
         let clock_values: Vec<_> = clock_nodes.iter()
-            .map(|idx| 
+            .map(|idx|
                 self.clock_network
                     .get_value_from_node(*idx)
                     .map_err(|r| r.into()))
@@ -94,6 +95,20 @@ impl Master {
         // signal the now-removed node
         let ce = ClockEvent::NodeRemoved{node: node, name: removed_node.name};
         events!(ke, ce)
+    }
+
+    pub fn swap_clock(&mut self, node_id: ClockNodeIndex, node: ClockNode) -> ApiResult {
+        let new_node_name = node.name.clone();
+        let old_node = self.clock_network.swap_node(node_id, node)?;
+
+        let node_added = ClockEvent::NodeAdded{node: node_id, name: new_node_name};
+        let node_removed = ClockEvent::NodeRemoved{node: node_id, name: old_node.name.clone()};
+
+        // Remove the knob patches for the departing node.
+        let ke_removed = self.patch_bay.remove_clock_node(&old_node);
+        // Add knob patches for the incoming node.
+        let ke_added = self.patch_bay.add_clock_node(self.clock_network.get_node(node_id)?);
+        events!(node_removed, node_added, ke_removed, ke_added)
     }
 
     pub fn delete_data_node(&mut self, node: DataNodeIndex) -> ApiResult {

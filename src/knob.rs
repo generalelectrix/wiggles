@@ -9,7 +9,6 @@ use datatypes::{Rate, ErrorMessage};
 use event::Event;
 use network::{NetworkNode, NetworkNodeId};
 
-
 #[derive(PartialEq, Debug)]
 /// Message enum encompassing knob-related events.
 pub enum KnobEvent {
@@ -283,7 +282,7 @@ impl fmt::Display for KnobError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             KnobError
-        ::TypeMismatch{ref expected, ref actual, ref name} => 
+        ::TypeMismatch{ref expected, ref actual, ref name} =>
                 write!(f,
                        "Type mismatch for knob '{}': knob is a {}, but received a {},",
                        name,
@@ -296,7 +295,7 @@ impl fmt::Display for KnobError {
 }
 
 impl error::Error for KnobError {
-    fn description(&self) -> &str { 
+    fn description(&self) -> &str {
         match *self {
             KnobError
         ::TypeMismatch{..} => "Knob type mismatch.",
