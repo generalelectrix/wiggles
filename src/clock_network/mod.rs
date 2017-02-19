@@ -319,6 +319,5 @@ impl fmt::Display for ClockError {
 impl error::Error for ClockError {
     // TODO: description messages, though we may never need them
     fn description(&self) -> &str { "TODO: descriptions for ClockError" }
-
-     fn cause(&self) -> Option<&error::Error> { None }
+    fn cause(&self) -> Option<&error::Error> { None }
 }

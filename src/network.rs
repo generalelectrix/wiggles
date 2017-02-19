@@ -1,8 +1,8 @@
 //! Attempt to generalize some features of dataflow network into generic types.
-use std::{ops, fmt, iter, slice, marker};
+use std::{ops, fmt, slice, marker, mem};
 
 use itertools::Itertools;
-use petgraph::graph::{NodeIndex, IndexType, DefaultIx};
+use petgraph::graph::{NodeIndex, IndexType};
 use petgraph::stable_graph::StableDiGraph;
 use petgraph::Direction;
 use petgraph::algo::has_path_connecting;
@@ -136,8 +136,8 @@ impl<N: NetworkNode<I>, I: NetworkNodeId, E: ListenerId> Network<N, I, E> {
         }
 
         // add edges to the input nodes
-        for input_node in input_nodes.iter() {
-            self.g.add_edge(**input_node, *node_id, ());
+        for upstream in input_nodes {
+            self.add_edge(node_id, upstream);
         }
         // write the id back into the new node
         let new_node = self.g.node_weight_mut(*node_id).unwrap();
@@ -166,6 +166,31 @@ impl<N: NetworkNode<I>, I: NetworkNodeId, E: ListenerId> Network<N, I, E> {
         // this node isn't feeding anything downstream, so we can safely delete it
         // first eliminate all of the incoming edges
         self.g.remove_node(*node).ok_or(NetworkError::InvalidNodeId(node))
+    }
+
+    /// Replace a node in the graph with a different node.
+    /// Return the node that was previously occupying this slot.
+    pub fn swap_node(&mut self, node_id: I, mut new_node: N) -> Result<N, NetworkError<I>> {
+        let input_nodes = new_node.input_node_ids();
+        // check to make sure all of the inputs on the incoming node are valid
+        self.check_nodes(&input_nodes)?;
+        // write the ID into the incoming node
+        new_node.set_id(node_id);
+
+        // swap the new node into the slot
+        let old_node = mem::replace(self.get_node_mut(node_id)?, new_node);
+
+        // remove every incoming edge associated with the old node
+        for upstream in old_node.input_node_ids() {
+            self.remove_edge(node_id, upstream);
+        }
+
+        // add edges for the new inputs
+        for upstream in input_nodes {
+            self.add_edge(node_id, upstream);
+        }
+
+        Ok(old_node)
     }
 
     /// Attempt to swap a particular input of a node for a different input.
@@ -206,12 +231,23 @@ impl<N: NetworkNode<I>, I: NetworkNodeId, E: ListenerId> Network<N, I, E> {
         }
     }
 
+    /// Remove an incoming edge from a node.
+    /// If the edge doesn't exist, this inconsistency is ignored.
+    fn remove_edge(&mut self, node_index: I, upstream: I) {
+        self.g.find_edge(*upstream, *node_index).map(|edge| self.g.remove_edge(edge));
+    }
+
+    /// Add an edge from a node to a given upstream node.
+    fn add_edge(&mut self, node_index: I, upstream: I) {
+        self.g.add_edge(*upstream, *node_index, ());
+    }
+
     /// Move an edge entering a node to a different upstream source.
     /// If the node doesn't have an edge connected to the given source, this inconsistency is
     /// ignored.
     fn move_edge(&mut self, node_index: I, curr_source: I, new_source: I) {
-        self.g.find_edge(*curr_source, *node_index).map(|edge| self.g.remove_edge(edge));
-        self.g.add_edge(*new_source, *node_index, ());
+        self.remove_edge(node_index, curr_source);
+        self.add_edge(node_index, new_source);
     }
 
     /// Add an external listener to a node, if that node exists.

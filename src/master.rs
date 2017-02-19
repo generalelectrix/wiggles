@@ -44,7 +44,7 @@ type ApiResult = Result<Events,ErrorMessage>;
 
 #[derive(Debug)]
 pub struct RenderResponse {
-    clock_values: Vec<Result<ClockValue,ErrorMessage>>
+    clock_values: Vec<Result<ClockValue,ErrorMessage>>,
 }
 
 // These methods represent the public API for this package.
@@ -80,7 +80,7 @@ impl Master {
         RenderResponse { clock_values: clock_values }
     }
 
-    // methods relating to adding, removing, or modifying clocks
+    // methods relating to adding, removing, or modifying nodes from either network
 
     pub fn new_clock(
             &mut self,
@@ -114,9 +114,27 @@ impl Master {
         events!(ke, ce)
     }
 
+    pub fn delete_data_node(&mut self, node: DataNodeIndex) -> ApiResult {
+        let removed_node = self.data_network.remove_node(node)?;
+        // remove all related patches
+        let ke = self.patch_bay.remove_data_node(&removed_node);
+        // unregister this node from the clock network
+        for socket in removed_node.clock_input_sockets() {
+            self.clock_network.remove_listener(socket.input, removed_node.id());
+        }
+        // signal the now-removed node
+        let ce = DataflowEvent::NodeRemoved{node: node, name: removed_node.name};
+        events!(ke, ce)
+    }
+
     pub fn rename_clock(&mut self, node: ClockNodeIndex, name: String) -> ApiResult {
         self.clock_network.get_node_mut(node)?.name = name.clone();
         events!(ClockEvent::NodeRenamed {node: node, name: name})
+    }
+
+    pub fn rename_data_node(&mut self, node: DataNodeIndex, name: String) -> ApiResult {
+        self.data_network.get_node_mut(node)?.name = name.clone();
+        events!(DataflowEvent::NodeRenamed {node: node, name: name})
     }
 
     pub fn swap_clock_input(
@@ -126,6 +144,24 @@ impl Master {
         new_source: ClockNodeIndex)
         -> ApiResult {
             events!(self.clock_network.swap_input(node, input, new_source)?)
+    }
+
+    pub fn swap_data_input(
+        &mut self,
+        node: DataNodeIndex,
+        input: InputId,
+        new_source: DataNodeIndex)
+        -> ApiResult {
+            events!(self.data_network.swap_input(node, input, new_source)?)
+    }
+
+    pub fn swap_data_clock_input(
+        &mut self,
+        node: DataNodeIndex,
+        input: InputId,
+        new_source: ClockNodeIndex)
+        -> ApiResult {
+            events!(self.data_network.swap_clock_input(node, input, new_source, &mut self.clock_network)?)
     }
 
     pub fn set_knob(&mut self, patch: KnobPatch, value: KnobValue) -> ApiResult {

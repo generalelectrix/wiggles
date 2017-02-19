@@ -2,6 +2,7 @@
 //! as the result of servicing some request.
 use knob::KnobEvent;
 use clock_network::{ClockEvent, ClockNetworkEvent};
+use data_network::{DataflowEvent, DataNetworkEvent};
 use std::iter::{FromIterator, IntoIterator};
 use std::ops::Index;
 
@@ -10,6 +11,7 @@ use std::ops::Index;
 pub enum Event {
     Knob(KnobEvent),
     Clock(ClockEvent),
+    Data(DataflowEvent),
 }
 
 impl From<KnobEvent> for Event {
@@ -27,6 +29,18 @@ impl From<ClockEvent> for Event {
 impl From<ClockNetworkEvent> for Event {
     fn from(event: ClockNetworkEvent) -> Self {
         Event::Clock(event.into())
+    }
+}
+
+impl From<DataflowEvent> for Event {
+    fn from(event: DataflowEvent) -> Self {
+        Event::Data(event)
+    }
+}
+
+impl From<DataNetworkEvent> for Event {
+    fn from(event: DataNetworkEvent) -> Self {
+        Event::Data(event.into())
     }
 }
 
