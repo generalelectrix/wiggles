@@ -10,12 +10,15 @@ use std::ops::Deref;
 use petgraph::graph::{NodeIndex, IndexType, DefaultIx};
 
 use utils::{modulo_one, almost_eq};
-use knob::{Knob, Knobs, KnobValue, KnobPatch, KnobEvent};
-use event::{Event, Events};
+use knob::{Knob, Knobs, KnobEvent};
+use event::{Events};
 use data_network::DataNodeIndex;
 use datatypes::{Update, DeltaT};
 use network::{Network, NetworkNode, InputId, InputSocket, NetworkError, NetworkEvent};
 
+pub use self::node_prototype::ClockNodePrototype;
+
+mod node_prototype;
 #[cfg(test)]
 mod test;
 
@@ -134,68 +137,7 @@ impl ClockNetwork {
     }
 }
 
-pub type ClockImplProducer = Box<Fn() -> Box<CompleteClock>>;
 
-/// Serve as a persistent prototype which can be used to create new instances of clock nodes.
-pub struct ClockNodePrototype {
-    /// A name that identifies this particular clock prototype.  For example,
-    /// "simple", "multiplier", etc.
-    type_name: &'static str,
-    /// The names and numeric IDs of the clock input ports.
-    inputs: Box<[(&'static str, InputId)]>,
-    /// The control knobs that this clock presents.
-    knobs: Box<[Knob]>,
-    /// A stored procedure that returns a trait object implementing the clock.
-    clock: ClockImplProducer,
-}
-
-impl ClockNodePrototype {
-    pub fn new(type_name: &'static str,
-               inputs: Box<[(&'static str, InputId)]>,
-               knobs: Box<[Knob]>,
-               clock: ClockImplProducer)
-               -> Self {
-        ClockNodePrototype {
-            type_name: type_name, inputs: inputs, knobs: knobs, clock: clock
-        }
-    }
-
-    pub fn type_name(&self) -> &'static str { self.type_name }
-
-    pub fn n_inputs(&self) -> usize { self.inputs.len() }
-
-    pub fn create_node(&self,
-                       name: String,
-                       input_nodes: &[ClockNodeIndex])
-                       -> Result<ClockNode, ClockError> {
-        if input_nodes.len() != self.inputs.len() {
-            return Err(
-                ClockError::MismatchedInputs {
-                    type_name: self.type_name,
-                    expected: self.inputs.len(),
-                    provided: input_nodes.len()});
-        }
-        let connected_inputs =
-            self.inputs.iter()
-                       .enumerate()
-                       .zip(input_nodes)
-                       .map(|((i, &(name, input_id)), node_id)| {
-                                // make sure the input IDs are consistent and
-                                // monotonically increasing.
-                                debug_assert!(input_id == i);
-                                ClockInputSocket::new(name, *node_id)
-                            })
-                       .collect::<Vec<_>>();
-        Ok(ClockNode {
-            name: name,
-            id: ClockNodeIndex(NodeIndex::new(0)), // use a placeholder id for now
-            inputs: connected_inputs,
-            knobs: self.knobs.clone().into_vec(),
-            current_value: Cell::new(None),
-            clock: (self.clock)(),
-        })
-    }
-}
 
 #[derive(Debug)]
 /// A single node in an arbitrary clock graph, accepting inputs, listening to
@@ -265,14 +207,6 @@ impl Update for ClockNode {
 impl Knobs for ClockNode {
     fn knobs(&self) -> &[Knob] { &self.knobs }
     fn knobs_mut(&mut self) -> &mut [Knob] { &mut self.knobs }
-}
-
-/// Helper function to create an event to register a clock changing the state of
-/// a button-type knob as a result of registering a transient button press.
-pub fn clock_button_update(node: ClockNodeIndex, knob: &Knob, state: bool) -> Event {
-    let patch = KnobPatch::new(node, knob.id());
-    let value = KnobValue::Button(state);
-    KnobEvent::ValueChanged { patch: patch, value: value }.into()
 }
 
 /// Given a timestep and the current state of a clock's control knobs, update

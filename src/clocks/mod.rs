@@ -7,9 +7,9 @@ pub use self::basic::Clock;
 pub use self::multiplier::ClockMultiplier;
 pub use self::triggered::TriggeredClock;
 
-use clock_network::{ClockNodePrototype, ClockNodeIndex, clock_button_update};
-use knob::{Knob, KnobId};
-use event::Events;
+use clock_network::{ClockNodePrototype, ClockNodeIndex};
+use knob::{Knob, KnobId, KnobPatch, button_update};
+use event::{Event, Events};
 
 #[cfg(test)]
 mod test;
@@ -30,7 +30,7 @@ pub fn action_if_button_pressed<F>(id: ClockNodeIndex, knobs: &mut [Knob], knob_
         if knob.get_button_state() {
             let action_events = action();
             knob.set_button_state(false);
-            let mut reset_events = Events::single(clock_button_update(id, knob, false));
+            let mut reset_events = Events::single(button_update(id, knob, false));
             reset_events.extend(action_events);
             Some(reset_events)
         }

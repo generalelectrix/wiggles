@@ -6,6 +6,7 @@ use std::fmt;
 use clock_network::{ClockNodeIndex, ClockNode, ClockNetwork};
 use data_network::{DataNodeIndex, DataNode, DataNetwork};
 use datatypes::{Rate, ErrorMessage};
+use event::Event;
 use network::{NetworkNode, NetworkNodeId};
 
 
@@ -305,4 +306,12 @@ impl error::Error for KnobError {
      }
 
      fn cause(&self) -> Option<&error::Error> { None }
+}
+
+/// Helper function to create an event to register a clock changing the state of
+/// a button-type knob as a result of registering a transient button press.
+pub fn button_update<N: Into<KnobNode>>(node: N, knob: &Knob, state: bool) -> Event {
+    let patch = KnobPatch::new(node, knob.id());
+    let value = KnobValue::Button(state);
+    KnobEvent::ValueChanged { patch: patch, value: value }.into()
 }

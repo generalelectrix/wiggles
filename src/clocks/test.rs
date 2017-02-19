@@ -1,6 +1,6 @@
 //! Tests of individual clock modules.
 use knob::{KnobValue, Knobs};
-use clock_network::{ClockNetwork, ClockNodePrototype, ClockValue, ClockNode};
+use clock_network::{ClockNetwork, ClockValue, ClockNode, ClockNodePrototype};
 use super::*;
 use super::basic::{INIT_RATE, RESET_KNOB_ID as BASIC_RESET_KNOB_ID};
 use super::multiplier::{MULT_KNOB_ID, RESET_KNOB_ID as MULT_RESET_KNOB_ID};
