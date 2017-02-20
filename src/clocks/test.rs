@@ -22,7 +22,7 @@ fn test_basic_clock() {
     let mut update_and_check = |interval, (float_val, ticked)| {
         network.update(interval);
         let res = network.get_value_from_node(node_id).unwrap();
-        ClockValue::from_float_value(float_val, ticked).assert_almost_eq_to(&res);
+        ClockValue::from_float_value(float_val, ticked).assert_almost_eq_to(res);
     };
 
     update_and_check(0.75, (0.75, false));
@@ -68,7 +68,7 @@ fn test_multiplier() {
     let update_and_check = |interval, (float_val, ticked), network: &mut ClockNetwork| {
         network.update(interval);
         let res = network.get_value_from_node(mult_id).unwrap();
-        ClockValue::from_float_value(float_val, ticked).assert_almost_eq_to(&res);
+        ClockValue::from_float_value(float_val, ticked).assert_almost_eq_to(res);
     };
 
     // initially should just track upstream clock
@@ -106,7 +106,7 @@ fn test_triggered_clock() {
     let update_and_check = |interval, (float_val, ticked), network: &mut ClockNetwork| {
         network.update(interval);
         let res = network.get_value_from_node(node_id).unwrap();
-        ClockValue::from_float_value(float_val, ticked).assert_almost_eq_to(&res);
+        ClockValue::from_float_value(float_val, ticked).assert_almost_eq_to(res);
     };
 
     let trigger = |network: &mut ClockNetwork| {

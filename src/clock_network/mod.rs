@@ -65,8 +65,8 @@ impl ClockValue {
     pub fn float_value(&self) -> f64 { self.tick_count as f64 + self.phase }
 
     /// Assert that this clock value is equivalent to another.
-    pub fn assert_almost_eq_to(&self, other: &ClockValue) {
-        let clock_info_dump = format!("clock a: {:?}, clock b: {:?}", *self, *other);
+    pub fn assert_almost_eq_to(&self, other: ClockValue) {
+        let clock_info_dump = format!("clock a: {:?}, clock b: {:?}", *self, other);
         assert!(almost_eq(self.phase, other.phase),
                 "clock a phase = {} but clock b phase = {}\n{}",
                 self.phase,
