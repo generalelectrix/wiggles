@@ -105,13 +105,8 @@ impl NetworkNode<DataNodeIndex> for DataNode {
         &self.inputs
     }
 
-    fn input_socket(&self, id: InputId) -> Result<&DataInputSocket, DataNetworkError> {
-        self.inputs.get(id).ok_or(NetworkError::InvalidInputId(self.id(), id))
-    }
-
-    fn input_socket_mut(
-            &mut self, id: InputId) -> Result<&mut DataInputSocket, DataNetworkError> {
-        self.inputs.get_mut(id).ok_or(NetworkError::InvalidInputId(self.id, id))
+    fn input_sockets_mut(&mut self) -> &mut [DataInputSocket] {
+        &mut self.inputs
     }
 
     fn id(&self) -> DataNodeIndex {

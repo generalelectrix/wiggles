@@ -166,13 +166,8 @@ impl NetworkNode<ClockNodeIndex> for ClockNode {
         &self.inputs
     }
 
-    fn input_socket(&self, id: InputId) -> Result<&ClockInputSocket, ClockNetworkError> {
-        self.inputs.get(id).ok_or(NetworkError::InvalidInputId(self.id(), id))
-    }
-
-    fn input_socket_mut(
-            &mut self, id: InputId) -> Result<&mut ClockInputSocket, ClockNetworkError> {
-        self.inputs.get_mut(id).ok_or(NetworkError::InvalidInputId(self.id, id))
+    fn input_sockets_mut(&mut self) -> &mut [ClockInputSocket] {
+        &mut self.inputs
     }
 
     fn id(&self) -> ClockNodeIndex {
