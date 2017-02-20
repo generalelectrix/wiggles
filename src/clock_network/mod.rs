@@ -222,12 +222,18 @@ pub trait ComputeClock {
                      -> ClockValue;
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 /// Message type to convey error conditions related to clock network operations.
 pub enum ClockError {
     MismatchedInputs { type_name: &'static str, expected: usize, provided: usize },
     UnknownPrototype(String),
     Network(ClockNetworkError),
+}
+
+impl From<ClockNetworkError> for ClockError {
+    fn from(e: ClockNetworkError) -> Self {
+        ClockError::Network(e)
+    }
 }
 
 impl fmt::Display for ClockError {

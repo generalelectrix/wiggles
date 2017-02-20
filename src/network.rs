@@ -12,9 +12,6 @@ use event::Events;
 use interconnect::{Interconnector, ListenerId};
 use knob::Knobs;
 
-#[cfg(test)]
-mod test;
-
 #[derive(PartialEq, Debug)]
 pub enum NetworkEvent<I> {
     InputSwapped{node: I, input_id: InputId, new_input: I},
@@ -310,7 +307,7 @@ impl<N: NetworkNode<I>, I: NetworkNodeId, E: ListenerId> Update for Network<N, I
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum NetworkError<I: NetworkNodeId> {
     InvalidNodeId(I),
     MessageCollection(Vec<NetworkError<I>>),
