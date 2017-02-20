@@ -120,4 +120,8 @@ fn test_triggered_clock() {
     update_and_check(0.25, (0.5, false), &mut network);
     update_and_check(0.25, (0.75, false), &mut network);
     update_and_check(0.25, (1.0, false), &mut network);
+    update_and_check(0.25, (1.0, false), &mut network);
+    trigger(&mut network);
+    update_and_check(0.25, (1.0, true), &mut network);
+    update_and_check(0.25, (1.25, false), &mut network);
 }
