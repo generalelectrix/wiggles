@@ -3,6 +3,7 @@
 extern crate log;
 extern crate petgraph;
 extern crate itertools;
+extern crate wiggles_value;
 mod utils;
 mod knob;
 mod datatypes;

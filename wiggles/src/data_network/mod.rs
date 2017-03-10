@@ -18,9 +18,7 @@ use network::{
 };
 use knob::{Knob, Knobs};
 use clock_network::{ClockNetwork, ClockNodeIndex, ClockInputSocket, ClockNetworkError};
-use self::data::*;
-
-mod data;
+use wiggles_value::*;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Default)]
 /// Newtype declaration to ensure we don't mix up nodes between different graph domains.

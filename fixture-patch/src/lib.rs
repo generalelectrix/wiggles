@@ -5,34 +5,16 @@
 //! one logical fixture could span multiple control formats.
 //! That said, for now we'll just support DMX for expediency.  Non-DMX control is still a pipe
 //! dream anyway.
-
+extern crate wiggles_value;
+use wiggles_value::*;
 pub type DmxAddress = u16;
 pub type DmxValue = u8;
 pub type UniverseId = usize;
 
-#[derive(Copy, Clone, Debug)]
-pub enum ControlValue {
-    
-}
-
-impl ControlValue {
-    /// Return a new ControlValue if the incoming value is compatible with this one.
-    fn compatible(&mut self, new_val: ControlValue) -> Result<ControlValue, PatchError> {
-        unimplemented!()
-    }
-}
-
 pub struct Control {
     name: String,
-    value: ControlValue,
-}
-
-impl Control {
-    /// Set the value of this control.
-    fn set_value(&mut self, value: ControlValue) -> Result<(), PatchError> {
-        self.value = self.value.compatible(value)?;
-        Ok(())
-    }
+    native_type: Datatype;
+    value: Data,
 }
 
 pub trait FixturePatch<'a> {
@@ -55,7 +37,7 @@ pub trait FixturePatch<'a> {
     /// Mutable access to this fixture's controls.
     fn controls_mut(&mut self) -> &'a mut [Control];
     /// Set the value of a particular control with a compatible value.
-    fn set_control(&mut self, id: usize, value: ControlValue) -> Result<(), PatchError> {
+    fn set_control(&mut self, id: usize, value: Data) -> Result<(), PatchError> {
         match self.control_mut(id) {
             Some(c) => c.set_value(value),
             None => Err(PatchError::ControlOutOfRange(id))
