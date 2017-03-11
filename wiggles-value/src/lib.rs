@@ -1,6 +1,4 @@
 //! Types for dataflow.
-extern crate wiggles_value;
-use wiggles_value::*;
 use std::cmp::{min, max};
 use std::ops::Deref;
 
@@ -165,7 +163,7 @@ impl Data {
     }
 
     pub fn datatype(&self) -> Datatype {
-        match self {
+        match *self {
             Data::Unipolar(_) => Datatype::Unipolar,
             Data::Bipolar(_) => Datatype::Bipolar,
             Data::UInt(ie) => Datatype::UInt(ie.size),

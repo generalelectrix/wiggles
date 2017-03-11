@@ -5,3 +5,4 @@ authors = ["general electrix <general.electrix@gmail.com>"]
 
 [dependencies]
 wiggles_value = { path = "../wiggles-value" }
+rust_dmx = { git = "https://github.com/generalelectrix/rust-dmx" }
