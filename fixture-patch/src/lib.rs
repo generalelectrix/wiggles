@@ -6,12 +6,9 @@
 //! That said, for now we'll just support DMX for expediency.  Non-DMX control is still a pipe
 //! dream anyway.
 //! All DMX addresses are indexed from 0.  Conversion to index from 1 is left to the client.
-extern crate wiggles_value;
 extern crate rust_dmx;
 
-use std::collections::HashMap;
-use rust_dmx::DmxPort;
-use wiggles_value::*;
+use rust_dmx::{DmxPort, Error as DmxPortError};
 
 pub type DmxAddress = u16;
 pub type DmxChannelCount = u16;
@@ -37,6 +34,10 @@ impl Universe {
             buffer: [0; UNIVERSE_SIZE],
         }
     }
+
+    pub fn write(&mut self) -> Result<(), DmxPortError> {
+        self.port.write(&self.buffer)
+    }
 }
 
 pub struct Patch {
@@ -55,7 +56,7 @@ impl Patch {
     }
 
     /// Add a universe to the first available id.
-    fn add_universe(&mut self, universe: Universe) {
+    pub fn add_universe(&mut self, universe: Universe) {
         let first_open_id = self.universes.iter().position(|u| u.is_none());
         match first_open_id {
             Some(id) => self.universes[id] = Some(universe),
@@ -65,7 +66,7 @@ impl Patch {
 
     /// Delete an existing universe.
     /// If force=false, fail if any fixtures are patched in this universe.
-    fn remove_universe(&mut self, id: UniverseId, force: bool) -> Result<(), PatchError> {
+    pub fn remove_universe(&mut self, id: UniverseId, force: bool) -> Result<(), PatchError> {
 
         if !force && self.items.iter().any(|item| item.universe() == Some(id)) {
             return Err(PatchError::NonEmptyUniverse(id))
@@ -88,12 +89,11 @@ impl Patch {
     }
 
     /// Add a new fixture into the patch without specifying an address or universe.
-    pub fn add<F: Fixture + 'static>(&mut self, fixture: F) {
+    pub fn add<F: DmxFixture + 'static>(&mut self, fixture: F) {
         let id = self.next_id();
         let kind = fixture.kind();
         let item = PatchItem {
             id: id,
-            kind: kind,
             name: kind.to_string(),
             address: None,
             fixture: Box::new(fixture),
@@ -121,7 +121,7 @@ impl Patch {
     }
 
     /// Return a summary of the contents of a universe.
-    fn universe_summary(
+    pub fn universe_summary(
             &self,
             id: UniverseId)
             -> Result<UniverseSummary<FixtureId>, PatchError> {
@@ -181,27 +181,42 @@ impl Patch {
         self.item_mut(id)?.address = None;
         Ok(())
     }
-}
 
-pub struct Control {
-    name: &'static str,
-    native_type: Datatype,
-    value: Data,
-}
+    /// Render every fixture to DMX.
+    pub fn render(&mut self) -> Vec<DmxPortError> {
+        for item in self.items.iter() {
+            if let Some((univ_id, addr)) = item.address {
+                if let Some(&mut Some(ref mut univ)) = self.universes.get_mut(univ_id as usize) {
 
-impl Control {
-    fn set_value(&mut self, value: Data) -> Result<(), PatchError> {
-        unimplemented!()
+                    let channel_count = item.channel_count();
+                    let buf_slice = &mut univ.buffer[addr as usize..(addr+channel_count) as usize];
+                    item.fixture.render(buf_slice);
+                }
+            }
+        }
+
+        /// Write every universe to its port, returning any errors to the caller.
+        let mut write_errs = Vec::new();
+        for maybe_u in self.universes.iter_mut() {
+            match *maybe_u {
+                Some(ref mut u) => {
+                    if let Err(e) = u.write() {
+                        write_errs.push(e);
+                    }
+                },
+                None => {}
+            }
+        }
+        write_errs
     }
 }
 
 pub struct PatchItem {
     id: FixtureId,
-    kind: &'static str,
     pub name: String,
     address: Option<(UniverseId, DmxAddress)>,
     /// Trait object implementing the Fixture interface.
-    fixture: Box<Fixture>,
+    fixture: Box<DmxFixture>,
 }
 
 impl PatchItem {
@@ -211,7 +226,7 @@ impl PatchItem {
     }
     /// The name of this kind of fixture.
     fn kind(&self) -> &'static str {
-        self.kind
+        self.fixture.kind()
     }
 
     fn universe(&self) -> Option<UniverseId> {
@@ -223,29 +238,16 @@ impl PatchItem {
     }
 }
 
-pub trait Fixture {
+pub trait DmxFixture {
     /// What kind of fixture is this?
     fn kind(&self) -> &'static str;
 
     /// Get the number of DMX channels that this fixture requires.
     fn channel_count(&self) -> u16;
 
-    /// Immutable access to this fixture's controls.
-    fn controls(&self) -> &[Control];
-    /// Mutable access to this fixture's controls.
-    fn controls_mut(&mut self) -> &mut [Control];
-
-    /// Immutable access to a control by id.
-    fn control(&self, id: usize) -> Option<&Control> {
-        self.controls().get(id)
-    }
-    /// Mutable access to a control by id.
-    fn control_mut(&mut self, id: usize) -> Option<&mut Control> {
-        self.controls_mut().get_mut(id)
-    }
-
     /// Render this fixture into a DMX buffer.
-    fn render(&self, buffer: &mut [DmxValue]) -> Result<(), PatchError>;
+    /// The buffer provided will be of length channel_count.
+    fn render(&self, buffer: &mut [DmxValue]);
 }
 
 pub enum PatchError {
@@ -254,4 +256,5 @@ pub enum PatchError {
     AddressConflict(Vec<FixtureId>),
     FixtureTooLongForAddress(DmxAddress, DmxChannelCount),
     NonEmptyUniverse(UniverseId),
+    PortError(DmxPortError),
 }
