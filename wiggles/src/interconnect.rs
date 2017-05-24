@@ -4,17 +4,18 @@
 //! as the companion graph.
 use std::marker::PhantomData;
 use petgraph::graph::IndexType;
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug)]
-pub struct Interconnector<IntId: IndexType, ExtId: Eq + Copy> {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Interconnector<IntId: IndexType, ExtId: Eq + Copy + Serialize + Deserialize> {
     connections: Vec<Vec<ExtId>>,
     _marker: PhantomData<IntId>,
 }
 
-pub trait ListenerId: Eq + Copy {}
-impl<T> ListenerId for T where T: Eq + Copy {}
+pub trait ListenerId: Eq + Copy + Serialize + Deserialize {}
+impl<T> ListenerId for T where T: Eq + Copy + Serialize + Deserialize {}
 
-impl<IntId: IndexType, ExtId: Eq + Copy> Interconnector<IntId, ExtId> {
+impl<IntId: IndexType, ExtId: Eq + Copy + Serialize + Deserialize> Interconnector<IntId, ExtId> {
     pub fn new() -> Self { Interconnector { connections: Vec::new(), _marker: PhantomData } }
 
     /// Ensure that a given index contains an initialized collection of listeners.

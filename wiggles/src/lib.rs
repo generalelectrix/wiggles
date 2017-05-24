@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate serde;
 extern crate petgraph;
 extern crate itertools;
 extern crate wiggles_value;

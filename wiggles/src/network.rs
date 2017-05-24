@@ -2,37 +2,38 @@
 use std::{ops, fmt, slice, marker, mem};
 
 use itertools::Itertools;
-use petgraph::graph::{NodeIndex, IndexType};
 use petgraph::stable_graph::StableDiGraph;
+use petgraph::graph::{NodeIndex, IndexType};
 use petgraph::Direction;
 use petgraph::algo::has_path_connecting;
+use serde::{Serialize, Deserialize};
 
 use datatypes::{Update, DeltaT};
 use event::Events;
 use interconnect::{Interconnector, ListenerId};
 use knob::Knobs;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub enum NetworkEvent<I> {
     InputSwapped{node: I, input_id: InputId, new_input: I},
 }
 
 pub type InputId = usize;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct InputSocket<T> {
     /// The local name of this input socket.
-    name: &'static str,
+    name: String,
     /// Some identifier providing functionality to perform access on a graph.
     pub input: T,
 }
 
 impl<T> InputSocket<T> {
-    pub fn new(name: &'static str, input: T) -> Self {
-        InputSocket { name: name, input: input }
+    pub fn new<N: Into<String>>(name: N, input: T) -> Self {
+        InputSocket { name: name.into(), input: input }
     }
 
-    pub fn name(&self) -> &'static str { self.name }
+    pub fn name(&self) -> &str { &self.name }
 }
 
 pub trait NetworkNodeId:
@@ -40,15 +41,20 @@ pub trait NetworkNodeId:
     + Copy
     + fmt::Debug
     + ops::Deref<Target = NodeIndex>
-    + From<NodeIndex> {}
+    + From<NodeIndex>
+    + Serialize
+    + Deserialize {}
+
 impl<T> NetworkNodeId for T where T:
     IndexType
     + Copy
     + fmt::Debug
     + ops::Deref<Target = NodeIndex>
-    + From<NodeIndex> {}
+    + From<NodeIndex>
+    + Serialize
+    + Deserialize {}
 
-pub trait NetworkNode<I: NetworkNodeId>: Update + Knobs {
+pub trait NetworkNode<I: NetworkNodeId>: Update + Knobs + Serialize + Deserialize {
 
     /// Return a slice of the intra-network connections from this node.
     fn input_sockets(&self) -> &[InputSocket<I>];
@@ -78,7 +84,7 @@ pub trait NetworkNode<I: NetworkNodeId>: Update + Knobs {
     fn set_id(&mut self, id: I);
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 /// A network is composed of nodes and dumb edges that just act as wires.
 pub struct Network<N: NetworkNode<I>, I: NetworkNodeId, E: ListenerId> {
     /// The backing graph that holds the individual nodes.

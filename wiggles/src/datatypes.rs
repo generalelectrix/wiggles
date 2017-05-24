@@ -15,7 +15,7 @@ pub trait Update {
     fn update(&mut self, df: DeltaT) -> Events;
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 /// Floating-point representation of a rate, permitting the use of various
 /// unit semantics.
 pub enum Rate {

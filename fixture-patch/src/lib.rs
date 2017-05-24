@@ -8,7 +8,12 @@
 //! All DMX addresses are indexed from 0.  Conversion to index from 1 is left to the client.
 extern crate rust_dmx;
 
-use rust_dmx::{DmxPort, Error as DmxPortError};
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
+
+use serde::{Serialize, Deserialize};
+use rust_dmx::{DmxPort, Error as DmxPortError, OfflineDmxPort};
 
 pub type DmxAddress = u16;
 pub type DmxChannelCount = u16;
@@ -53,6 +58,22 @@ impl Patch {
             items: Vec::new(),
             next_id: 0,
         }
+    }
+
+    /// Return a vec of tuples of (universe_id, name).
+    pub fn describe_universes(&self) -> Vec<(UniverseId, &str)> {
+        let mut descriptions = Vec::new();
+        for (i, maybe_u) in self.universes.iter().enumerate() {
+            if let &Some(ref u) = maybe_u {
+                descriptions.push((i as UniverseId, u.name.as_str()));
+            }
+        }
+        descriptions
+    }
+
+    /// Get an immutable reference to the current patches.
+    pub fn items(&self) -> &Vec<PatchItem> {
+        &self.items
     }
 
     /// Add a universe to the first available id.

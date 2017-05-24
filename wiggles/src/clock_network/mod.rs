@@ -30,7 +30,7 @@ pub type ClockInputSocket = InputSocket<ClockNodeIndex>;
 pub type ClockNetworkError = NetworkError<ClockNodeIndex>;
 pub type ClockNetworkEvent = NetworkEvent<ClockNodeIndex>;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
 /// Events related to clocks and the clock graph.
 pub enum ClockEvent {
     /// An event inherited from the underlying network.
@@ -49,7 +49,7 @@ impl From<ClockNetworkEvent> for ClockEvent {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 /// Represent the complete value of the current state of a clock.
 pub struct ClockValue {
     pub phase: f64,
@@ -87,7 +87,7 @@ impl ClockValue {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Default)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Serialize, Deserialize)]
 /// Newtype declaration to ensure we don't mix up nodes between different graph domains.
 pub struct ClockNodeIndex(pub NodeIndex);
 
@@ -115,7 +115,7 @@ unsafe impl IndexType for ClockNodeIndex {
     fn max() -> Self { ClockNodeIndex::new(DefaultIx::max() as usize) }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 pub enum ClockListener {
     Dataflow(DataNodeIndex),
     External, // TODO: decide how to keep track/identify external listeners
@@ -137,9 +137,7 @@ impl ClockNetwork {
     }
 }
 
-
-
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 /// A single node in an arbitrary clock graph, accepting inputs, listening to
 /// knobs, and with a stored behavior that uses these values to produce a
 /// clock value when called upon.

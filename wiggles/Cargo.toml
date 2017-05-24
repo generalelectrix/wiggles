@@ -5,7 +5,13 @@ authors = ["general electrix <general.electrix@gmail.com>"]
 
 [dependencies]
 wiggles_value = { path = "../wiggles-value" }
-petgraph = "*"
+petgraph = { git = "https://github.com/generalelectrix/petgraph", features = ["serde"] }
 log = "*"
 itertools = "*"
 smallvec = "*"
+# serde = { version = "*", features = ["derive"] }
+
+[dependencies.serde]
+git = "https://github.com/jethrogb/serde"
+branch = "feature/interior_mut_types"
+features = ["derive"]

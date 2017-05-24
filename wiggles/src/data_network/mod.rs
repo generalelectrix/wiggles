@@ -4,6 +4,7 @@
 //! dependencies during rendering.
 use std::{fmt, error, ops};
 use petgraph::graph::{NodeIndex, IndexType, DefaultIx};
+use serde::{Serialize, Deserialize};
 
 use datatypes::{DeltaT, Update};
 use event::Events;
@@ -20,7 +21,8 @@ use knob::{Knob, Knobs};
 use clock_network::{ClockNetwork, ClockNodeIndex, ClockInputSocket, ClockNetworkError};
 use wiggles_value::*;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Default)]
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Serialize, Deserialize)]
 /// Newtype declaration to ensure we don't mix up nodes between different graph domains.
 pub struct DataNodeIndex(NodeIndex);
 
@@ -53,7 +55,7 @@ pub type DataInputSocket = InputSocket<DataNodeIndex>;
 pub type DataNetworkEvent = NetworkEvent<DataNodeIndex>;
 pub type DataNetworkError = NetworkError<DataNodeIndex>;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 /// A single node in an arbitrary data graph, accepting inputs, listening to
 /// knobs, and with a stored behavior that uses these values to produce a
 /// clock value when called upon.

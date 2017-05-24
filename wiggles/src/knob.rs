@@ -2,6 +2,7 @@
 use std::collections::HashMap;
 use std::error;
 use std::fmt;
+use serde::{Serialize, Deserialize};
 
 use clock_network::{ClockNodeIndex, ClockNode, ClockNetwork};
 use data_network::{DataNodeIndex, DataNode, DataNetwork};
@@ -52,7 +53,7 @@ pub trait Knobs {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum KnobValue {
     /// A boolean flag indicating if a button press occurred.
     /// The consumer of a knob is expected to reset this after registering the event.
@@ -84,9 +85,9 @@ impl KnobValue {
 
 pub type KnobId = usize;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Knob {
-    name: &'static str,
+    name: String,
     /// An explicit numeric identifier for this knob.
     /// These will be automatically assigned by the entity that this knob becomes
     /// associated with.
@@ -100,11 +101,11 @@ impl Knob {
     pub fn id(&self) -> KnobId { self.id }
 
     /// Return this knob's name.
-    pub fn name(&self) -> &'static str { self.name }
+    pub fn name(&self) -> &str { &self.name }
 
-    pub fn new(name: &'static str, id: KnobId, initial_value: KnobValue) -> Self {
+    pub fn new<N: Into<String>>(name: N, id: KnobId, initial_value: KnobValue) -> Self {
         Knob {
-            name: name,
+            name: name.into(),
             id: id,
             value: initial_value}
     }
@@ -141,7 +142,7 @@ impl Knob {
     /// particular knob as it should implicitly be aware of its type.
     pub fn set_button_state(&mut self, state: bool) {
         self.set(KnobValue::Button(state))
-            .expect("Failed to set state of '{}' as a button");
+            .expect(&format!("Failed to set state of '{}' as a button", self.name));
     }
 
     /// Get the value of a Rate knob, or panic.
@@ -165,7 +166,7 @@ impl Knob {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct KnobPatch {
     node: KnobNode,
     id: KnobId,
@@ -180,7 +181,7 @@ impl KnobPatch {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum KnobNode {
     Clock(ClockNodeIndex),
     Data(DataNodeIndex),
@@ -198,7 +199,7 @@ impl From<DataNodeIndex> for KnobNode {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 /// Keep track of all of the knobs and how to find them.
 /// Responsible for routing knob updates to the appropriate place, and emitting
 /// events to indicate that various things have happened.
@@ -272,7 +273,7 @@ impl PatchBay {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum KnobError {
     TypeMismatch { expected: KnobValue, actual: KnobValue, name: String },
     InvalidId(KnobId),
