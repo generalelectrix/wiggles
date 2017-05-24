@@ -1,4 +1,7 @@
 //! Types for dataflow.
+//! TODO: consider how to allow injection of different conversion behaviors for
+//! flexibility.  We may want to use abs() or rescale to go from bipolar to
+//! unipolar, for example.
 use std::cmp::{min, max};
 use std::ops::Deref;
 
@@ -31,6 +34,7 @@ impl Deref for EnumSize {
 }
 
 /// Tag for describing datatypes in requests or other data structures.
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub enum Datatype {
     Unipolar,
     Bipolar,
@@ -154,8 +158,8 @@ impl Data {
     }
 
     /// Get a copy of this data with its value clipped to be inside the valid range.
-    pub fn coerce(self) -> Data {
-        match self {
+    pub fn coerce(&self) -> Self {
+        match *self {
             Data::Unipolar(up) => Data::Unipolar(up.coerce()),
             Data::Bipolar(bp) => Data::Bipolar(bp.coerce()),
             Data::UInt(ie) => Data::UInt(ie.coerce()),
@@ -167,6 +171,14 @@ impl Data {
             Data::Unipolar(_) => Datatype::Unipolar,
             Data::Bipolar(_) => Datatype::Bipolar,
             Data::UInt(ie) => Datatype::UInt(ie.size),
+        }
+    }
+
+    pub fn as_type(&self, datatype: Datatype) -> Self {
+        match datatype {
+            Datatype::Bipolar => Data::Bipolar((*self).into()),
+            Datatype::Unipolar => Data::Unipolar((*self).into()),
+            Datatype::UInt(size) => Data::UInt((*self).into_uint(size)),
         }
     }
 }

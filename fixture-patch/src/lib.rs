@@ -11,13 +11,16 @@ extern crate rust_dmx;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
+extern crate wiggles_value;
 
 use serde::{Serialize, Deserialize};
 use rust_dmx::{DmxPort, Error as DmxPortError, OfflineDmxPort};
 
+mod fixture;
+mod profiles;
+use fixture::{DmxFixture, DmxValue, DmxChannelCount};
+
 pub type DmxAddress = u16;
-pub type DmxChannelCount = u16;
-pub type DmxValue = u8;
 pub type UniverseId = u32;
 pub type FixtureId = u32;
 
@@ -110,14 +113,13 @@ impl Patch {
     }
 
     /// Add a new fixture into the patch without specifying an address or universe.
-    pub fn add<F: DmxFixture + 'static>(&mut self, fixture: F) {
-        let id = self.next_id();
-        let kind = fixture.kind();
+    /// Provide a name for the fixture, or autogenerate one.
+    pub fn add(&mut self, fixture: DmxFixture, name: Option<String>) {
         let item = PatchItem {
-            id: id,
-            name: kind.to_string(),
+            id: self.next_id(),
+            name: name.unwrap_or(fixture.kind().to_string()),
             address: None,
-            fixture: Box::new(fixture),
+            fixture: fixture,
         };
         self.items.push(item);
     }
@@ -236,8 +238,7 @@ pub struct PatchItem {
     id: FixtureId,
     pub name: String,
     address: Option<(UniverseId, DmxAddress)>,
-    /// Trait object implementing the Fixture interface.
-    fixture: Box<DmxFixture>,
+    fixture: DmxFixture,
 }
 
 impl PatchItem {
@@ -246,7 +247,7 @@ impl PatchItem {
         self.id
     }
     /// The name of this kind of fixture.
-    fn kind(&self) -> &'static str {
+    fn kind(&self) -> &str {
         self.fixture.kind()
     }
 
@@ -259,17 +260,6 @@ impl PatchItem {
     }
 }
 
-pub trait DmxFixture {
-    /// What kind of fixture is this?
-    fn kind(&self) -> &'static str;
-
-    /// Get the number of DMX channels that this fixture requires.
-    fn channel_count(&self) -> u16;
-
-    /// Render this fixture into a DMX buffer.
-    /// The buffer provided will be of length channel_count.
-    fn render(&self, buffer: &mut [DmxValue]);
-}
 
 pub enum PatchError {
     InvalidFixtureId(FixtureId),
