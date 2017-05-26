@@ -210,7 +210,6 @@ impl Patch {
         for item in self.items.iter() {
             if let Some((univ_id, addr)) = item.address {
                 if let Some(&mut Some(ref mut univ)) = self.universes.get_mut(univ_id as usize) {
-
                     let channel_count = item.channel_count();
                     let buf_slice = &mut univ.buffer[addr as usize..(addr+channel_count) as usize];
                     item.fixture.render(buf_slice);
