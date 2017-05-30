@@ -17,7 +17,7 @@ pub struct EnumSize(EnumValue);
 
 impl EnumSize {
     pub fn create(size: EnumValue) -> Result<Self,DataError> {
-        if size < 1 {
+        if size < 2 {
             Err(DataError::EnumSizeLessThanTwo)
         }
         else {
