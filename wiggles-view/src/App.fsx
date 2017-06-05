@@ -74,25 +74,28 @@ let initialModel () =
 
 /// A fake server to emit messages as if we were talking to a real server.
 let mockServer model req =
-    let maybeUpdatePatch 
-    match req with
-    | PatchState -> PatchState model.patches
-    | NewPatch p -> NewPatch p
-    | Rename id, name ->
-        // find the fixture by id and give it a new name
-        let updated =
-            model.patches
-            |> List.tryFind (fun p -> p.id = id)
-            |> Option.map (fun p -> {p with name = name})
-        match updated with
-        | Some(p) -> Update p
-        | None -> Error (sprintf "Unknown fixture id %d" id)
+    let maybeUpdatePatch msgType op patchId =
+        model.patches
+        |> List.tryFind (fun p -> p.id = patchId)
+        |> Option.map op
+        |> (function
+            | Some(p) -> msgType p
+            | None -> Error (sprintf "Unknown fixture id %d" patchId))
 
+    match req with
+    | ServerRequest.PatchState -> PatchState model.patches
+    | ServerRequest.NewPatch p -> NewPatch p
+    | Rename (id, name) ->
+        maybeUpdatePatch
+            Update
+            (fun p -> {p with name = name})
+            id
 
 let update message model =
 
     match message with
-    | Request _ -> model // server requests will be handled elsewhere
+    | Request _ ->
+        Cmd.
     | Response r ->
         let newModel =
             match r with
@@ -106,7 +109,7 @@ let update message model =
                     model.patches
                     |> List.map (fun existing -> if existing.id = p.id then p else existing)
                 {model with patches = newPatches}
-        (newModel, Cmd.Empty)
+        (newModel, Cmd.none)
 
 /// Render a patch item as a basic table row.
 let viewPatchItem item =
