@@ -4,6 +4,8 @@
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
 #load "../node_modules/fable-react-toolbox/Fable.Helpers.ReactToolbox.fs"
 
+open Fable.Core
+open Fable.Import
 open Elmish
 open Elmish.React
 open Fable.Core.JsInterop
@@ -27,10 +29,14 @@ type PatchItem = {
 }
 
 type Model = {
-    patches: PatchItem list
+    patches: PatchItem list;
+    // Current fixture ID we have selected, if any.
+    selected: FixtureId option;
     // For now show errors in a console of infinite length.
-    consoleText: ResizeArray<string>
-}
+    consoleText: string array}
+
+let withConsoleMessage msg model =
+    {model with consoleText = Array.append model.consoleText [|msg|]}
 
 /// All possible requests we can make to the patch server.
 type ServerRequest =
@@ -58,10 +64,15 @@ type ServerResponse =
     /// A patch item has been removed.
     | Remove of FixtureId
 
+type UiAction =
+    | ClearConsole
+    | SetSelected of FixtureId
+    | Deselect
+
 type Message =
     | Request of ServerRequest
     | Response of ServerResponse
-
+    | Action of UiAction
 
 let testPatches = [
     {id = 0; name = "foo"; address = None; channelCount = 2}
@@ -70,7 +81,7 @@ let testPatches = [
 
 
 let initialModel () =
-    ({patches = testPatches; consoleText = ResizeArray()}, Cmd.none)
+    ({patches = testPatches; selected = None; consoleText = Array.empty}, Cmd.none)
 
 /// A fake server to emit messages as if we were talking to a real server.
 let mockServer model req =
@@ -101,6 +112,8 @@ let mockServer model req =
             (fun _ -> id)
             id
 
+let purple = Color "#6600ff"
+let cyan = Color "#00ccff"
 
 let update message model =
 
@@ -110,9 +123,7 @@ let update message model =
     | Response r ->
         let newModel =
             match r with
-            | Error msg ->
-                model.consoleText.Add(msg)
-                model
+            | Error msg -> model |> withConsoleMessage msg
             | PatchState s -> {model with patches = s}
             | NewPatch p -> {model with patches = p::model.patches}
             | Update p ->
@@ -123,15 +134,32 @@ let update message model =
             | Remove id ->
                 {model with patches = model.patches |> List.filter (fun p -> p.id = id)}
         (newModel, Cmd.none)
+    | Action a ->
+        a |>
+        function
+            | ClearConsole -> {model with consoleText = Array.empty}
+            | SetSelected id -> {model with selected = Some id}
+            | Deselect -> {model with selected = None}
+        |> fun m -> (m, Cmd.none)
+
+let updateAndLog message model =
+    let model, cmds = update message model
+    (model |> withConsoleMessage (sprintf "%+A" message), cmds)
 
 /// Render a patch item as a basic table row.
-let viewPatchItem item =
+let viewPatchTableRow dispatch selectedId item =
     let td x = R.td [] [text x]
     let universe, address =
         match item.address with
         | Some(u, a) -> string u, string a
         | None -> "", ""
     R.tr [] [
+        R.td [] [
+            R.button [
+                OnClick (fun _ -> SetSelected item.id |> Action |> dispatch);
+                Style [(if Some item.id = selectedId then purple else cyan)]
+            ] []
+        ];
         td item.id;
         td item.name;
         td universe;
@@ -140,28 +168,38 @@ let viewPatchItem item =
     ]
 
 let patchTableHeader =
-    ["id"; "name"; "universe"; "address"; "channel count"]
+    ["selected"; "id"; "name"; "universe"; "address"; "channel count"]
     |> List.map (fun x -> R.th [] [text x])
     |> R.tr []
 
-let viewPatchTable patches =
+let viewPatchTable dispatch patches selectedId =
     R.table [] [
-        yield patchTableHeader
-        for patch in patches -> viewPatchItem patch
+        R.tbody [] [
+            yield patchTableHeader
+            for patch in patches -> viewPatchTableRow dispatch selectedId patch
+        ]
     ]
-
-let viewConsole lines =
+let viewConsole dispatch lines =
     R.div [] [
-        text "Console";
-        R.textarea [ Style [Overflow "scroll"] ] [ String.concat "" lines |> text ];
+        R.span [] [
+            text "Console";
+            R.button [ OnClick (fun _ -> ClearConsole |> Action |> dispatch) ] [ text "clear" ];
+        ];
+        R.div [] [
+            R.textarea [
+                Style [Overflow "scroll"];
+                Value (String.concat "\n" lines |> Case1);
+            ] [];
+
+        ]
     ]
 
 let view model dispatch =
     R.div [] [
-        viewPatchTable model.patches
-        viewConsole model.consoleText
+        viewPatchTable dispatch model.patches model.selected
+        viewConsole dispatch model.consoleText
     ]
 
-Program.mkProgram initialModel update view
+Program.mkProgram initialModel updateAndLog view
 |> Program.withReact "app"
 |> Program.run

@@ -6,12 +6,12 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { defaultArg, compareUnions, equalsUnions, Array as _Array, makeGeneric, compareRecords, equalsRecords, Tuple, Option } from "fable-core/Util";
+import { equals, defaultArg, compareUnions, equalsUnions, Array as _Array, makeGeneric, compareRecords, equalsRecords, Tuple, Option } from "fable-core/Util";
 import { filter, map, ofArray } from "fable-core/List";
 import List from "fable-core/List";
 import { ProgramModule, CmdModule } from "fable-elmish/elmish";
 import { join, fsFormat } from "fable-core/String";
-import { map as map_1, singleton, append, delay, toList, tryFind } from "fable-core/Seq";
+import { map as map_1, singleton, append, delay, toList, fold, tryFind } from "fable-core/Seq";
 import { createElement } from "react";
 import { withReact } from "fable-elmish-react/react";
 export function text(x) {
@@ -57,10 +57,11 @@ export var PatchItem = function () {
 }();
 setType("App.PatchItem", PatchItem);
 export var Model = function () {
-  function Model(patches, consoleText) {
+  function Model(patches, selected, consoleText) {
     _classCallCheck(this, Model);
 
     this.patches = patches;
+    this.selected = selected;
     this.consoleText = consoleText;
   }
 
@@ -69,11 +70,12 @@ export var Model = function () {
     value: function () {
       return {
         type: "App.Model",
-        interfaces: ["FSharpRecord", "System.IEquatable"],
+        interfaces: ["FSharpRecord", "System.IEquatable", "System.IComparable"],
         properties: {
           patches: makeGeneric(List, {
             T: PatchItem
           }),
+          selected: Option("number"),
           consoleText: _Array("string")
         }
       };
@@ -83,11 +85,20 @@ export var Model = function () {
     value: function (other) {
       return equalsRecords(this, other);
     }
+  }, {
+    key: "CompareTo",
+    value: function (other) {
+      return compareRecords(this, other);
+    }
   }]);
 
   return Model;
 }();
 setType("App.Model", Model);
+export function withConsoleMessage(msg, model) {
+  var consoleText = model.consoleText.concat([msg]);
+  return new Model(model.patches, model.selected, consoleText);
+}
 export var ServerRequest = function () {
   function ServerRequest(caseName, fields) {
     _classCallCheck(this, ServerRequest);
@@ -166,6 +177,42 @@ export var ServerResponse = function () {
   return ServerResponse;
 }();
 setType("App.ServerResponse", ServerResponse);
+export var UiAction = function () {
+  function UiAction(caseName, fields) {
+    _classCallCheck(this, UiAction);
+
+    this.Case = caseName;
+    this.Fields = fields;
+  }
+
+  _createClass(UiAction, [{
+    key: _Symbol.reflection,
+    value: function () {
+      return {
+        type: "App.UiAction",
+        interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
+        cases: {
+          ClearConsole: [],
+          Deselect: [],
+          SetSelected: ["number"]
+        }
+      };
+    }
+  }, {
+    key: "Equals",
+    value: function (other) {
+      return equalsUnions(this, other);
+    }
+  }, {
+    key: "CompareTo",
+    value: function (other) {
+      return compareUnions(this, other);
+    }
+  }]);
+
+  return UiAction;
+}();
+setType("App.UiAction", UiAction);
 export var Message = function () {
   function Message(caseName, fields) {
     _classCallCheck(this, Message);
@@ -181,6 +228,7 @@ export var Message = function () {
         type: "App.Message",
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
+          Action: [UiAction],
           Request: [ServerRequest],
           Response: [ServerResponse]
         }
@@ -203,7 +251,7 @@ export var Message = function () {
 setType("App.Message", Message);
 export var testPatches = ofArray([new PatchItem(0, "foo", null, 2), new PatchItem(1, "charlie", [0, 27], 1)]);
 export function initialModel() {
-  return [new Model(testPatches, []), CmdModule.none()];
+  return [new Model(testPatches, null, new Array(0)), CmdModule.none()];
 }
 export function mockServer(model, req) {
   var maybeUpdatePatch = function maybeUpdatePatch(msgType) {
@@ -246,34 +294,58 @@ export function mockServer(model, req) {
     return new ServerResponse("PatchState", [model.patches]);
   }
 }
+export var purple = ["color", "#6600ff"];
+export var cyan = ["color", "#00ccff"];
 export function update(message, model) {
   if (message.Case === "Response") {
     var newModel = void 0;
 
     if (message.Fields[0].Case === "PatchState") {
-      newModel = new Model(message.Fields[0].Fields[0], model.consoleText);
+      newModel = new Model(message.Fields[0].Fields[0], model.selected, model.consoleText);
     } else if (message.Fields[0].Case === "NewPatch") {
-      newModel = new Model(new List(message.Fields[0].Fields[0], model.patches), model.consoleText);
+      newModel = new Model(new List(message.Fields[0].Fields[0], model.patches), model.selected, model.consoleText);
     } else if (message.Fields[0].Case === "Update") {
       var newPatches = map(function (existing) {
         return existing.id === message.Fields[0].Fields[0].id ? message.Fields[0].Fields[0] : existing;
       }, model.patches);
-      newModel = new Model(newPatches, model.consoleText);
+      newModel = new Model(newPatches, model.selected, model.consoleText);
     } else if (message.Fields[0].Case === "Remove") {
       newModel = new Model(filter(function (p) {
         return p.id === message.Fields[0].Fields[0];
-      }, model.patches), model.consoleText);
+      }, model.patches), model.selected, model.consoleText);
     } else {
-      model.consoleText.push(message.Fields[0].Fields[0]);
-      newModel = model;
+      newModel = function (model_1) {
+        return withConsoleMessage(message.Fields[0].Fields[0], model_1);
+      }(model);
     }
 
     return [newModel, CmdModule.none()];
+  } else if (message.Case === "Action") {
+    return function (m) {
+      return [m, CmdModule.none()];
+    }(function (_arg1) {
+      if (_arg1.Case === "SetSelected") {
+        var selected = _arg1.Fields[0];
+        return new Model(model.patches, selected, model.consoleText);
+      } else if (_arg1.Case === "Deselect") {
+        var selected_1 = null;
+        return new Model(model.patches, selected_1, model.consoleText);
+      } else {
+        var consoleText = new Array(0);
+        return new Model(model.patches, model.selected, consoleText);
+      }
+    }(message.Fields[0]));
   } else {
     return [model, CmdModule.ofMsg(new Message("Response", [mockServer(model, message.Fields[0])]))];
   }
 }
-export function viewPatchItem(item) {
+export function updateAndLog(message, model) {
+  var patternInput = update(message, model);
+  return [withConsoleMessage(fsFormat("%+A")(function (x) {
+    return x;
+  })(message), patternInput[0]), patternInput[1]];
+}
+export function viewPatchTableRow(dispatch, selectedId, item) {
   var td = function td(x) {
     return createElement("td", {}, text(x));
   };
@@ -288,35 +360,48 @@ export function viewPatchItem(item) {
     patternInput = [String(u), String(a)];
   }
 
-  return createElement("tr", {}, td(item.id), td(item.name), td(patternInput[0]), td(patternInput[1]), td(item.channelCount));
+  return createElement("tr", {}, createElement("td", {}, createElement("button", {
+    onClick: function onClick(_arg1) {
+      dispatch(new Message("Action", [new UiAction("SetSelected", [item.id])]));
+    },
+    style: fold(function (o, kv) {
+      o[kv[0]] = kv[1];
+      return o;
+    }, {}, [equals(item.id, selectedId) ? purple : cyan])
+  })), td(item.id), td(item.name), td(patternInput[0]), td(patternInput[1]), td(item.channelCount));
 }
 export var patchTableHeader = createElement.apply(undefined, ["tr", {}].concat(_toConsumableArray(map(function (x) {
   return createElement("th", {}, text(x));
-}, ofArray(["id", "name", "universe", "address", "channel count"])))));
-export function viewPatchTable(patches) {
-  return createElement.apply(undefined, ["table", {}].concat(_toConsumableArray(toList(delay(function () {
+}, ofArray(["selected", "id", "name", "universe", "address", "channel count"])))));
+export function viewPatchTable(dispatch, patches, selectedId) {
+  return createElement("table", {}, createElement.apply(undefined, ["tbody", {}].concat(_toConsumableArray(toList(delay(function () {
     return append(singleton(patchTableHeader), delay(function () {
       return map_1(function (patch) {
-        return viewPatchItem(patch);
+        return viewPatchTableRow(dispatch, selectedId, patch);
       }, patches);
     }));
-  })))));
+  }))))));
 }
-export function viewConsole(lines) {
-  return createElement("div", {}, text("Console"), createElement("textarea", {
+export function viewConsole(dispatch, lines) {
+  return createElement("div", {}, createElement("span", {}, text("Console")), createElement("div", {}, createElement("textarea", {
     style: {
       overflow: "scroll"
+    },
+    value: join("\n", lines)
+  }), createElement("button", {
+    onClick: function onClick(_arg1) {
+      dispatch(new Message("Action", [new UiAction("ClearConsole", [])]));
     }
-  }, text(join("", lines))));
+  }, text("clear"))));
 }
 export function view(model, dispatch) {
-  return createElement("div", {}, viewPatchTable(model.patches), viewConsole(model.consoleText));
+  return createElement("div", {}, viewPatchTable(dispatch, model.patches, model.selected), viewConsole(dispatch, model.consoleText));
 }
 ProgramModule.run(withReact("app", ProgramModule.mkProgram(function () {
   return initialModel();
 }, function (message) {
   return function (model) {
-    return update(message, model);
+    return updateAndLog(message, model);
   };
 }, function (model_1) {
   return function (dispatch) {
