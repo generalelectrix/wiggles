@@ -1,0 +1,7 @@
+{
+    "projFile": "./src/App.fsx",
+    "outDir": "./public",
+    "scripts": {
+        "postbuild": "./node_modules/.bin/webpack"
+    }
+}
