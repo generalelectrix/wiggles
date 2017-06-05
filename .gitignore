@@ -57,3 +57,5 @@ docs/_build/
 target/
 target
 Cargo.lock
+*.DS_Store
+*.userprefs

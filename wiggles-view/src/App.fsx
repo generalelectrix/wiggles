@@ -70,16 +70,16 @@ let testPatches = [
 
 
 let initialModel () =
-    ({patches = testPatches; consoleText = ResizeArray()}, Cmd.Empty)
+    ({patches = testPatches; consoleText = ResizeArray()}, Cmd.none)
 
 /// A fake server to emit messages as if we were talking to a real server.
 let mockServer model req =
     let maybeUpdatePatch msgType op patchId =
         model.patches
         |> List.tryFind (fun p -> p.id = patchId)
-        |> Option.map op
+        |> Option.map (op >> msgType)
         |> (function
-            | Some(p) -> msgType p
+            | Some p -> p
             | None -> Error (sprintf "Unknown fixture id %d" patchId))
 
     match req with
@@ -90,12 +90,23 @@ let mockServer model req =
             Update
             (fun p -> {p with name = name})
             id
+    | Repatch (id, addr) ->
+        maybeUpdatePatch
+            Update
+            (fun p -> {p with address = addr})
+            id
+    | ServerRequest.Remove id ->
+        maybeUpdatePatch
+            Remove
+            (fun _ -> id)
+            id
+
 
 let update message model =
 
     match message with
-    | Request _ ->
-        Cmd.
+    | Request r ->
+        (model, mockServer model r |> Response |> Cmd.ofMsg)
     | Response r ->
         let newModel =
             match r with
@@ -109,6 +120,8 @@ let update message model =
                     model.patches
                     |> List.map (fun existing -> if existing.id = p.id then p else existing)
                 {model with patches = newPatches}
+            | Remove id ->
+                {model with patches = model.patches |> List.filter (fun p -> p.id = id)}
         (newModel, Cmd.none)
 
 /// Render a patch item as a basic table row.
@@ -119,11 +132,11 @@ let viewPatchItem item =
         | Some(u, a) -> string u, string a
         | None -> "", ""
     R.tr [] [
-        td item.id
-        td item.name
-        td universe
-        td address
-        td item.channelCount
+        td item.id;
+        td item.name;
+        td universe;
+        td address;
+        td item.channelCount;
     ]
 
 let patchTableHeader =
@@ -138,7 +151,10 @@ let viewPatchTable patches =
     ]
 
 let viewConsole lines =
-    R.textarea [ Overflow "scroll" ] [String.concat "" lines]
+    R.div [] [
+        text "Console";
+        R.textarea [ Style [Overflow "scroll"] ] [ String.concat "" lines |> text ];
+    ]
 
 let view model dispatch =
     R.div [] [
