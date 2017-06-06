@@ -3,6 +3,8 @@
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
 #load "../node_modules/fable-react-toolbox/Fable.Helpers.ReactToolbox.fs"
+#load "Types.fs"
+#load "PatchEdit.fsx"
 
 open Fable.Core
 open Fable.Import
@@ -12,57 +14,22 @@ open Fable.Core.JsInterop
 module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
 module RT = Fable.Helpers.ReactToolbox
+open Types
 
 let text x : (Fable.Import.React.ReactElement) = unbox x
 
-type UniverseId = int
-
-type DmxAddress = UniverseId * int
-
-type FixtureId = int
-
-type PatchItem = {
-    id: FixtureId;
-    name: string;
-    address: DmxAddress option;
-    channelCount: int;
-}
 
 type Model = {
     patches: PatchItem list;
     // Current fixture ID we have selected, if any.
     selected: FixtureId option;
+    // Model for the patch editor.
+    editorModel: PatchEdit.Model;
     // For now show errors in a console of infinite length.
     consoleText: string array}
 
 let withConsoleMessage msg model =
     {model with consoleText = Array.append model.consoleText [|msg|]}
-
-/// All possible requests we can make to the patch server.
-type ServerRequest =
-    /// Request the full state of the patch to be sent.
-    | PatchState
-    /// Create a new patch; may fail due to address conflict.
-    | NewPatch of PatchItem
-    /// Rename a patch item by id.
-    | Rename of FixtureId * string
-    /// Repatch a fixture to a new universe/address, possibly unpatching.
-    | Repatch of FixtureId * DmxAddress option
-    /// Remove a fixture from the patch entirely.
-    | Remove of FixtureId
-
-/// All possible responses we can receive from the patch server.
-type ServerResponse =
-    /// Generic error message from the server, we may log or display to user.
-    | Error of string
-    /// Full current state of the patch.
-    | PatchState of PatchItem list
-    /// Single new patch added.
-    | NewPatch of PatchItem
-    /// A patch has been updated, update our version if we have it.
-    | Update of PatchItem
-    /// A patch item has been removed.
-    | Remove of FixtureId
 
 type UiAction =
     | ClearConsole
@@ -73,15 +40,21 @@ type Message =
     | Request of ServerRequest
     | Response of ServerResponse
     | Action of UiAction
+    | Edit of PatchEdit.Message
 
 let testPatches = [
-    {id = 0; name = "foo"; address = None; channelCount = 2}
-    {id = 1; name = "charlie"; address = Some(0, 27); channelCount = 1}
+    {id = 0; name = "foo"; kind = "dimmer"; address = None; channelCount = 2}
+    {id = 1; name = "charlie"; kind = "roto"; address = Some(0, 27); channelCount = 1}
 ]
 
 
 let initialModel () =
-    ({patches = testPatches; selected = None; consoleText = Array.empty}, Cmd.none)
+    let m = 
+       {patches = testPatches;
+        selected = None;
+        editorModel = PatchEdit.initialModel();
+        consoleText = Array.empty}
+    (m, Cmd.none)
 
 /// A fake server to emit messages as if we were talking to a real server.
 let mockServer model req =
@@ -115,32 +88,44 @@ let mockServer model req =
 let purple = Color "#6600ff"
 let cyan = Color "#00ccff"
 
+/// Return a command to update the editor's state if fixture id is among those in patches.
+let updateEditorState patches selectedFixtureId =
+    selectedFixtureId
+    |> Option.map (fun fixtureId ->
+        patches |> List.tryFind (fun p -> p.id = fixtureId))
+    |> Option.flatten
+    |> PatchEdit.SetState
+    |> Edit
+    |> Cmd.ofMsg
+
 let update message model =
 
     match message with
     | Request r ->
         (model, mockServer model r |> Response |> Cmd.ofMsg)
     | Response r ->
-        let newModel =
-            match r with
-            | Error msg -> model |> withConsoleMessage msg
-            | PatchState s -> {model with patches = s}
-            | NewPatch p -> {model with patches = p::model.patches}
-            | Update p ->
-                let newPatches =
-                    model.patches
-                    |> List.map (fun existing -> if existing.id = p.id then p else existing)
-                {model with patches = newPatches}
-            | Remove id ->
-                {model with patches = model.patches |> List.filter (fun p -> p.id = id)}
-        (newModel, Cmd.none)
+        match r with
+        | Error msg -> model |> withConsoleMessage msg, Cmd.none
+        | PatchState s -> {model with patches = s}, updateEditorState s model.selected
+        | NewPatch p -> {model with patches = p::model.patches}, Cmd.none
+        | Update p ->
+            let newPatches =
+                model.patches
+                |> List.map (fun existing -> if existing.id = p.id then p else existing)
+            {model with patches = newPatches}, updateEditorState newPatches model.selected
+        | Remove id ->
+            let newPatches = model.patches |> List.filter (fun p -> p.id = id)
+            {model with patches = newPatches}, updateEditorState newPatches model.selected
     | Action a ->
-        a |>
-        function
-            | ClearConsole -> {model with consoleText = Array.empty}
-            | SetSelected id -> {model with selected = Some id}
-            | Deselect -> {model with selected = None}
-        |> fun m -> (m, Cmd.none)
+        match a with
+        | ClearConsole -> {model with consoleText = Array.empty}, Cmd.none
+        | SetSelected id ->
+            {model with selected = Some id}, updateEditorState model.patches (Some(id))
+        | Deselect -> {model with selected = None}, updateEditorState model.patches None
+    | Edit e ->
+        let editorModel, editorCmds = PatchEdit.update e model.editorModel
+        {model with editorModel = editorModel}, editorCmds |> Cmd.map Edit
+    
 
 let updateAndLog message model =
     let model, cmds = update message model
@@ -161,6 +146,7 @@ let viewPatchTableRow dispatch selectedId item =
             ] []
         ];
         td item.id;
+        td item.kind;
         td item.name;
         td universe;
         td address;
@@ -168,7 +154,7 @@ let viewPatchTableRow dispatch selectedId item =
     ]
 
 let patchTableHeader =
-    ["selected"; "id"; "name"; "universe"; "address"; "channel count"]
+    ["selected"; "id"; "kind"; "name"; "universe"; "address"; "channel count"]
     |> List.map (fun x -> R.th [] [text x])
     |> R.tr []
 
@@ -179,6 +165,7 @@ let viewPatchTable dispatch patches selectedId =
             for patch in patches -> viewPatchTableRow dispatch selectedId patch
         ]
     ]
+
 let viewConsole dispatch lines =
     R.div [] [
         R.span [] [
@@ -197,6 +184,7 @@ let viewConsole dispatch lines =
 let view model dispatch =
     R.div [] [
         viewPatchTable dispatch model.patches model.selected
+        PatchEdit.view model.editorModel (Edit >> dispatch) (Request >> dispatch)
         viewConsole dispatch model.consoleText
     ]
 
