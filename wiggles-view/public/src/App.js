@@ -13,7 +13,7 @@ import { ServerResponse, ServerRequest, PatchItem } from "./Types";
 import { view as view_1, update as update_1, initialModel as initialModel_1, Message as Message_1, Model as Model_1 } from "./PatchEdit";
 import { ProgramModule, CmdModule } from "fable-elmish/elmish";
 import { join, fsFormat } from "fable-core/String";
-import { map as map_1, singleton, append, delay, toList, fold, flatten, tryFind } from "fable-core/Seq";
+import { map as map_1, singleton, append, delay, toList, fold, tryFind } from "fable-core/Seq";
 import { createElement } from "react";
 import { withReact } from "fable-elmish-react/react";
 export function text(x) {
@@ -152,8 +152,8 @@ export function mockServer(model, req) {
           })(patchId)]) : _arg1;
         }(defaultArg(tryFind(function (p) {
           return p.id === patchId;
-        }, model.patches), null, function ($var9) {
-          return msgType(op($var9));
+        }, model.patches), null, function ($var18) {
+          return msgType(op($var18));
         }));
       };
     };
@@ -186,12 +186,12 @@ export function mockServer(model, req) {
 export var purple = ["color", "#6600ff"];
 export var cyan = ["color", "#00ccff"];
 export function updateEditorState(patches, selectedFixtureId) {
-  return CmdModule.ofMsg(new Message("Edit", [new Message_1("SetState", [flatten(defaultArg(defaultArg(selectedFixtureId, null, function (fixtureId) {
+  return CmdModule.ofMsg(new Message("Edit", [new Message_1("SetState", [function (_arg1) {
+    return _arg1 != null ? _arg1 : null;
+  }(defaultArg(selectedFixtureId, null, function (fixtureId) {
     return tryFind(function (p) {
       return p.id === fixtureId;
     }, patches);
-  }), [], function (x) {
-    return [x];
   }))])]));
 }
 export function update(message, model) {
@@ -297,14 +297,14 @@ export function viewConsole(dispatch, lines) {
   })));
 }
 export function view(model, dispatch) {
-  return createElement("div", {}, viewPatchTable(dispatch, model.patches, model.selected), view_1(model.editorModel, function ($var10) {
+  return createElement("div", {}, viewPatchTable(dispatch, model.patches, model.selected), view_1(model.editorModel, function ($var19) {
     return dispatch(function (arg0) {
       return new Message("Edit", [arg0]);
-    }($var10));
-  }, function ($var11) {
+    }($var19));
+  }, function ($var20) {
     return dispatch(function (arg0_1) {
       return new Message("Request", [arg0_1]);
-    }($var11));
+    }($var20));
   }), viewConsole(dispatch, model.consoleText));
 }
 ProgramModule.run(withReact("app", ProgramModule.mkProgram(function () {

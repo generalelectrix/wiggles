@@ -4,14 +4,49 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { defaultArg, compareUnions, equalsUnions, compareRecords, equalsRecords, Option } from "fable-core/Util";
+import { compareRecords, equalsRecords, makeGeneric, Option, compareUnions, equalsUnions, GenericParam } from "fable-core/Util";
 import { ServerRequest, PatchItem } from "./Types";
+import { fsFormat } from "fable-core/String";
 import { CmdModule } from "fable-elmish/elmish";
 import { createElement } from "react";
-import { fsFormat } from "fable-core/String";
 export function text(x) {
   return x;
 }
+export var EditField = function () {
+  function EditField(caseName, fields) {
+    _classCallCheck(this, EditField);
+
+    this.Case = caseName;
+    this.Fields = fields;
+  }
+
+  _createClass(EditField, [{
+    key: _Symbol.reflection,
+    value: function () {
+      return {
+        type: "PatchEdit.EditField",
+        interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
+        cases: {
+          Absent: [],
+          Present: [GenericParam("T")]
+        }
+      };
+    }
+  }, {
+    key: "Equals",
+    value: function (other) {
+      return equalsUnions(this, other);
+    }
+  }, {
+    key: "CompareTo",
+    value: function (other) {
+      return compareUnions(this, other);
+    }
+  }]);
+
+  return EditField;
+}();
+setType("PatchEdit.EditField", EditField);
 export var Model = function () {
   function Model(selected, nameEdit, addressEdit, universeEdit) {
     _classCallCheck(this, Model);
@@ -30,9 +65,15 @@ export var Model = function () {
         interfaces: ["FSharpRecord", "System.IEquatable", "System.IComparable"],
         properties: {
           selected: Option(PatchItem),
-          nameEdit: Option("string"),
-          addressEdit: Option("number"),
-          universeEdit: Option("number")
+          nameEdit: makeGeneric(EditField, {
+            T: "string"
+          }),
+          addressEdit: makeGeneric(EditField, {
+            T: Option("number")
+          }),
+          universeEdit: makeGeneric(EditField, {
+            T: Option("number")
+          })
         }
       };
     }
@@ -66,10 +107,16 @@ export var Message = function () {
         type: "PatchEdit.Message",
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
-          AddressEdit: [Option("number")],
-          NameEdit: [Option("string")],
+          AddressEdit: [makeGeneric(EditField, {
+            T: Option("number")
+          })],
+          NameEdit: [makeGeneric(EditField, {
+            T: "string"
+          })],
           SetState: [Option(PatchItem)],
-          UniverseEdit: [Option("number")]
+          UniverseEdit: [makeGeneric(EditField, {
+            T: Option("number")
+          })]
         }
       };
     }
@@ -89,10 +136,13 @@ export var Message = function () {
 }();
 setType("PatchEdit.Message", Message);
 export function initialModel() {
-  return new Model(null, null, null, null);
+  return new Model(null, new EditField("Absent", []), new EditField("Absent", []), new EditField("Absent", []));
 }
 export function update(message, model) {
   return function (m) {
+    fsFormat("%+A")(function (x) {
+      console.log(x);
+    })(m);
     return [m, CmdModule.none()];
   }(message.Case === "NameEdit" ? new Model(model.selected, message.Fields[0], model.addressEdit, model.universeEdit) : message.Case === "AddressEdit" ? new Model(model.selected, model.nameEdit, message.Fields[0], model.universeEdit) : message.Case === "UniverseEdit" ? new Model(model.selected, model.nameEdit, model.addressEdit, message.Fields[0]) : function () {
     var clearBuffers = void 0;
@@ -114,31 +164,112 @@ export function update(message, model) {
         break;
     }
 
-    return new Model(message.Fields[0], clearBuffers ? null : model.nameEdit, clearBuffers ? null : model.addressEdit, model.universeEdit);
+    return new Model(message.Fields[0], clearBuffers ? new EditField("Absent", []) : model.nameEdit, clearBuffers ? new EditField("Absent", []) : model.addressEdit, clearBuffers ? new EditField("Absent", []) : model.universeEdit);
   }());
 }
-export var enterKeyCode = 13;
+export var EnterKey = 13;
+export var EscapeKey = 27;
 export function nameEditBox(fixtureId, name, dispatchLocal, dispatchServer) {
-  var clearNameEdit = function clearNameEdit() {
-    dispatchLocal(new Message("NameEdit", [null]));
+  var clear = function clear() {
+    dispatchLocal(new Message("NameEdit", [new EditField("Absent", [])]));
   };
 
-  return createElement("input", {
+  return createElement("div", {}, text("Name:"), createElement("input", {
     type: "text",
     onChange: function onChange(e_1) {
-      dispatchLocal(new Message("NameEdit", [e_1.target.value]));
+      dispatchLocal(new Message("NameEdit", [new EditField("Present", [e_1.target.value])]));
     },
     onBlur: function onBlur(_arg1) {
-      clearNameEdit(null);
+      clear(null);
     },
     onKeyDown: function onKeyDown(e) {
-      if (e.keyCode === enterKeyCode) {
-        clearNameEdit(null);
-        dispatchServer(new ServerRequest("Rename", [fixtureId, name]));
-      }
+      var matchValue = e.keyCode;
+
+      switch (matchValue) {
+        case 13:
+          clear(null);
+          dispatchServer(new ServerRequest("Rename", [fixtureId, name]));
+          break;
+
+        case 27:
+          clear(null);
+          break;
+
+        default:}
     },
     value: name
+  }));
+}
+export function withDefault(value, editField) {
+  if (editField.Case === "Absent") {
+    return value;
+  } else {
+    return editField.Fields[0];
+  }
+}
+export function addressPieceEditBox(cmd, addr, dispatchLocal) {
+  var displayAddr = function (_arg1) {
+    return _arg1 == null ? "" : String(_arg1);
+  }(addr);
+
+  fsFormat("display: %s")(function (x) {
+    console.log(x);
+  })(displayAddr);
+  return createElement("input", {
+    type: "number",
+    onChange: function onChange(e) {
+      dispatchLocal(cmd(new EditField("Present", [function () {
+        var matchValue = e.target.value;
+
+        if (matchValue === "") {
+          return null;
+        } else {
+          return matchValue;
+        }
+      }()])));
+    },
+    value: displayAddr
   });
+}
+export function addressEditor(selected, model, dispatchLocal, dispatchServer) {
+  var displayUniv = withDefault(selected.universe, model.universeEdit);
+  var displayAddr = withDefault(selected.dmxAddress, model.addressEdit);
+  fsFormat("%+A")(function (x) {
+    console.log(x);
+  })(displayUniv);
+  fsFormat("%+A")(function (x) {
+    console.log(x);
+  })(displayAddr);
+
+  var clear = function clear(msg) {
+    dispatchLocal(msg(new EditField("Absent", [])));
+  };
+
+  return createElement("div", {}, text("Universe:"), addressPieceEditBox(function (arg0) {
+    return new Message("UniverseEdit", [arg0]);
+  }, displayUniv, dispatchLocal), text("Address:"), addressPieceEditBox(function (arg0_1) {
+    return new Message("AddressEdit", [arg0_1]);
+  }, displayAddr, dispatchLocal), createElement("button", {
+    onClick: function onClick(_arg1) {
+      clear(function (arg0_2) {
+        return new Message("UniverseEdit", [arg0_2]);
+      });
+      clear(function (arg0_3) {
+        return new Message("AddressEdit", [arg0_3]);
+      });
+      var matchValue = [displayUniv, displayAddr];
+      var $var2 = matchValue[0] != null ? matchValue[1] != null ? [0, matchValue[1], matchValue[0]] : [1] : [1];
+
+      switch ($var2[0]) {
+        case 0:
+          dispatchServer(new ServerRequest("Repatch", [selected.id, [$var2[2], $var2[1]]]));
+          break;
+
+        case 1:
+          break;
+      }
+    }
+  }, text("Repatch")));
 }
 export function view(model, dispatchLocal, dispatchServer) {
   if (model.selected != null) {
@@ -146,7 +277,7 @@ export function view(model, dispatchLocal, dispatchServer) {
       return x;
     })(model.selected.id))), createElement("div", {}, text(fsFormat("Fixture type: %s")(function (x) {
       return x;
-    })(model.selected.kind))), nameEditBox(model.selected.id, defaultArg(model.nameEdit, model.selected.name), dispatchLocal, dispatchServer));
+    })(model.selected.kind))), nameEditBox(model.selected.id, withDefault(model.selected.name, model.nameEdit), dispatchLocal, dispatchServer), addressEditor(model.selected, model, dispatchLocal, dispatchServer));
   } else {
     return createElement("div", {}, text(fsFormat("No fixture selected.")(function (x) {
       return x;

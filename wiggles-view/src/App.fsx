@@ -93,7 +93,7 @@ let updateEditorState patches selectedFixtureId =
     selectedFixtureId
     |> Option.map (fun fixtureId ->
         patches |> List.tryFind (fun p -> p.id = fixtureId))
-    |> Option.flatten
+    |> function | None -> None | Some x -> x // Option.flatten not supported by Fable, apparently.
     |> PatchEdit.SetState
     |> Edit
     |> Cmd.ofMsg

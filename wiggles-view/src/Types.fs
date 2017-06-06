@@ -12,8 +12,11 @@ type PatchItem = {
     name: string;
     kind: string;
     address: GlobalAddress option;
-    channelCount: int;
-}
+    channelCount: int}
+    with
+    member this.universe = this.address |> Option.map fst
+    member this.dmxAddress = this.address |> Option.map snd
+    
 
 /// All possible requests we can make to the patch server.
 type ServerRequest =

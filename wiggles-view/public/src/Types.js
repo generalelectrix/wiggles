@@ -4,7 +4,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { makeGeneric, compareUnions, equalsUnions, compareRecords, equalsRecords, Tuple, Option } from "fable-core/Util";
+import { makeGeneric, compareUnions, equalsUnions, defaultArg, compareRecords, equalsRecords, Tuple, Option } from "fable-core/Util";
 import List from "fable-core/List";
 export var PatchItem = function () {
   function PatchItem(id, name, kind, address, channelCount) {
@@ -41,6 +41,20 @@ export var PatchItem = function () {
     key: "CompareTo",
     value: function (other) {
       return compareRecords(this, other);
+    }
+  }, {
+    key: "universe",
+    get: function () {
+      return defaultArg(this.address, null, function (tuple) {
+        return tuple[0];
+      });
+    }
+  }, {
+    key: "dmxAddress",
+    get: function () {
+      return defaultArg(this.address, null, function (tuple) {
+        return tuple[1];
+      });
     }
   }]);
 
