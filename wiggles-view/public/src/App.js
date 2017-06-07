@@ -159,8 +159,8 @@ export function mockServer(model, req) {
           })(patchId)]) : _arg1;
         }(defaultArg(tryFind(function (p) {
           return p.id === patchId;
-        }, model.patches), null, function ($var29) {
-          return msgType(op($var29));
+        }, model.patches), null, function ($var33) {
+          return msgType(op($var33));
         }));
       };
     };
@@ -327,23 +327,23 @@ export function viewConsole(dispatch, lines) {
   }], Form.Control]))));
 }
 export function view(model, dispatch) {
-  var dispatchServer = function dispatchServer($var30) {
+  var dispatchServer = function dispatchServer($var34) {
     return dispatch(function (arg0) {
       return new Message("Request", [arg0]);
-    }($var30));
+    }($var34));
   };
 
   return createElement("div", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
-  }, {}, [Container.Fluid]), Grid.layout(ofArray([[8, ofArray([viewPatchTable(dispatch, model.patches, model.selected)])], [4, ofArray([Grid.fullRow(ofArray([view_1(model.editorModel, function ($var31) {
+  }, {}, [Container.Fluid]), Grid.layout(ofArray([[8, ofArray([viewPatchTable(dispatch, model.patches, model.selected)])], [4, ofArray([Grid.fullRow(ofArray([view_1(model.editorModel, function ($var35) {
     return dispatch(function (arg0_1) {
       return new Message("Edit", [arg0_1]);
-    }($var31));
-  }, dispatchServer)])), Grid.fullRow(ofArray([view_2(model.newPatchModel, function ($var32) {
+    }($var35));
+  }, dispatchServer)])), Grid.fullRow(ofArray([view_2(model.newPatchModel, function ($var36) {
     return dispatch(function (arg0_2) {
       return new Message("Create", [arg0_2]);
-    }($var32));
+    }($var36));
   }, dispatchServer)]))])]])), Grid.fullRow(ofArray([viewConsole(dispatch, model.consoleText)])));
 }
 ProgramModule.run(withReact("app", ProgramModule.mkProgram(function () {

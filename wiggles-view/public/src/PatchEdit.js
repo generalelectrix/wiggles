@@ -260,7 +260,7 @@ export function addressEditor(selected, model, dispatchLocal, dispatchServer) {
       case 1:
         break;
     }
-  }], Button.Basic]), text("Repatch")));
+  }], Button.Warning]), text("Repatch")));
 }
 export function view(model, dispatchLocal, dispatchServer) {
   var header = createElement("h3", {}, text("Edit patch"));

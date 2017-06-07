@@ -33,6 +33,14 @@ module Grid =
     let layout (elementsWithWidths: #seq<int * (ReactElement list)>) =
         row [for (width, elements) in elementsWithWidths -> col width elements]
 
+    /// Attempt to evenly grid-distribute elements.
+    /// Best results with 1, 2, 3, 4, 6, 12
+    let distribute (elements: ReactElement list list) =
+        let width = 12 / elements.Length
+        elements
+        |> List.map (fun elements -> width, elements)
+        |> layout
+
 
 module Form =
     let Control = cn "form-control"

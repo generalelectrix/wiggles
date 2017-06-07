@@ -3,7 +3,7 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
 import { singleton, collect, delay, toList, fold } from "fable-core/Seq";
 import { createElement } from "react";
 import { fsFormat } from "fable-core/String";
-import { ofArray } from "fable-core/List";
+import { map, ofArray } from "fable-core/List";
 
 function cn(arg0) {
   return ["className", arg0];
@@ -50,6 +50,13 @@ export var Grid = function (__exports) {
         return singleton(col(matchValue[0], matchValue[1]));
       }, elementsWithWidths);
     })));
+  };
+
+  var distribute = __exports.distribute = function (elements) {
+    var width = ~~(12 / elements.length);
+    return layout(map(function (elements_1) {
+      return [width, elements_1];
+    }, elements));
   };
 
   return __exports;

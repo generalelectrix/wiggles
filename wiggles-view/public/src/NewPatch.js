@@ -7,23 +7,25 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
 import { compare, compareUnions, equalsUnions, compareRecords, equalsRecords, Option, makeGeneric } from "fable-core/Util";
-import { map } from "fable-core/List";
+import { ofArray, map } from "fable-core/List";
 import List from "fable-core/List";
 import { FixtureKind } from "./Types";
 import { fold, item, sortWith, toList, tryFind } from "fable-core/Seq";
 import { CmdModule } from "fable-elmish/elmish";
 import { createElement } from "react";
 import { fsFormat } from "fable-core/String";
-import { Form } from "./Bootstrap";
+import { Grid, Form } from "./Bootstrap";
 export function text(x) {
   return x;
 }
 export var Model = function () {
-  function Model(kinds, selectedKind) {
+  function Model(kinds, selectedKind, address, quantity) {
     _classCallCheck(this, Model);
 
     this.kinds = kinds;
     this.selectedKind = selectedKind;
+    this.address = address;
+    this.quantity = quantity;
   }
 
   _createClass(Model, [{
@@ -36,7 +38,9 @@ export var Model = function () {
           kinds: makeGeneric(List, {
             T: FixtureKind
           }),
-          selectedKind: Option(FixtureKind)
+          selectedKind: Option(FixtureKind),
+          address: "number",
+          quantity: "number"
         }
       };
     }
@@ -77,6 +81,8 @@ export var Message = function () {
         type: "NewPatch.Message",
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
+          SetAddress: ["number"],
+          SetQuantity: ["number"],
           SetSelected: ["string"],
           UpdateKinds: [makeGeneric(List, {
             T: FixtureKind
@@ -100,29 +106,27 @@ export var Message = function () {
 }();
 setType("NewPatch.Message", Message);
 export function initialModel() {
-  return new Model(new List(), null);
+  return new Model(new List(), null, 1, 1);
 }
 export function update(message, model) {
-  if (message.Case === "SetSelected") {
+  return function (m) {
+    return [m, CmdModule.none()];
+  }(message.Case === "SetSelected" ? function () {
     var matchValue = model.TryGetNamedKind(message.Fields[0]);
 
     if (matchValue == null) {
-      return [model, CmdModule.none()];
+      return model;
     } else {
-      return [function () {
-        var selectedKind = matchValue;
-        return new Model(model.kinds, selectedKind);
-      }(), CmdModule.none()];
+      var selectedKind = matchValue;
+      return new Model(model.kinds, selectedKind, model.address, model.quantity);
     }
-  } else {
-    return [new Model(toList(sortWith(function (x, y) {
-      return compare(function (k) {
-        return k.name;
-      }(x), function (k) {
-        return k.name;
-      }(y));
-    }, message.Fields[0])), model.selectedKind), CmdModule.none()];
-  }
+  }() : message.Case === "SetAddress" ? (message.Fields[0] > 0 ? message.Fields[0] < 513 : false) ? new Model(model.kinds, model.selectedKind, message.Fields[0], model.quantity) : model : message.Case === "SetQuantity" ? message.Fields[0] > 0 ? new Model(model.kinds, model.selectedKind, model.address, message.Fields[0]) : model : new Model(toList(sortWith(function (x, y) {
+    return compare(function (k) {
+      return k.name;
+    }(x), function (k) {
+      return k.name;
+    }(y));
+  }, message.Fields[0])), model.selectedKind, model.address, model.quantity));
 }
 export var EnterKey = 13;
 export var EscapeKey = 27;
@@ -145,6 +149,22 @@ export function typeSelector(kinds, selectedKind, dispatchLocal) {
     return map(option, list);
   }(kinds)))));
 }
+export function numericEditBox(dispatchLocal, label, cmd, value) {
+  return createElement("label", {}, text(label), createElement("input", fold(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [["value", String(value)], ["onChange", function (e_1) {
+    dispatchLocal(cmd(function () {
+      var matchValue_1 = e_1.target.value;
+
+      if (matchValue_1 === "") {
+        return 1;
+      } else {
+        return matchValue_1;
+      }
+    }()));
+  }], ["type", "number"], Form.Control])));
+}
 export function view(model, dispatchLocal, dispatchServer) {
   if (model.kinds.tail == null) {
     return createElement("div", {}, text("No patch types available."));
@@ -152,6 +172,10 @@ export function view(model, dispatchLocal, dispatchServer) {
     return createElement("div", fold(function (o, kv) {
       o[kv[0]] = kv[1];
       return o;
-    }, {}, [Form.Group]), createElement("span", {}, createElement("h3", {}, text("Create new patch"))), typeSelector(model.kinds, model.selectedKind, dispatchLocal));
+    }, {}, [Form.Group]), createElement("span", {}, createElement("h3", {}, text("Create new patch"))), typeSelector(model.kinds, model.selectedKind, dispatchLocal), Grid.distribute(ofArray([ofArray([numericEditBox(dispatchLocal, "Quantity", function (arg0) {
+      return new Message("SetQuantity", [arg0]);
+    }, model.quantity)]), ofArray([numericEditBox(dispatchLocal, "Start address", function (arg0_1) {
+      return new Message("SetAddress", [arg0_1]);
+    }, model.address)])])));
   }
 }

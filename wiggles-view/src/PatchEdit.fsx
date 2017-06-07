@@ -122,7 +122,7 @@ let addressEditor (selected: PatchItem) model dispatchLocal dispatchServer =
         addressPieceEditBox "Universe:" UniverseEdit displayUniv dispatchLocal
         addressPieceEditBox "Address:" AddressEdit displayAddr dispatchLocal
         R.button [
-            Button.Basic
+            Button.Warning
             OnClick (fun _ ->
                 clear UniverseEdit
                 clear AddressEdit

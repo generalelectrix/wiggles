@@ -61,6 +61,8 @@ let initialModel () =
 
     (m, initCommands)
 
+let counter = ref 10
+
 /// A fake server to emit messages as if we were talking to a real server.
 let mockServer model req =
     let maybeUpdatePatch msgType op patchId =
@@ -76,7 +78,7 @@ let mockServer model req =
         if model.patches.IsEmpty then testPatches else model.patches
         |> PatchState
     | ServerRequest.GetKinds -> Kinds testKinds
-    | ServerRequest.NewPatch p -> NewPatch p
+    | ServerRequest.NewPatches patches -> NewPatches patches
     | Rename (id, name) ->
         maybeUpdatePatch
             Update
@@ -112,7 +114,8 @@ let update message model =
         match r with
         | Error msg -> model |> withConsoleMessage msg, Cmd.none
         | PatchState s -> {model with patches = s}, updateEditorState s model.selected
-        | NewPatch p -> {model with patches = p::model.patches}, Cmd.none
+        | NewPatches patches ->
+            {model with patches = model.patches@patches}, Cmd.none
         | Update p ->
             let newPatches =
                 model.patches

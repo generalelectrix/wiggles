@@ -23,31 +23,58 @@ let text x : (Fable.Import.React.ReactElement) = unbox x
 type Model =
     /// Fixture types we have available to patch.
    {kinds: FixtureKind list;
-    selectedKind: FixtureKind option}
+    selectedKind: FixtureKind option;
+    name: string;
+    universe: UniverseId option;
+    address: DmxAddress option;
+    quantity: int;}
     with
     member this.TryGetNamedKind(name) = this.kinds |> List.tryFind (fun k -> k.name = name)
     
 type Message = 
     | UpdateKinds of FixtureKind list
     | SetSelected of string
+    | SetUniverse of UniverseId option
+    | SetAddress of DmxAddress option
+    | SetQuantity of int
+    /// Convenience feature to advance the start address after patching.
+    | AdvanceAddress
 
 let initialModel () = {
     kinds = [];
     selectedKind = None;
+    name = "";
+    universe = None;
+    address = None;
+    quantity = 1;
 }
+
+let positive x = max x 0
 
 let update message (model: Model) =
     match message with
-    | UpdateKinds kinds -> {model with kinds = kinds |> List.sortBy (fun k -> k.name)}, Cmd.none
+    | UpdateKinds kinds -> {model with kinds = kinds |> List.sortBy (fun k -> k.name)}
     | SetSelected name ->
         match model.TryGetNamedKind(name) with
-        | Some(kind) -> {model with selectedKind = Some kind}, Cmd.none
-        | None -> model, Cmd.none
+        | Some(kind) -> {model with selectedKind = Some kind}
+        | None -> model
+    | SetUniverse u -> {model with universe = u |> Option.map positive}
+    | SetAddress a -> {model with address = a |> Option.map (min 512 >> max 1)}
+    | SetQuantity q -> {model with quantity = q |> positive}
+    | AdvanceAddress ->
+        match model.address with
+        | Some(addr) ->
+            let channelCount =
+                match model.selectedKind with
+                | Some(k) -> k.channelCount
+                | None -> 0
+            {model with address = (addr + (model.quantity*channelCount)) |> min 512 |> Some}
+        | None -> model
+
+    |> fun m -> (m, Cmd.none)
 
 let [<Literal>] EnterKey = 13.0
 let [<Literal>] EscapeKey = 27.0
-
-
 
 /// Render type selector dropdown.
 let typeSelector (kinds: FixtureKind list) selectedKind dispatchLocal =
@@ -65,13 +92,79 @@ let typeSelector (kinds: FixtureKind list) selectedKind dispatchLocal =
         ] (kinds |> List.map option)
     ]
 
+let numericEditBox dispatchLocal handleValue label cmd value =
+    R.label [] [
+        text label
+        R.input [
+            Form.Control
+            Type "number"
+            OnChange (fun e -> 
+                !!e.target?value
+                |> handleValue
+                |> cmd
+                |> dispatchLocal);
+            Value (Case1 (value))
+        ] []
+    ]
+
+let patchButton model dispatchLocal dispatchServer =
+    R.button [
+        Button.Warning
+        OnClick (fun _ ->
+            //AdvanceAddress |> dispatchLocal
+            //let requests =
+            //    if model.quantity = 1 then
+            //        let address =
+            //            match model.
+            //        {name = model.name; kind = model.selectedKind.name; 
+
+            //let makeReq i address = 
+            //let patchRequest = {
+            ()
+        )
+    ][ text "Patch" ]
+
+let noneIfEmpty s = if s = "" then None else Some(int s)
+let emptyIfNone = function | None -> "" | Some(x) -> string x
+
 /// View function taking two different dispatch callbacks.
 /// dispatchLocal dispatches a message local to this subapp.
 /// dispatchServer sends a server request.
 let view model dispatchLocal dispatchServer =
-    if model.kinds.IsEmpty then R.div [] [text "No patch types available."]
+
+    if model.kinds.IsEmpty then
+        R.div [] [text "No patch types available."]
     else
+        let universeEntry = 
+            numericEditBox
+                dispatchLocal
+                noneIfEmpty
+                "Universe"
+                SetUniverse
+                (model.universe |> emptyIfNone)
+
+        let addressEntry =
+            numericEditBox
+                dispatchLocal
+                noneIfEmpty
+                "Start address"
+                SetAddress
+                (model.address |> emptyIfNone)
+
+        let quantityEntry =
+            numericEditBox
+                dispatchLocal
+                (fun v -> if v = "" then 1 else int v)
+                "Quantity"
+                SetQuantity
+                (string model.quantity)
+
         R.div [Form.Group] [
             R.span [] [ R.h3 [] [text "Create new patch"]]
             typeSelector model.kinds model.selectedKind dispatchLocal
+            Grid.distribute [
+                [ universeEntry ]
+                [ addressEntry ]
+                [ quantityEntry ]
+            ]
         ]

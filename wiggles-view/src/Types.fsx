@@ -19,6 +19,12 @@ type GlobalAddress = UniverseId * DmxAddress
 
 type FixtureId = int
 
+type PatchRequest = {
+    name: string;
+    kind: string;
+    address: GlobalAddress option;
+}
+
 type PatchItem = {
     id: FixtureId;
     name: string;
@@ -44,8 +50,8 @@ let testKinds : FixtureKind list = [
 type ServerRequest =
     /// Request the full state of the patch to be sent.
     | PatchState
-    /// Create a new patch; may fail due to address conflict.
-    | NewPatch of PatchItem
+    /// Create one or more new patches; may fail.
+    | NewPatches of PatchRequest list
     /// Rename a patch item by id.
     | Rename of FixtureId * string
     /// Repatch a fixture to a new universe/address, possibly unpatching.
@@ -61,8 +67,8 @@ type ServerResponse =
     | Error of string
     /// Full current state of the patch.
     | PatchState of PatchItem list
-    /// Single new patch added.
-    | NewPatch of PatchItem
+    /// One or more new patches added.
+    | NewPatches of PatchItem list
     /// A patch has been updated, update our version if we have it.
     | Update of PatchItem
     /// A patch item has been removed.
