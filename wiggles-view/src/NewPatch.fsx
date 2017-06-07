@@ -47,24 +47,22 @@ let update message (model: Model) =
 let [<Literal>] EnterKey = 13.0
 let [<Literal>] EscapeKey = 27.0
 
-let option name = R.option [ Value (Case1 name) ] [ text name ]
+
 
 /// Render type selector dropdown.
 let typeSelector (kinds: FixtureKind list) selectedKind dispatchLocal =
+    let option (kind: FixtureKind) =
+        R.option
+            [ Value (Case1 kind.name) ]
+            [ text (sprintf "%s (%d ch)" kind.name kind.channelCount) ]
+
     let selected = defaultArg selectedKind kinds.[0]
     R.div [] [
-        R.div [] [
-            R.select [
-                Form.Control
-                OnChange (fun e -> SetSelected !!e.target?value |> dispatchLocal)
-                Value (Case1 selected.name)
-            ] [
-                for kind in kinds -> option kind.name
-            ]
-        ]
-        R.div [] [
-            R.span [] [text (sprintf "Required channels: %d" selected.channelCount)]
-        ]
+        R.select [
+            Form.Control
+            OnChange (fun e -> SetSelected !!e.target?value |> dispatchLocal)
+            Value (Case1 selected.name)
+        ] (kinds |> List.map option)
     ]
 
 /// View function taking two different dispatch callbacks.
@@ -74,6 +72,6 @@ let view model dispatchLocal dispatchServer =
     if model.kinds.IsEmpty then R.div [] [text "No patch types available."]
     else
         R.div [Form.Group] [
-            R.div [] [text "Create new patch"]
+            R.span [] [ R.h3 [] [text "Create new patch"]]
             typeSelector model.kinds model.selectedKind dispatchLocal
         ]

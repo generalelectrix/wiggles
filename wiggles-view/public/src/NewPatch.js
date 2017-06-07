@@ -7,13 +7,14 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
 import { compare, compareUnions, equalsUnions, compareRecords, equalsRecords, Option, makeGeneric } from "fable-core/Util";
+import { map } from "fable-core/List";
 import List from "fable-core/List";
 import { FixtureKind } from "./Types";
-import { map, delay, fold, item, sortWith, toList, tryFind } from "fable-core/Seq";
+import { fold, item, sortWith, toList, tryFind } from "fable-core/Seq";
 import { CmdModule } from "fable-elmish/elmish";
 import { createElement } from "react";
-import { Form } from "./Bootstrap";
 import { fsFormat } from "fable-core/String";
+import { Form } from "./Bootstrap";
 export function text(x) {
   return x;
 }
@@ -125,25 +126,24 @@ export function update(message, model) {
 }
 export var EnterKey = 13;
 export var EscapeKey = 27;
-export function option(name) {
-  return createElement("option", {
-    value: name
-  }, text(name));
-}
 export function typeSelector(kinds, selectedKind, dispatchLocal) {
+  var option = function option(kind) {
+    return createElement("option", {
+      value: kind.name
+    }, text(fsFormat("%s (%d ch)")(function (x) {
+      return x;
+    })(kind.name)(kind.channelCount)));
+  };
+
   var selected = selectedKind != null ? selectedKind : item(0, kinds);
-  return createElement("div", {}, createElement("div", {}, createElement.apply(undefined, ["select", fold(function (o, kv) {
+  return createElement("div", {}, createElement.apply(undefined, ["select", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
   }, {}, [["value", selected.name], ["onChange", function (e_1) {
     dispatchLocal(new Message("SetSelected", [e_1.target.value]));
-  }], Form.Control])].concat(_toConsumableArray(toList(delay(function () {
-    return map(function (kind) {
-      return option(kind.name);
-    }, kinds);
-  })))))), createElement("div", {}, createElement("span", {}, text(fsFormat("Required channels: %d")(function (x) {
-    return x;
-  })(selected.channelCount)))));
+  }], Form.Control])].concat(_toConsumableArray(function (list) {
+    return map(option, list);
+  }(kinds)))));
 }
 export function view(model, dispatchLocal, dispatchServer) {
   if (model.kinds.tail == null) {
@@ -152,6 +152,6 @@ export function view(model, dispatchLocal, dispatchServer) {
     return createElement("div", fold(function (o, kv) {
       o[kv[0]] = kv[1];
       return o;
-    }, {}, [Form.Group]), createElement("div", {}, text("Create new patch")), typeSelector(model.kinds, model.selectedKind, dispatchLocal));
+    }, {}, [Form.Group]), createElement("span", {}, createElement("h3", {}, text("Create new patch"))), typeSelector(model.kinds, model.selectedKind, dispatchLocal));
   }
 }

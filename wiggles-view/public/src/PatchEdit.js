@@ -6,11 +6,12 @@ import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
 import { compareRecords, equalsRecords, makeGeneric, Option, compareUnions, equalsUnions, GenericParam } from "fable-core/Util";
 import { ServerRequest, PatchItem } from "./Types";
-import { fsFormat } from "fable-core/String";
 import { CmdModule } from "fable-elmish/elmish";
 import { createElement } from "react";
 import { fold } from "fable-core/Seq";
-import { Button, Form } from "./Bootstrap";
+import { Grid, Button, Form } from "./Bootstrap";
+import { ofArray } from "fable-core/List";
+import { fsFormat } from "fable-core/String";
 export function text(x) {
   return x;
 }
@@ -142,9 +143,6 @@ export function initialModel() {
 }
 export function update(message, model) {
   return function (m) {
-    fsFormat("%+A")(function (x) {
-      console.log(x);
-    })(m);
     return [m, CmdModule.none()];
   }(message.Case === "NameEdit" ? new Model(model.selected, message.Fields[0], model.addressEdit, model.universeEdit) : message.Case === "AddressEdit" ? new Model(model.selected, model.nameEdit, message.Fields[0], model.universeEdit) : message.Case === "UniverseEdit" ? new Model(model.selected, model.nameEdit, model.addressEdit, message.Fields[0]) : function () {
     var clearBuffers = void 0;
@@ -176,31 +174,28 @@ export function nameEditBox(fixtureId, name, dispatchLocal, dispatchServer) {
     dispatchLocal(new Message("NameEdit", [new EditField("Absent", [])]));
   };
 
-  return createElement("div", {}, text("Name:"), createElement("input", {
-    type: "text",
-    onChange: function onChange(e_1) {
-      dispatchLocal(new Message("NameEdit", [new EditField("Present", [e_1.target.value])]));
-    },
-    onBlur: function onBlur(_arg1) {
-      clear(null);
-    },
-    onKeyDown: function onKeyDown(e) {
-      var matchValue = e.keyCode;
+  return createElement("div", {}, text("Name:"), createElement("input", fold(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [["value", name], ["onKeyDown", function (e_2) {
+    var matchValue_1 = e_2.keyCode;
 
-      switch (matchValue) {
-        case 13:
-          clear(null);
-          dispatchServer(new ServerRequest("Rename", [fixtureId, name]));
-          break;
+    switch (matchValue_1) {
+      case 13:
+        clear(null);
+        dispatchServer(new ServerRequest("Rename", [fixtureId, name]));
+        break;
 
-        case 27:
-          clear(null);
-          break;
+      case 27:
+        clear(null);
+        break;
 
-        default:}
-    },
-    value: name
-  }));
+      default:}
+  }], ["onBlur", function (_arg1_1) {
+    clear(null);
+  }], ["onChange", function (e_3) {
+    dispatchLocal(new Message("NameEdit", [new EditField("Present", [e_3.target.value])]));
+  }], ["type", "text"], Form.Control])));
 }
 export function withDefault(value, editField) {
   if (editField.Case === "Absent") {
@@ -209,15 +204,12 @@ export function withDefault(value, editField) {
     return editField.Fields[0];
   }
 }
-export function addressPieceEditBox(cmd, addr, dispatchLocal) {
+export function addressPieceEditBox(label, cmd, addr, dispatchLocal) {
   var displayAddr = function (_arg1) {
     return _arg1 == null ? "" : String(_arg1);
   }(addr);
 
-  fsFormat("display: %s")(function (x) {
-    console.log(x);
-  })(displayAddr);
-  return createElement("input", fold(function (o, kv) {
+  return createElement("label", {}, text(label), createElement("input", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
   }, {}, [["value", displayAddr], ["onChange", function (e_1) {
@@ -230,17 +222,11 @@ export function addressPieceEditBox(cmd, addr, dispatchLocal) {
         return matchValue_1;
       }
     }()])));
-  }], ["type", "number"], Form.Control]));
+  }], ["type", "number"], Form.Control])));
 }
 export function addressEditor(selected, model, dispatchLocal, dispatchServer) {
   var displayUniv = withDefault(selected.universe, model.universeEdit);
   var displayAddr = withDefault(selected.dmxAddress, model.addressEdit);
-  fsFormat("%+A")(function (x) {
-    console.log(x);
-  })(displayUniv);
-  fsFormat("%+A")(function (x) {
-    console.log(x);
-  })(displayAddr);
 
   var clear = function clear(msg) {
     dispatchLocal(msg(new EditField("Absent", [])));
@@ -249,9 +235,9 @@ export function addressEditor(selected, model, dispatchLocal, dispatchServer) {
   return createElement("div", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
-  }, {}, [Form.Group]), text("Universe:"), addressPieceEditBox(function (arg0) {
+  }, {}, [Form.Group]), addressPieceEditBox("Universe:", function (arg0) {
     return new Message("UniverseEdit", [arg0]);
-  }, displayUniv, dispatchLocal), text("Address:"), addressPieceEditBox(function (arg0_1) {
+  }, displayUniv, dispatchLocal), addressPieceEditBox("Address:", function (arg0_1) {
     return new Message("AddressEdit", [arg0_1]);
   }, displayAddr, dispatchLocal), createElement("button", fold(function (o, kv) {
     o[kv[0]] = kv[1];
@@ -277,15 +263,13 @@ export function addressEditor(selected, model, dispatchLocal, dispatchServer) {
   }], Button.Basic]), text("Repatch")));
 }
 export function view(model, dispatchLocal, dispatchServer) {
-  if (model.selected != null) {
-    return createElement("div", {}, createElement("div", {}, text(fsFormat("Fixture id: %d")(function (x) {
-      return x;
-    })(model.selected.id))), createElement("div", {}, text(fsFormat("Fixture type: %s")(function (x) {
-      return x;
-    })(model.selected.kind))), nameEditBox(model.selected.id, withDefault(model.selected.name, model.nameEdit), dispatchLocal, dispatchServer), addressEditor(model.selected, model, dispatchLocal, dispatchServer));
-  } else {
-    return createElement("div", {}, text(fsFormat("No fixture selected.")(function (x) {
-      return x;
-    })));
-  }
+  var header = createElement("h3", {}, text("Edit patch"));
+  var editor = model.selected != null ? createElement("div", {}, Grid.layout(ofArray([[3, ofArray([text(fsFormat("Id: %d")(function (x) {
+    return x;
+  })(model.selected.id))])], [9, ofArray([text(fsFormat("Type: %s")(function (x) {
+    return x;
+  })(model.selected.kind))])]])), nameEditBox(model.selected.id, withDefault(model.selected.name, model.nameEdit), dispatchLocal, dispatchServer), addressEditor(model.selected, model, dispatchLocal, dispatchServer)) : text(fsFormat("No fixture selected.")(function (x) {
+    return x;
+  }));
+  return createElement("div", {}, header, editor);
 }

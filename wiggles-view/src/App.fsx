@@ -151,7 +151,7 @@ let viewPatchTableRow dispatch selectedId item =
     let rowAttrs: IHTMLProp list =
         let onClick = OnClick (fun _ -> SetSelected item.id |> Action |> dispatch)
         if Some(item.id) = selectedId
-        then [onClick; Table.Row.Danger]
+        then [onClick; Table.Row.Active]
         else [onClick]
     R.tr rowAttrs [
         td item.id;

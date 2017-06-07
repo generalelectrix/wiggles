@@ -66,9 +66,7 @@ let update message (model: Model) =
     | NameEdit n -> {model with nameEdit = n}
     | AddressEdit a -> {model with addressEdit = a}
     | UniverseEdit u -> {model with universeEdit = u}
-    |> fun m ->
-        printfn "%+A" m
-        (m, Cmd.none)
+    |> fun m -> (m, Cmd.none)
 
 let [<Literal>] EnterKey = 13.0
 let [<Literal>] EscapeKey = 27.0
@@ -100,31 +98,29 @@ let withDefault value editField =
     | Present(v) -> v
     | Absent -> value
 
-let addressPieceEditBox cmd addr dispatchLocal =
+let addressPieceEditBox label cmd addr dispatchLocal =
     let displayAddr = addr |> function | Some(a) -> string a | None -> ""
-    printfn "display: %s" displayAddr
-    R.input [
-        Form.Control
-        Type "number"
-        OnChange (fun e -> 
-            match !!e.target?value with | "" -> None | x -> Some(int x)
-            |> Present
-            |> cmd
-            |> dispatchLocal);
-        Value (Case1 displayAddr)
-    ] []
+    R.label [] [
+        text label
+        R.input [
+            Form.Control
+            Type "number"
+            OnChange (fun e -> 
+                match !!e.target?value with | "" -> None | x -> Some(int x)
+                |> Present
+                |> cmd
+                |> dispatchLocal);
+            Value (Case1 displayAddr)
+        ] []
+    ]
 
 let addressEditor (selected: PatchItem) model dispatchLocal dispatchServer =
     let displayUniv = model.universeEdit |> withDefault selected.universe
     let displayAddr = model.addressEdit |> withDefault selected.dmxAddress
-    printfn "%+A" displayUniv
-    printfn "%+A" displayAddr
     let clear msg = Absent |> msg |> dispatchLocal
     R.div [Form.Group] [
-        text "Universe:"
-        addressPieceEditBox UniverseEdit displayUniv dispatchLocal
-        text "Address:"
-        addressPieceEditBox AddressEdit displayAddr dispatchLocal
+        addressPieceEditBox "Universe:" UniverseEdit displayUniv dispatchLocal
+        addressPieceEditBox "Address:" AddressEdit displayAddr dispatchLocal
         R.button [
             Button.Basic
             OnClick (fun _ ->
@@ -142,16 +138,24 @@ let addressEditor (selected: PatchItem) model dispatchLocal dispatchServer =
 /// dispatchLocal dispatches a message local to this subapp.
 /// dispatchServer sends a server request.
 let view model dispatchLocal dispatchServer =
-    match model.selected with
-    | None -> R.div [] [ text (sprintf "No fixture selected.") ]
-    | Some(selected) ->
-        R.div [] [
-            R.div [] [ text (sprintf "Fixture id: %d" selected.id) ];
-            R.div [] [ text (sprintf "Fixture type: %s" selected.kind) ];
-            nameEditBox
-                selected.id
-                (model.nameEdit |> withDefault selected.name)
-                dispatchLocal
-                dispatchServer
-            addressEditor selected model dispatchLocal dispatchServer
-        ]
+    let header = R.h3 [] [ text "Edit patch" ]
+    let editor =
+        match model.selected with
+        | None -> text (sprintf "No fixture selected.")
+        | Some(selected) ->
+            R.div [] [
+                Grid.layout [
+                    (3, [text (sprintf "Id: %d" selected.id)])
+                    (9, [text (sprintf "Type: %s" selected.kind)])
+                ]
+                nameEditBox
+                    selected.id
+                    (model.nameEdit |> withDefault selected.name)
+                    dispatchLocal
+                    dispatchServer
+                addressEditor selected model dispatchLocal dispatchServer
+            ]
+    R.div [] [
+        header
+        editor
+    ]

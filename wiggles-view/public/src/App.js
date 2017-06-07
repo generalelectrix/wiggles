@@ -159,8 +159,8 @@ export function mockServer(model, req) {
           })(patchId)]) : _arg1;
         }(defaultArg(tryFind(function (p) {
           return p.id === patchId;
-        }, model.patches), null, function ($var28) {
-          return msgType(op($var28));
+        }, model.patches), null, function ($var29) {
+          return msgType(op($var29));
         }));
       };
     };
@@ -285,7 +285,7 @@ export function viewPatchTableRow(dispatch, selectedId, item) {
     rowAttrs = fold(function (o, kv) {
       o[kv[0]] = kv[1];
       return o;
-    }, {}, [Table.Row.Danger, onClick]);
+    }, {}, [Table.Row.Active, onClick]);
   } else {
     rowAttrs = fold(function (o, kv) {
       o[kv[0]] = kv[1];
@@ -327,23 +327,23 @@ export function viewConsole(dispatch, lines) {
   }], Form.Control]))));
 }
 export function view(model, dispatch) {
-  var dispatchServer = function dispatchServer($var29) {
+  var dispatchServer = function dispatchServer($var30) {
     return dispatch(function (arg0) {
       return new Message("Request", [arg0]);
-    }($var29));
+    }($var30));
   };
 
   return createElement("div", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
-  }, {}, [Container.Fluid]), Grid.layout(ofArray([[8, ofArray([viewPatchTable(dispatch, model.patches, model.selected)])], [4, ofArray([Grid.fullRow(ofArray([view_1(model.editorModel, function ($var30) {
+  }, {}, [Container.Fluid]), Grid.layout(ofArray([[8, ofArray([viewPatchTable(dispatch, model.patches, model.selected)])], [4, ofArray([Grid.fullRow(ofArray([view_1(model.editorModel, function ($var31) {
     return dispatch(function (arg0_1) {
       return new Message("Edit", [arg0_1]);
-    }($var30));
-  }, dispatchServer)])), Grid.fullRow(ofArray([view_2(model.newPatchModel, function ($var31) {
+    }($var31));
+  }, dispatchServer)])), Grid.fullRow(ofArray([view_2(model.newPatchModel, function ($var32) {
     return dispatch(function (arg0_2) {
       return new Message("Create", [arg0_2]);
-    }($var31));
+    }($var32));
   }, dispatchServer)]))])]])), Grid.fullRow(ofArray([viewConsole(dispatch, model.consoleText)])));
 }
 ProgramModule.run(withReact("app", ProgramModule.mkProgram(function () {
