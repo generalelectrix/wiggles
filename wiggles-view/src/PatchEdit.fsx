@@ -4,7 +4,8 @@ module PatchEdit
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
 #load "../node_modules/fable-react-toolbox/Fable.Helpers.ReactToolbox.fs"
-#load "Types.fs"
+#load "Types.fsx"
+#load "Bootstrap.fsx"
 
 open Fable.Core
 open Fable.Import
@@ -15,6 +16,7 @@ module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
 module RT = Fable.Helpers.ReactToolbox
 open Types
+open Bootstrap
 
 let text x : (Fable.Import.React.ReactElement) = unbox x
 
@@ -76,6 +78,7 @@ let nameEditBox fixtureId name dispatchLocal dispatchServer =
     R.div [] [
         text "Name:"
         R.input [
+            Form.Control
             Type "text";
             OnChange (fun e -> !!e.target?value |> Present |> NameEdit |> dispatchLocal);
             OnBlur (fun _ -> clear());
@@ -101,6 +104,7 @@ let addressPieceEditBox cmd addr dispatchLocal =
     let displayAddr = addr |> function | Some(a) -> string a | None -> ""
     printfn "display: %s" displayAddr
     R.input [
+        Form.Control
         Type "number"
         OnChange (fun e -> 
             match !!e.target?value with | "" -> None | x -> Some(int x)
@@ -116,12 +120,13 @@ let addressEditor (selected: PatchItem) model dispatchLocal dispatchServer =
     printfn "%+A" displayUniv
     printfn "%+A" displayAddr
     let clear msg = Absent |> msg |> dispatchLocal
-    R.div [] [
+    R.div [Form.Group] [
         text "Universe:"
         addressPieceEditBox UniverseEdit displayUniv dispatchLocal
         text "Address:"
         addressPieceEditBox AddressEdit displayAddr dispatchLocal
         R.button [
+            Button.Basic
             OnClick (fun _ ->
                 clear UniverseEdit
                 clear AddressEdit

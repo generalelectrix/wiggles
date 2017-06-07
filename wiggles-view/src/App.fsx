@@ -3,8 +3,10 @@
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
 #load "../node_modules/fable-react-toolbox/Fable.Helpers.ReactToolbox.fs"
-#load "Types.fs"
+#load "Types.fsx"
+#load "Bootstrap.fsx"
 #load "PatchEdit.fsx"
+#load "NewPatch.fsx"
 
 open Fable.Core
 open Fable.Import
@@ -15,9 +17,9 @@ module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
 module RT = Fable.Helpers.ReactToolbox
 open Types
+open Bootstrap
 
 let text x : (Fable.Import.React.ReactElement) = unbox x
-
 
 type Model = {
     patches: PatchItem list;
@@ -25,6 +27,7 @@ type Model = {
     selected: FixtureId option;
     // Model for the patch editor.
     editorModel: PatchEdit.Model;
+    newPatchModel: NewPatch.Model;
     // For now show errors in a console of infinite length.
     consoleText: string array}
 
@@ -41,20 +44,22 @@ type Message =
     | Response of ServerResponse
     | Action of UiAction
     | Edit of PatchEdit.Message
-
-let testPatches = [
-    {id = 0; name = "foo"; kind = "dimmer"; address = None; channelCount = 2}
-    {id = 1; name = "charlie"; kind = "roto"; address = Some(0, 27); channelCount = 1}
-]
+    | Create of NewPatch.Message
 
 
 let initialModel () =
     let m = 
-       {patches = testPatches;
+       {patches = [];
         selected = None;
         editorModel = PatchEdit.initialModel();
+        newPatchModel = NewPatch.initialModel();
         consoleText = Array.empty}
-    (m, Cmd.none)
+    let initCommands =
+        [ServerRequest.PatchState; GetKinds]
+        |> Cmd.ofMsgs
+        |> Cmd.map Request
+
+    (m, initCommands)
 
 /// A fake server to emit messages as if we were talking to a real server.
 let mockServer model req =
@@ -67,7 +72,10 @@ let mockServer model req =
             | None -> Error (sprintf "Unknown fixture id %d" patchId))
 
     match req with
-    | ServerRequest.PatchState -> PatchState model.patches
+    | ServerRequest.PatchState ->
+        if model.patches.IsEmpty then testPatches else model.patches
+        |> PatchState
+    | ServerRequest.GetKinds -> Kinds testKinds
     | ServerRequest.NewPatch p -> NewPatch p
     | Rename (id, name) ->
         maybeUpdatePatch
@@ -84,9 +92,6 @@ let mockServer model req =
             Remove
             (fun _ -> id)
             id
-
-let purple = Color "#6600ff"
-let cyan = Color "#00ccff"
 
 /// Return a command to update the editor's state if fixture id is among those in patches.
 let updateEditorState patches selectedFixtureId =
@@ -116,15 +121,20 @@ let update message model =
         | Remove id ->
             let newPatches = model.patches |> List.filter (fun p -> p.id = id)
             {model with patches = newPatches}, updateEditorState newPatches model.selected
+        | Kinds kinds ->
+            model, kinds |> NewPatch.UpdateKinds |> Create |> Cmd.ofMsg
     | Action a ->
         match a with
         | ClearConsole -> {model with consoleText = Array.empty}, Cmd.none
         | SetSelected id ->
             {model with selected = Some id}, updateEditorState model.patches (Some(id))
         | Deselect -> {model with selected = None}, updateEditorState model.patches None
-    | Edit e ->
-        let editorModel, editorCmds = PatchEdit.update e model.editorModel
+    | Edit m ->
+        let editorModel, editorCmds = PatchEdit.update m model.editorModel
         {model with editorModel = editorModel}, editorCmds |> Cmd.map Edit
+    | Create m ->
+        let newPatchModel, newPatchCmds = NewPatch.update m model.newPatchModel
+        {model with newPatchModel = newPatchModel}, newPatchCmds |> Cmd.map Create
     
 
 let updateAndLog message model =
@@ -138,13 +148,12 @@ let viewPatchTableRow dispatch selectedId item =
         match item.address with
         | Some(u, a) -> string u, string a
         | None -> "", ""
-    R.tr [] [
-        R.td [] [
-            R.button [
-                OnClick (fun _ -> SetSelected item.id |> Action |> dispatch);
-                Style [(if Some item.id = selectedId then purple else cyan)]
-            ] []
-        ];
+    let rowAttrs: IHTMLProp list =
+        let onClick = OnClick (fun _ -> SetSelected item.id |> Action |> dispatch)
+        if Some(item.id) = selectedId
+        then [onClick; Table.Row.Danger]
+        else [onClick]
+    R.tr rowAttrs [
         td item.id;
         td item.kind;
         td item.name;
@@ -154,38 +163,53 @@ let viewPatchTableRow dispatch selectedId item =
     ]
 
 let patchTableHeader =
-    ["selected"; "id"; "kind"; "name"; "universe"; "address"; "channel count"]
+    ["id"; "kind"; "name"; "universe"; "address"; "channel count"]
     |> List.map (fun x -> R.th [] [text x])
     |> R.tr []
 
 let viewPatchTable dispatch patches selectedId =
-    R.table [] [
+    R.table [Table.Condensed] [
         R.tbody [] [
             yield patchTableHeader
             for patch in patches -> viewPatchTableRow dispatch selectedId patch
         ]
     ]
 
+
 let viewConsole dispatch lines =
-    R.div [] [
+    R.div [Form.Group] [
         R.span [] [
             text "Console";
-            R.button [ OnClick (fun _ -> ClearConsole |> Action |> dispatch) ] [ text "clear" ];
+            R.button [
+                Button.Warning
+                OnClick (fun _ -> ClearConsole |> Action |> dispatch)
+            ] [ text "clear" ];
         ];
         R.div [] [
             R.textarea [
+                Form.Control
                 Style [Overflow "scroll"];
                 Value (String.concat "\n" lines |> Case1);
+                Rows 20.
+                Cols 80.
             ] [];
-
         ]
     ]
-
 let view model dispatch =
-    R.div [] [
-        viewPatchTable dispatch model.patches model.selected
-        PatchEdit.view model.editorModel (Edit >> dispatch) (Request >> dispatch)
-        viewConsole dispatch model.consoleText
+    let dispatchServer = Request >> dispatch
+    R.div [Container.Fluid] [
+        Grid.layout [
+            (8, [ viewPatchTable dispatch model.patches model.selected ])
+            (4, [
+                Grid.fullRow [
+                    PatchEdit.view model.editorModel (Edit >> dispatch) dispatchServer]
+                Grid.fullRow [
+                    NewPatch.view model.newPatchModel (Create >> dispatch) dispatchServer]
+            ])
+        ]
+        Grid.fullRow [
+            viewConsole dispatch model.consoleText
+        ]
     ]
 
 Program.mkProgram initialModel updateAndLog view

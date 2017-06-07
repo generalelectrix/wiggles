@@ -5,8 +5,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		src\App.fsx = src\App.fsx
 		public\index.html = public\index.html
-		src\Types.fs = src\Types.fs
 		src\PatchEdit.fsx = src\PatchEdit.fsx
+		src\NewPatch.fsx = src\NewPatch.fsx
+		src\Types.fsx = src\Types.fsx
+		src\Bootstrap.fsx = src\Bootstrap.fsx
 	EndProjectSection
 EndProject
 Global

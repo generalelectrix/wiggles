@@ -9,6 +9,8 @@ import { ServerRequest, PatchItem } from "./Types";
 import { fsFormat } from "fable-core/String";
 import { CmdModule } from "fable-elmish/elmish";
 import { createElement } from "react";
+import { fold } from "fable-core/Seq";
+import { Button, Form } from "./Bootstrap";
 export function text(x) {
   return x;
 }
@@ -147,11 +149,11 @@ export function update(message, model) {
   }(message.Case === "NameEdit" ? new Model(model.selected, message.Fields[0], model.addressEdit, model.universeEdit) : message.Case === "AddressEdit" ? new Model(model.selected, model.nameEdit, message.Fields[0], model.universeEdit) : message.Case === "UniverseEdit" ? new Model(model.selected, model.nameEdit, model.addressEdit, message.Fields[0]) : function () {
     var clearBuffers = void 0;
     var matchValue = [model.selected, message.Fields[0]];
-    var $var1 = matchValue[0] != null ? matchValue[1] != null ? [0, matchValue[0], matchValue[1]] : [1] : [1];
+    var $var4 = matchValue[0] != null ? matchValue[1] != null ? [0, matchValue[0], matchValue[1]] : [1] : [1];
 
-    switch ($var1[0]) {
+    switch ($var4[0]) {
       case 0:
-        if ($var1[1].id !== $var1[2].id) {
+        if ($var4[1].id !== $var4[2].id) {
           clearBuffers = true;
         } else {
           clearBuffers = false;
@@ -215,21 +217,20 @@ export function addressPieceEditBox(cmd, addr, dispatchLocal) {
   fsFormat("display: %s")(function (x) {
     console.log(x);
   })(displayAddr);
-  return createElement("input", {
-    type: "number",
-    onChange: function onChange(e) {
-      dispatchLocal(cmd(new EditField("Present", [function () {
-        var matchValue = e.target.value;
+  return createElement("input", fold(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [["value", displayAddr], ["onChange", function (e_1) {
+    dispatchLocal(cmd(new EditField("Present", [function () {
+      var matchValue_1 = e_1.target.value;
 
-        if (matchValue === "") {
-          return null;
-        } else {
-          return matchValue;
-        }
-      }()])));
-    },
-    value: displayAddr
-  });
+      if (matchValue_1 === "") {
+        return null;
+      } else {
+        return matchValue_1;
+      }
+    }()])));
+  }], ["type", "number"], Form.Control]));
 }
 export function addressEditor(selected, model, dispatchLocal, dispatchServer) {
   var displayUniv = withDefault(selected.universe, model.universeEdit);
@@ -245,31 +246,35 @@ export function addressEditor(selected, model, dispatchLocal, dispatchServer) {
     dispatchLocal(msg(new EditField("Absent", [])));
   };
 
-  return createElement("div", {}, text("Universe:"), addressPieceEditBox(function (arg0) {
+  return createElement("div", fold(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [Form.Group]), text("Universe:"), addressPieceEditBox(function (arg0) {
     return new Message("UniverseEdit", [arg0]);
   }, displayUniv, dispatchLocal), text("Address:"), addressPieceEditBox(function (arg0_1) {
     return new Message("AddressEdit", [arg0_1]);
-  }, displayAddr, dispatchLocal), createElement("button", {
-    onClick: function onClick(_arg1) {
-      clear(function (arg0_2) {
-        return new Message("UniverseEdit", [arg0_2]);
-      });
-      clear(function (arg0_3) {
-        return new Message("AddressEdit", [arg0_3]);
-      });
-      var matchValue = [displayUniv, displayAddr];
-      var $var2 = matchValue[0] != null ? matchValue[1] != null ? [0, matchValue[1], matchValue[0]] : [1] : [1];
+  }, displayAddr, dispatchLocal), createElement("button", fold(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [["onClick", function (_arg1_1) {
+    clear(function (arg0_4) {
+      return new Message("UniverseEdit", [arg0_4]);
+    });
+    clear(function (arg0_5) {
+      return new Message("AddressEdit", [arg0_5]);
+    });
+    var matchValue_1 = [displayUniv, displayAddr];
+    var $var6 = matchValue_1[0] != null ? matchValue_1[1] != null ? [0, matchValue_1[1], matchValue_1[0]] : [1] : [1];
 
-      switch ($var2[0]) {
-        case 0:
-          dispatchServer(new ServerRequest("Repatch", [selected.id, [$var2[2], $var2[1]]]));
-          break;
+    switch ($var6[0]) {
+      case 0:
+        dispatchServer(new ServerRequest("Repatch", [selected.id, [$var6[2], $var6[1]]]));
+        break;
 
-        case 1:
-          break;
-      }
+      case 1:
+        break;
     }
-  }, text("Repatch")));
+  }], Button.Basic]), text("Repatch")));
 }
 export function view(model, dispatchLocal, dispatchServer) {
   if (model.selected != null) {

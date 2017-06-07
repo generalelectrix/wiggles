@@ -2,10 +2,60 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
+import { map, delay, toList } from "fable-core/Seq";
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { makeGeneric, compareUnions, equalsUnions, defaultArg, compareRecords, equalsRecords, Tuple, Option } from "fable-core/Util";
+import { makeGeneric, compareUnions, equalsUnions, defaultArg, Tuple, Option, compareRecords, equalsRecords } from "fable-core/Util";
+import { ofArray } from "fable-core/List";
 import List from "fable-core/List";
+export var Cmd = function (__exports) {
+  var ofMsgs = __exports.ofMsgs = function (msgs) {
+    return toList(delay(function () {
+      return map(function (msg) {
+        return function (dispatch) {
+          dispatch(msg);
+        };
+      }, msgs);
+    }));
+  };
+
+  return __exports;
+}({});
+export var FixtureKind = function () {
+  function FixtureKind(name, channelCount) {
+    _classCallCheck(this, FixtureKind);
+
+    this.name = name;
+    this.channelCount = channelCount;
+  }
+
+  _createClass(FixtureKind, [{
+    key: _Symbol.reflection,
+    value: function () {
+      return {
+        type: "Types.FixtureKind",
+        interfaces: ["FSharpRecord", "System.IEquatable", "System.IComparable"],
+        properties: {
+          name: "string",
+          channelCount: "number"
+        }
+      };
+    }
+  }, {
+    key: "Equals",
+    value: function (other) {
+      return equalsRecords(this, other);
+    }
+  }, {
+    key: "CompareTo",
+    value: function (other) {
+      return compareRecords(this, other);
+    }
+  }]);
+
+  return FixtureKind;
+}();
+setType("Types.FixtureKind", FixtureKind);
 export var PatchItem = function () {
   function PatchItem(id, name, kind, address, channelCount) {
     _classCallCheck(this, PatchItem);
@@ -61,6 +111,8 @@ export var PatchItem = function () {
   return PatchItem;
 }();
 setType("Types.PatchItem", PatchItem);
+export var testPatches = ofArray([new PatchItem(0, "foo", "dimmer", null, 2), new PatchItem(1, "charlie", "roto", [0, 27], 1)]);
+export var testKinds = ofArray([new FixtureKind("dimmer", 1), new FixtureKind("roto", 2)]);
 export var ServerRequest = function () {
   function ServerRequest(caseName, fields) {
     _classCallCheck(this, ServerRequest);
@@ -76,6 +128,7 @@ export var ServerRequest = function () {
         type: "Types.ServerRequest",
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
+          GetKinds: [],
           NewPatch: [PatchItem],
           PatchState: [],
           Remove: ["number"],
@@ -115,6 +168,9 @@ export var ServerResponse = function () {
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
           Error: ["string"],
+          Kinds: [makeGeneric(List, {
+            T: FixtureKind
+          })],
           NewPatch: [PatchItem],
           PatchState: [makeGeneric(List, {
             T: PatchItem
