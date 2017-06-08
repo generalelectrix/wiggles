@@ -19,42 +19,42 @@ open Util
 open Types
 open Bootstrap
 
-type EditField<'T> =
-    | Absent
-    | Present of 'T
-
 type Model = {
     /// Real details of the currently-selected patch item.
     selected: PatchItem option
-    /// Name edit buffer, cleared when change request sent to server.
-    nameEdit: EditField<string>
-    /// Address edit buffer, cleared when change request sent to server.
-    addressEdit: EditBox.Model<DmxAddress>
-    universeEdit: EditBox.Model<UniverseId>
+    nameEdit: EditBox.Model<string>
+    addressEdit: EditBox.Model<DmxAddress option>
+    universeEdit: EditBox.Model<UniverseId option>
 }
     
 type Message =
     | SetState of PatchItem option
-    | NameEdit of EditField<string>
-    | AddressEdit of EditBox.Message<DmxAddress>
-    | UniverseEdit of EditBox.Message<UniverseId>
+    | NameEdit of EditBox.Message<string>
+    | AddressEdit of EditBox.Message<DmxAddress option>
+    | UniverseEdit of EditBox.Message<UniverseId option>
+
+let parseOptionalNumber validator v =
+    match noneIfEmpty v with
+    | None -> Ok(None)
+    | Some(v) ->
+        v
+        |> parseInt
+        |> Result.ofOption
+        |> Result.bind validator
+        |> Result.map Some
+
+let parseDmxAddress = parseOptionalNumber validDmxAddress
+let parseUniverseId = parseOptionalNumber validUniverse
 
 let initialModel () = {
     selected = None
-    nameEdit = Absent
-    addressEdit =
-        EditBox.initialModel
-            "Address:"
-            parseDmxAddress >> Result.ofOption
-            "number"
-    universeEdit = 
-        EditBox.initialModel
-            "Universe:"
-            parseUniverseId >> Result.ofOption
-            "number"
+    nameEdit = EditBox.initialModel "Name:" (fun s -> Ok(s)) "text"
+    addressEdit = EditBox.initialModel "Address:" parseDmxAddress "number"
+    universeEdit = EditBox.initialModel "Universe:" parseUniverseId "number"
 }
 
 let update message (model: Model) =
+    let clear submodel = EditBox.update EditBox.Clear submodel
 
     match message with
     | SetState newState ->
@@ -64,78 +64,65 @@ let update message (model: Model) =
             | Some(current), Some(updated) -> if current.id <> updated.id then true else false
             | _ -> true
         
-        
         let updatedModel = {model with selected = newState}
+
         if clearBuffers then
+
             {updatedModel with
-                nameEdit = Absent
-                addressEdit = EditBox.update EditBox.Clear model.addressEdit
-                universeEdit = EditBox.update EditBox.Clear model.universeEdit}
+                nameEdit = clear model.nameEdit
+                addressEdit = clear model.addressEdit
+                universeEdit = clear model.universeEdit}
         else
             updatedModel
-    | NameEdit n -> {model with nameEdit = n}
+    | NameEdit n -> {model with nameEdit = EditBox.update n model.nameEdit}
     | AddressEdit a -> {model with addressEdit = EditBox.update a model.addressEdit}
-    | UniverseEdit u -> {model with universeEdit = EditBox.update a model.universeEdit}
+    | UniverseEdit u -> {model with universeEdit = EditBox.update u model.universeEdit}
     |> fun m -> (m, Cmd.none)
 
 let [<Literal>] EnterKey = 13.0
 let [<Literal>] EscapeKey = 27.0
 
-let nameEditBox fixtureId name dispatchLocal dispatchServer =
-    let clear() = NameEdit Absent |> dispatchLocal
-    R.div [] [
-        R.str "Name:"
-        R.input [
-            Form.Control
-            Type "text";
-            OnChange (fun e -> !!e.target?value |> Present |> NameEdit |> dispatchLocal);
-            OnBlur (fun _ -> clear());
-            OnKeyDown (fun e ->
-                match e.keyCode with
-                | EnterKey ->
-                    clear()
-                    Rename(fixtureId, name) |> dispatchServer
-                | EscapeKey ->
-                    clear()
-                | _ -> ()
-            )
-            Value (Case1 name)
-        ] []
-    ]
+/// When the enter key is pressed, submit a rename request if we've made an edit.
+/// When the escape key is pressed, clear any existing edit.
+let nameEditOnKeyDown
+        fixtureId
+        dispatchLocal
+        dispatchServer
+        (nameEditModel: EditBox.Model<string>) =
+    let clear() = EditBox.Clear |> NameEdit |> dispatchLocal
+    OnKeyDown (fun event ->
+        match event.keyCode with
+        | EnterKey ->
+            match nameEditModel.value with
+            | Some(Ok(name)) ->
+                clear()
+                ServerRequest.Rename(fixtureId, name) |> dispatchServer
+            | _ -> ()
+        | EscapeKey ->
+            clear()
+        | _ -> ()
+    ) :> IHTMLProp
 
-let withDefault value editField =
-    match editField with
-    | Present(v) -> v
-    | Absent -> value
-
-let addressPieceEditBox label cmd addr dispatchLocal =
-    let displayAddr = addr |> function | Some(a) -> string a | None -> ""
-    R.label [] [
-        R.str label
-        R.input [
-            Form.Control
-            Type "number"
-            OnChange (fun e -> 
-                match !!e.target?value with | "" -> None | x -> Some(int x)
-                |> Present
-                |> cmd
-                |> dispatchLocal);
-            Value (Case1 displayAddr)
-        ] []
-    ]
+let nameEditBox selected model dispatchLocal dispatchServer = 
+    let onKeyDown = nameEditOnKeyDown selected.id dispatchLocal dispatchServer
+    EditBox.view
+        (Some onKeyDown)
+        selected.name
+        model.nameEdit
+        (NameEdit >> dispatchLocal)
 
 let addressEditor (selected: PatchItem) model dispatchLocal dispatchServer =
 
     let universeBox =
         EditBox.view
-            []
+            None
             (selected.universe |> emptyIfNone)
             model.universeEdit
             (UniverseEdit >> dispatchLocal)
 
     let addressBox =
         EditBox.view
-            []
+            None
             (selected.dmxAddress |> emptyIfNone)
             model.addressEdit
             (AddressEdit >> dispatchLocal)
@@ -148,47 +135,46 @@ let addressEditor (selected: PatchItem) model dispatchLocal dispatchServer =
 
     let handleRepatchButtonClick _ =
         // If either edit box are in a bad state, don't do anything.
-        if !model.addressEdit.IsOk || !model.universeEdit.IsOk then ()
+        if not model.addressEdit.IsOk || not model.universeEdit.IsOk then ()
         else
             // Get values for both
-            let univ = model.universeEdit.ParsedValue |> Option.orElse selected.universe
-            let addr = model.addressEdit.ParsedValue |> Option.orElse selected.dmxAddress
+            let univ = model.universeEdit.ParsedValueOr(selected.universe)
+            let addr = model.addressEdit.ParsedValueOr(selected.dmxAddress)
             // We can only do something if both are some or both are none.
             match globalAddressFromOptions univ addr with
             | Ok a ->
-                Repatch(selected.id, a) |> dispatchServer
+                ServerRequest.Repatch(selected.id, a) |> dispatchServer
                 clearAll()
             | _ -> ()
 
-    R.div [Form.Group] [
-        universeBox
-        addressBox
+    let repatchButton =
         R.button [
             Button.Warning
             OnClick handleRepatchButtonClick
         ] [ R.str "Repatch"]
-    ]
 
+    R.div [Form.Group] [
+        universeBox
+        addressBox
+        repatchButton
+    ]
+    
 
 /// View function taking two different dispatch callbacks.
 /// dispatchLocal dispatches a message local to this subapp.
 /// dispatchServer sends a server request.
 let view model dispatchLocal dispatchServer =
-    let header = R.h3 [] [ text "Edit patch" ]
+    let header = R.h3 [] [ R.str "Edit patch" ]
     let editor =
         match model.selected with
-        | None -> text (sprintf "No fixture selected.")
+        | None -> R.str (sprintf "No fixture selected.")
         | Some(selected) ->
             R.div [] [
                 Grid.layout [
-                    (3, [text (sprintf "Id: %d" selected.id)])
-                    (9, [text (sprintf "Type: %s" selected.kind)])
+                    (3, [R.str (sprintf "Id: %d" selected.id)])
+                    (9, [R.str (sprintf "Type: %s" selected.kind)])
                 ]
-                nameEditBox
-                    selected.id
-                    (model.nameEdit |> withDefault selected.name)
-                    dispatchLocal
-                    dispatchServer
+                nameEditBox selected model dispatchLocal dispatchServer
                 addressEditor selected model dispatchLocal dispatchServer
             ]
     R.div [] [

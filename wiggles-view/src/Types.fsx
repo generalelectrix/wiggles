@@ -12,25 +12,11 @@ type FixtureKind = {
 type UniverseId = int
 type DmxAddress = int
 
-/// Return Some(addr) if this is a valid DMX address.
-let parseDmxAddress s =
-    match parseInt s with
-    | Some(addr) ->
-        if addr > 0 && addr < 513 then Some(addr)
-        else None
-    | None -> None
+/// Return Ok(u) if this is a valid universe ID (>= 0).
+let validUniverse u = if u >= 0 then Ok(u) else Error()
 
-/// Return Some(universe) if this is a valid universe ID (>= 0).
-let parseUniverseId s =
-    match parseInt s with
-    | Some(addr) when addr >= 0 -> Some(addr)
-    | _ -> None
-
-module Result =
-    let ofOption o =
-        match o with
-        | Some(x) -> Ok(x)
-        | None -> Error()
+/// Return Ok(a) if this is a valid DMX address.
+let validDmxAddress a = if a > 0 && a < 513 then Ok(a) else Error()
 
 type GlobalAddress = UniverseId * DmxAddress
 
@@ -70,6 +56,7 @@ let testKinds : FixtureKind list = [
     
 
 /// All possible requests we can make to the patch server.
+[<RequireQualifiedAccess>]
 type ServerRequest =
     /// Request the full state of the patch to be sent.
     | PatchState
@@ -85,6 +72,7 @@ type ServerRequest =
     | GetKinds
 
 /// All possible responses we can receive from the patch server.
+[<RequireQualifiedAccess>]
 type ServerResponse =
     /// Generic error message from the server, we may log or display to user.
     | Error of string

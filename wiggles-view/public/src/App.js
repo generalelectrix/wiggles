@@ -6,10 +6,10 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { equals, defaultArg, compareUnions, equalsUnions, compareRecords, equalsRecords, Array as _Array, Option, makeGeneric } from "fable-core/Util";
-import { filter, append, map, ofArray } from "fable-core/List";
+import { equals, toString, defaultArg, compareUnions, equalsUnions, Array as _Array, Option, makeGeneric } from "fable-core/Util";
+import { filter, append, ofArray, map } from "fable-core/List";
 import List from "fable-core/List";
-import { testKinds, testPatches, Cmd, ServerResponse, ServerRequest, PatchItem } from "./Types";
+import { testKinds, testPatches, ServerResponse, ServerRequest, PatchItem } from "./Types";
 import { view as view_1, update as update_1, initialModel as initialModel_1, Message as Message_2, Model as Model_1 } from "./PatchEdit";
 import { view as view_2, update as update_2, initialModel as initialModel_2, Message as Message_1, Model as Model_2 } from "./NewPatch";
 import { ProgramModule, CmdModule } from "fable-elmish/elmish";
@@ -18,9 +18,6 @@ import { map as map_1, singleton, append as append_1, delay, toList, fold, tryFi
 import { createElement } from "react";
 import { Grid, Container, Button, Form, Table } from "./Bootstrap";
 import { withReact } from "fable-elmish-react/react";
-export function text(x) {
-  return x;
-}
 export var Model = function () {
   function Model(patches, selected, editorModel, newPatchModel, consoleText) {
     _classCallCheck(this, Model);
@@ -37,7 +34,7 @@ export var Model = function () {
     value: function () {
       return {
         type: "App.Model",
-        interfaces: ["FSharpRecord", "System.IEquatable", "System.IComparable"],
+        interfaces: ["FSharpRecord"],
         properties: {
           patches: makeGeneric(List, {
             T: PatchItem
@@ -48,16 +45,6 @@ export var Model = function () {
           consoleText: _Array("string")
         }
       };
-    }
-  }, {
-    key: "Equals",
-    value: function (other) {
-      return equalsRecords(this, other);
-    }
-  }, {
-    key: "CompareTo",
-    value: function (other) {
-      return compareRecords(this, other);
     }
   }]);
 
@@ -146,7 +133,9 @@ export function initialModel() {
   var m = new Model(new List(), null, initialModel_1(), initialModel_2(), new Array(0));
   var initCommands = CmdModule.map(function (arg0) {
     return new Message("Request", [arg0]);
-  }, Cmd.ofMsgs(ofArray([new ServerRequest("PatchState", []), new ServerRequest("GetKinds", [])])));
+  }, CmdModule.batch(map(function (msg) {
+    return CmdModule.ofMsg(msg);
+  }, ofArray([new ServerRequest("PatchState", []), new ServerRequest("GetKinds", [])]))));
   return [m, initCommands];
 }
 export var counter = testPatches.length;
@@ -166,8 +155,8 @@ export function mockServer(model, req) {
           })(patchId)]) : _arg1;
         }(defaultArg(tryFind(function (p) {
           return p.id === patchId;
-        }, model.patches), null, function ($var35) {
-          return msgType(op($var35));
+        }, model.patches), null, function ($var54) {
+          return msgType(op($var54));
         }));
       };
     };
@@ -274,7 +263,7 @@ export function updateAndLog(message, model) {
 }
 export function viewPatchTableRow(dispatch, selectedId, item) {
   var td = function td(x) {
-    return createElement("td", {}, text(x));
+    return createElement("td", {}, toString(x));
   };
 
   var patternInput = void 0;
@@ -307,7 +296,7 @@ export function viewPatchTableRow(dispatch, selectedId, item) {
   return createElement("tr", rowAttrs, td(item.id), td(item.kind), td(item.name), td(patternInput[0]), td(patternInput[1]), td(item.channelCount));
 }
 export var patchTableHeader = createElement.apply(undefined, ["tr", {}].concat(_toConsumableArray(map(function (x) {
-  return createElement("th", {}, text(x));
+  return createElement("th", {}, x);
 }, ofArray(["id", "kind", "name", "universe", "address", "channel count"])))));
 export function viewPatchTable(dispatch, patches, selectedId) {
   return createElement("table", fold(function (o, kv) {
@@ -325,12 +314,12 @@ export function viewConsole(dispatch, lines) {
   return createElement("div", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
-  }, {}, [Form.Group]), createElement("span", {}, text("Console"), createElement("button", fold(function (o, kv) {
+  }, {}, [Form.Group]), createElement("span", {}, "Console", createElement("button", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
   }, {}, [["onClick", function (_arg1_1) {
     dispatch(new Message("Action", [new UiAction("ClearConsole", [])]));
-  }], Button.Warning]), text("clear"))), createElement("div", {}, createElement("textarea", fold(function (o, kv) {
+  }], Button.Warning]), "clear")), createElement("div", {}, createElement("textarea", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
   }, {}, [["cols", 80], ["rows", 20], ["value", join("\n", lines)], ["style", {
@@ -338,26 +327,26 @@ export function viewConsole(dispatch, lines) {
   }], Form.Control]))));
 }
 export function view(model, dispatch) {
-  var dispatchServer = function dispatchServer($var36) {
+  var dispatchServer = function dispatchServer($var55) {
     return dispatch(function (arg0) {
       return new Message("Request", [arg0]);
-    }($var36));
+    }($var55));
   };
 
   return createElement("div", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
-  }, {}, [Container.Fluid]), Grid.layout(ofArray([[8, ofArray([viewPatchTable(dispatch, model.patches, model.selected)])], [4, ofArray([Grid.fullRow(ofArray([view_1(model.editorModel, function ($var37) {
+  }, {}, [Container.Fluid]), Grid.layout(ofArray([[8, ofArray([viewPatchTable(dispatch, model.patches, model.selected)])], [4, ofArray([Grid.fullRow(ofArray([view_1(model.editorModel, function ($var56) {
     return dispatch(function (arg0_1) {
       return new Message("Edit", [arg0_1]);
-    }($var37));
-  }, dispatchServer)])), Grid.fullRow(ofArray([view_2(model.newPatchModel, function ($var38) {
+    }($var56));
+  }, dispatchServer)])), Grid.fullRow(ofArray([view_2(model.newPatchModel, function ($var57) {
     return dispatch(function (arg0_2) {
       return new Message("Create", [arg0_2]);
-    }($var38));
+    }($var57));
   }, dispatchServer)]))])]])), Grid.fullRow(ofArray([viewConsole(dispatch, model.consoleText)])));
 }
-ProgramModule.run(withReact("app", ProgramModule.mkProgram(function () {
+ProgramModule.run(ProgramModule.withConsoleTrace(withReact("app", ProgramModule.mkProgram(function () {
   return initialModel();
 }, function (message) {
   return function (model) {
@@ -367,4 +356,4 @@ ProgramModule.run(withReact("app", ProgramModule.mkProgram(function () {
   return function (dispatch) {
     return view(model_1, dispatch);
   };
-})));
+}))));

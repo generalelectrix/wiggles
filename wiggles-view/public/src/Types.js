@@ -2,25 +2,12 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-import { map, delay, toList } from "fable-core/Seq";
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
 import { compareUnions, equalsUnions, makeGeneric, defaultArg, Tuple, Option, compareRecords, equalsRecords } from "fable-core/Util";
+import { Result } from "fable-elmish/result";
 import { ofArray } from "fable-core/List";
 import List from "fable-core/List";
-export var Cmd = function (__exports) {
-  var ofMsgs = __exports.ofMsgs = function (msgs) {
-    return toList(delay(function () {
-      return map(function (msg) {
-        return function (dispatch) {
-          dispatch(msg);
-        };
-      }, msgs);
-    }));
-  };
-
-  return __exports;
-}({});
 export var FixtureKind = function () {
   function FixtureKind(name, channelCount) {
     _classCallCheck(this, FixtureKind);
@@ -56,6 +43,35 @@ export var FixtureKind = function () {
   return FixtureKind;
 }();
 setType("Types.FixtureKind", FixtureKind);
+export function validUniverse(u) {
+  if (u >= 0) {
+    return new Result("Ok", [u]);
+  } else {
+    return new Result("Error", [null]);
+  }
+}
+export function validDmxAddress(a) {
+  if (a > 0 ? a < 513 : false) {
+    return new Result("Ok", [a]);
+  } else {
+    return new Result("Error", [null]);
+  }
+}
+export function globalAddressFromOptions(univOpt, addrOpt) {
+  var matchValue = [univOpt, addrOpt];
+  var $var1 = matchValue[0] == null ? matchValue[1] == null ? [1] : [2] : matchValue[1] != null ? [0, matchValue[1], matchValue[0]] : [2];
+
+  switch ($var1[0]) {
+    case 0:
+      return new Result("Ok", [[$var1[2], $var1[1]]]);
+
+    case 1:
+      return new Result("Ok", [null]);
+
+    case 2:
+      return new Result("Error", [null]);
+  }
+}
 export var PatchRequest = function () {
   function PatchRequest(name, kind, address) {
     _classCallCheck(this, PatchRequest);

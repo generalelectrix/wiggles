@@ -15,9 +15,6 @@ import { CmdModule } from "fable-elmish/elmish";
 import { createElement } from "react";
 import { fsFormat } from "fable-core/String";
 import { Grid, Button, Form } from "./Bootstrap";
-export function text(x) {
-  return x;
-}
 export var Model = function () {
   function Model(kinds, selectedKind, name, universe, address, quantity) {
     _classCallCheck(this, Model);
@@ -142,8 +139,8 @@ export function update(message, model) {
 
     return new Model(model.kinds, model.selectedKind, model.name, universe, model.address, model.quantity);
   }() : message.Case === "SetAddress" ? function () {
-    var address = defaultArg(message.Fields[0], null, function ($var23) {
-      return 1 > (512 < $var23 ? 512 : $var23) ? 1 : 512 < $var23 ? 512 : $var23;
+    var address = defaultArg(message.Fields[0], null, function ($var42) {
+      return 1 > (512 < $var42 ? 512 : $var42) ? 1 : 512 < $var42 ? 512 : $var42;
     });
     return new Model(model.kinds, model.selectedKind, model.name, model.universe, address, model.quantity);
   }() : message.Case === "SetQuantity" ? function () {
@@ -167,9 +164,9 @@ export function typeSelector(kinds, selectedKind, dispatchLocal) {
   var option = function option(kind) {
     return createElement("option", {
       value: kind.name
-    }, text(fsFormat("%s (%d ch)")(function (x) {
+    }, fsFormat("%s (%d ch)")(function (x) {
       return x;
-    })(kind.name)(kind.channelCount)));
+    })(kind.name)(kind.channelCount));
   };
 
   var selected = selectedKind != null ? selectedKind : item(0, kinds);
@@ -183,7 +180,7 @@ export function typeSelector(kinds, selectedKind, dispatchLocal) {
   }(kinds)))));
 }
 export function numericEditBox(dispatchLocal, handleValue, label, cmd, value) {
-  return createElement("label", {}, text(label), createElement("input", fold(function (o, kv) {
+  return createElement("label", {}, label, createElement("input", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
   }, {}, [["value", value], ["onChange", function (e_1) {
@@ -194,7 +191,7 @@ export function patchButton(model, dispatchLocal, dispatchServer) {
   return createElement("button", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
-  }, {}, [["onClick", function (_arg1_1) {}], Button.Warning]), text("Patch"));
+  }, {}, [["onClick", function (_arg1_1) {}], Button.Warning]), "Patch");
 }
 export function noneIfEmpty(s) {
   if (s === "") {
@@ -212,7 +209,7 @@ export function emptyIfNone(_arg1) {
 }
 export function view(model, dispatchLocal, dispatchServer) {
   if (model.kinds.tail == null) {
-    return createElement("div", {}, text("No patch types available."));
+    return createElement("div", {}, "No patch types available.");
   } else {
     var universeEntry = numericEditBox(dispatchLocal, function (s) {
       return noneIfEmpty(s);
@@ -232,6 +229,6 @@ export function view(model, dispatchLocal, dispatchServer) {
     return createElement("div", fold(function (o, kv) {
       o[kv[0]] = kv[1];
       return o;
-    }, {}, [Form.Group]), createElement("span", {}, createElement("h3", {}, text("Create new patch"))), typeSelector(model.kinds, model.selectedKind, dispatchLocal), Grid.distribute(ofArray([ofArray([universeEntry]), ofArray([addressEntry]), ofArray([quantityEntry])])));
+    }, {}, [Form.Group]), createElement("span", {}, createElement("h3", {}, "Create new patch")), typeSelector(model.kinds, model.selectedKind, dispatchLocal), Grid.distribute(ofArray([ofArray([universeEntry]), ofArray([addressEntry]), ofArray([quantityEntry])])));
   }
 }

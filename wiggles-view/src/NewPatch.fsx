@@ -109,20 +109,20 @@ let patchButton model dispatchLocal dispatchServer =
     R.button [
         Button.Warning
         OnClick (fun _ ->
-            match model.selectedKind with
-            | None -> ()
-            | Some(kind) ->
-                AdvanceAddress |> dispatchLocal
-                let requests =
-                    if model.quantity = 1 then
-                        {name = model.name;
-                         kind = kind.name;
-                         address = 
+            //match model.selectedKind with
+            //| None -> ()
+            //| Some(kind) ->
+            //    AdvanceAddress |> dispatchLocal
+            //    let requests =
+            //        if model.quantity = 1 then
+            //            {name = model.name;
+            //             kind = kind.name;
+            //             address = 
 
 
-                let makeReq i address = 
-                let patchRequest = {
-                
+            //    let makeReq i address = 
+            //    let patchRequest = {
+            ()
         )
     ][ R.str "Patch" ]
 

@@ -28,7 +28,7 @@ type Model<'T> = {
     /// If Some(Ok(...)), then entry has been performed and it has been parsed successfully.
     /// If Some(Err(...)), then entry has been performed but parsing was not successful.
     value: Result<'T, string> option
-    parser: string -> Result<'T, ()>
+    parser: string -> Result<'T, unit>
     label: string
     inputType: string}
     with
@@ -37,11 +37,17 @@ type Model<'T> = {
         match this.value with
         | Some(Error(_)) -> false
         | _ -> true
-    /// Does this edit box have a successfully parsed value?
-    member this.ParsedValue =
+    /// Has this edit box successfully parsed a value?
+    member this.HasParsed =
         match this.value with
-        | Some(Ok(v)) -> Some(v)
-        | _ -> None
+        | Some(Ok(_)) -> true
+        | _ -> false
+    /// Return this edit box's parsed value or a default.
+    member this.ParsedValueOr(defaultValue) =
+        match this.value with
+        | Some(Ok(v)) -> v
+        | _ -> defaultValue
+
     
 type Message<'T> = 
     | Update of string
@@ -51,32 +57,39 @@ let initialModel
         label parser inputType =
     {value = None; parser = parser; label = label; inputType = inputType}
 
-let update message (model: Model) =
+let update message (model: Model<'T>) =
     match message with
     | Update v ->
-        let parseResult = v |> model.parser |> Result.mapError (fun _ -> v)
+        let parseResult = match model.parser v with | Error(_) -> Error(v) | Ok(x) -> Ok(x)
         {model with value = Some(parseResult)}
     | Clear -> {model with value = None}
 
 /// Draw this edit box.
-/// Optionally provide additional attributes to attach to the input, such as keypress handlers.
-let view inputAttrs defaultValue model dispatch =
-    let divProps, value =
+/// Optionally provide an additional attribute to attach to the input, such as a keypress handler.
+let view (extraAction: (Model<'T> -> IHTMLProp) option) defaultValue (model: Model<'T>) dispatch =
+    let value =
         match model.value with
-        | Some(Ok(x)) -> [Form.Group], string x
-        | Some(Err(v)) -> [Form.Group; Form.Error], v
-        | None -> [Form.Group], string defaultValue
+        | None -> defaultValue
+        | Some(Ok(v)) -> v.ToString()
+        | Some(Error(v)) -> v
 
-    let attrs = [
+    let (attrs: IHTMLProp list) = [
         Form.Control
         Type model.inputType
         OnChange (fun e -> !!e.target?value |> Update |> dispatch)
         Value (Case1 (value))
     ]
 
-    R.div [divProps] [
-        R.label [] [
+    let allAttrs =
+        match extraAction with
+        | Some(action) -> [action model] ++ attrs
+        | None -> attrs
+
+    R.div [
+        (if model.IsOk then Form.Group else Form.GroupError)
+    ] [
+        R.label [Form.ControlLabel] [
             R.str model.label
-            R.input (attrs ++ inputAttrs) []
+            R.input allAttrs []
         ]
     ]

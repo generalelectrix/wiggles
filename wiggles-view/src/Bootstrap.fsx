@@ -41,13 +41,13 @@ module Grid =
         |> List.map (fun elements -> width, elements)
         |> layout
 
-
 module Form =
     let Control = cn "form-control"
+    let ControlLabel = cn "control-label"
     let Group = cn "form-group"
-    let Success = cn "has-success"
-    let Warning = cn "has-warning"
-    let Error = cn "has-error"
+    let GroupSuccess = cn "form-group has-success"
+    let GroupWarning = cn "form-group has-warning"
+    let GroupError = cn "form-group has-error"
 
 module Table =
     let Basic = cn "table"

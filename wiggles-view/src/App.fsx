@@ -53,8 +53,9 @@ let initialModel () =
         newPatchModel = NewPatch.initialModel();
         consoleText = Array.empty}
     let initCommands =
-        [ServerRequest.PatchState; GetKinds]
-        |> Cmd.ofMsgs
+        [ServerRequest.PatchState; ServerRequest.GetKinds]
+        |> List.map Cmd.ofMsg
+        |> Cmd.batch
         |> Cmd.map Request
 
     (m, initCommands)
@@ -78,28 +79,28 @@ let mockServer model req =
         |> Option.map (op >> msgType)
         |> (function
             | Some p -> p
-            | None -> Error (sprintf "Unknown fixture id %d" patchId))
+            | None -> ServerResponse.Error (sprintf "Unknown fixture id %d" patchId))
 
     match req with
     | ServerRequest.PatchState ->
         if model.patches.IsEmpty then testPatches else model.patches
-        |> PatchState
-    | ServerRequest.GetKinds -> Kinds testKinds
+        |> ServerResponse.PatchState
+    | ServerRequest.GetKinds -> ServerResponse.Kinds testKinds
     | ServerRequest.NewPatches patches ->
-        patches |> List.map mockMakePatch |> NewPatches
-    | Rename (id, name) ->
+        patches |> List.map mockMakePatch |> ServerResponse.NewPatches
+    | ServerRequest.Rename (id, name) ->
         maybeUpdatePatch
-            Update
+            ServerResponse.Update
             (fun p -> {p with name = name})
             id
-    | Repatch (id, addr) ->
+    | ServerRequest.Repatch (id, addr) ->
         maybeUpdatePatch
-            Update
+            ServerResponse.Update
             (fun p -> {p with address = addr})
             id
     | ServerRequest.Remove id ->
         maybeUpdatePatch
-            Remove
+            ServerResponse.Remove
             (fun _ -> id)
             id
 
@@ -120,19 +121,21 @@ let update message model =
         (model, mockServer model r |> Response |> Cmd.ofMsg)
     | Response r ->
         match r with
-        | Error msg -> model |> withConsoleMessage msg, Cmd.none
-        | PatchState s -> {model with patches = s}, updateEditorState s model.selected
-        | NewPatches patches ->
+        | ServerResponse.Error msg ->
+            model |> withConsoleMessage msg, Cmd.none
+        | ServerResponse.PatchState s ->
+            {model with patches = s}, updateEditorState s model.selected
+        | ServerResponse.NewPatches patches ->
             {model with patches = model.patches@patches}, Cmd.none
-        | Update p ->
+        | ServerResponse.Update p ->
             let newPatches =
                 model.patches
                 |> List.map (fun existing -> if existing.id = p.id then p else existing)
             {model with patches = newPatches}, updateEditorState newPatches model.selected
-        | Remove id ->
+        | ServerResponse.Remove id ->
             let newPatches = model.patches |> List.filter (fun p -> p.id = id)
             {model with patches = newPatches}, updateEditorState newPatches model.selected
-        | Kinds kinds ->
+        | ServerResponse.Kinds kinds ->
             model, kinds |> NewPatch.UpdateKinds |> Create |> Cmd.ofMsg
     | Action a ->
         match a with
@@ -154,7 +157,7 @@ let updateAndLog message model =
 
 /// Render a patch item as a basic table row.
 let viewPatchTableRow dispatch selectedId item =
-    let td x = R.td [] [R.str x]
+    let td x = R.td [] [R.str (x.ToString())]
     let universe, address =
         match item.address with
         | Some(u, a) -> string u, string a
@@ -225,4 +228,5 @@ let view model dispatch =
 
 Program.mkProgram initialModel updateAndLog view
 |> Program.withReact "app"
+|> Program.withConsoleTrace
 |> Program.run

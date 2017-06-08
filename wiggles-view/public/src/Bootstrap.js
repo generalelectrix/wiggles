@@ -63,7 +63,11 @@ export var Grid = function (__exports) {
 }({});
 export var Form = function (__exports) {
   var Control = __exports.Control = cn("form-control");
+  var ControlLabel = __exports.ControlLabel = cn("control-label");
   var Group = __exports.Group = cn("form-group");
+  var GroupSuccess = __exports.GroupSuccess = cn("form-group has-success");
+  var GroupWarning = __exports.GroupWarning = cn("form-group has-warning");
+  var GroupError = __exports.GroupError = cn("form-group has-error");
   return __exports;
 }({});
 export var Table = function (__exports) {
