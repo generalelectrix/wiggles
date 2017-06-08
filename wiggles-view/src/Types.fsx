@@ -1,12 +1,9 @@
 module Types
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
+#load "Util.fsx"
 
 open Elmish
-
-module Cmd =
-    /// Command to issue a sequence of messages
-    let ofMsgs (msgs: #seq<'msg>) : Cmd<'msg> =
-        [for msg in msgs -> (fun dispatch -> dispatch msg)]
+open Util
 
 type FixtureKind = {
     name: string;
@@ -15,7 +12,33 @@ type FixtureKind = {
 type UniverseId = int
 type DmxAddress = int
 
+/// Return Some(addr) if this is a valid DMX address.
+let parseDmxAddress s =
+    match parseInt s with
+    | Some(addr) ->
+        if addr > 0 && addr < 513 then Some(addr)
+        else None
+    | None -> None
+
+/// Return Some(universe) if this is a valid universe ID (>= 0).
+let parseUniverseId s =
+    match parseInt s with
+    | Some(addr) when addr >= 0 -> Some(addr)
+    | _ -> None
+
+module Result =
+    let ofOption o =
+        match o with
+        | Some(x) -> Ok(x)
+        | None -> Error()
+
 type GlobalAddress = UniverseId * DmxAddress
+
+let globalAddressFromOptions univOpt addrOpt =
+    match univOpt, addrOpt with
+    | Some(u), Some(a) -> Some(u, a) |> Ok
+    | None, None -> None |> Ok
+    | _ -> Error()
 
 type FixtureId = int
 

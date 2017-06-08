@@ -3,9 +3,10 @@ module PatchEdit
 #r "../node_modules/fable-react/Fable.React.dll"
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
-#load "../node_modules/fable-react-toolbox/Fable.Helpers.ReactToolbox.fs"
+#load "Util.fsx"
 #load "Types.fsx"
 #load "Bootstrap.fsx"
+#load "EditBox.fsx"
 
 open Fable.Core
 open Fable.Import
@@ -14,38 +15,44 @@ open Elmish.React
 open Fable.Core.JsInterop
 module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
-module RT = Fable.Helpers.ReactToolbox
+open Util
 open Types
 open Bootstrap
 
-let text x : (Fable.Import.React.ReactElement) = unbox x
-
-// Fable converts options to nullable and thus chokes on nested options.
-// Fake it with a fresh outer type.
 type EditField<'T> =
     | Absent
     | Present of 'T
 
-type Model =
+type Model = {
     /// Real details of the currently-selected patch item.
-   {selected: PatchItem option;
+    selected: PatchItem option
     /// Name edit buffer, cleared when change request sent to server.
-    nameEdit: EditField<string>;
+    nameEdit: EditField<string>
     /// Address edit buffer, cleared when change request sent to server.
-    addressEdit: EditField<DmxAddress option>;
-    universeEdit: EditField<UniverseId option>;}
+    addressEdit: EditBox.Model<DmxAddress>
+    universeEdit: EditBox.Model<UniverseId>
+}
     
 type Message =
     | SetState of PatchItem option
     | NameEdit of EditField<string>
-    | AddressEdit of EditField<DmxAddress option>
-    | UniverseEdit of EditField<UniverseId option>
+    | AddressEdit of EditBox.Message<DmxAddress>
+    | UniverseEdit of EditBox.Message<UniverseId>
 
-let initialModel () =
-   {selected = None;
-    nameEdit = Absent;
-    addressEdit = Absent;
-    universeEdit = Absent}
+let initialModel () = {
+    selected = None
+    nameEdit = Absent
+    addressEdit =
+        EditBox.initialModel
+            "Address:"
+            parseDmxAddress >> Result.ofOption
+            "number"
+    universeEdit = 
+        EditBox.initialModel
+            "Universe:"
+            parseUniverseId >> Result.ofOption
+            "number"
+}
 
 let update message (model: Model) =
 
@@ -57,15 +64,18 @@ let update message (model: Model) =
             | Some(current), Some(updated) -> if current.id <> updated.id then true else false
             | _ -> true
         
-        {model with
-            selected = newState;
-            nameEdit = if clearBuffers then Absent else model.nameEdit;
-            addressEdit = if clearBuffers then Absent else model.addressEdit;
-            universeEdit = if clearBuffers then Absent else model.universeEdit}
-
+        
+        let updatedModel = {model with selected = newState}
+        if clearBuffers then
+            {updatedModel with
+                nameEdit = Absent
+                addressEdit = EditBox.update EditBox.Clear model.addressEdit
+                universeEdit = EditBox.update EditBox.Clear model.universeEdit}
+        else
+            updatedModel
     | NameEdit n -> {model with nameEdit = n}
-    | AddressEdit a -> {model with addressEdit = a}
-    | UniverseEdit u -> {model with universeEdit = u}
+    | AddressEdit a -> {model with addressEdit = EditBox.update a model.addressEdit}
+    | UniverseEdit u -> {model with universeEdit = EditBox.update a model.universeEdit}
     |> fun m -> (m, Cmd.none)
 
 let [<Literal>] EnterKey = 13.0
@@ -74,7 +84,7 @@ let [<Literal>] EscapeKey = 27.0
 let nameEditBox fixtureId name dispatchLocal dispatchServer =
     let clear() = NameEdit Absent |> dispatchLocal
     R.div [] [
-        text "Name:"
+        R.str "Name:"
         R.input [
             Form.Control
             Type "text";
@@ -101,7 +111,7 @@ let withDefault value editField =
 let addressPieceEditBox label cmd addr dispatchLocal =
     let displayAddr = addr |> function | Some(a) -> string a | None -> ""
     R.label [] [
-        text label
+        R.str label
         R.input [
             Form.Control
             Type "number"
@@ -115,22 +125,48 @@ let addressPieceEditBox label cmd addr dispatchLocal =
     ]
 
 let addressEditor (selected: PatchItem) model dispatchLocal dispatchServer =
-    let displayUniv = model.universeEdit |> withDefault selected.universe
-    let displayAddr = model.addressEdit |> withDefault selected.dmxAddress
-    let clear msg = Absent |> msg |> dispatchLocal
+
+    let universeBox =
+        EditBox.view
+            []
+            (selected.universe |> emptyIfNone)
+            model.universeEdit
+            (UniverseEdit >> dispatchLocal)
+
+    let addressBox =
+        EditBox.view
+            []
+            (selected.dmxAddress |> emptyIfNone)
+            model.addressEdit
+            (AddressEdit >> dispatchLocal)
+
+    let clear msg = EditBox.Clear |> msg |> dispatchLocal
+
+    let clearAll() =
+        clear UniverseEdit
+        clear AddressEdit
+
+    let handleRepatchButtonClick _ =
+        // If either edit box are in a bad state, don't do anything.
+        if !model.addressEdit.IsOk || !model.universeEdit.IsOk then ()
+        else
+            // Get values for both
+            let univ = model.universeEdit.ParsedValue |> Option.orElse selected.universe
+            let addr = model.addressEdit.ParsedValue |> Option.orElse selected.dmxAddress
+            // We can only do something if both are some or both are none.
+            match globalAddressFromOptions univ addr with
+            | Ok a ->
+                Repatch(selected.id, a) |> dispatchServer
+                clearAll()
+            | _ -> ()
+
     R.div [Form.Group] [
-        addressPieceEditBox "Universe:" UniverseEdit displayUniv dispatchLocal
-        addressPieceEditBox "Address:" AddressEdit displayAddr dispatchLocal
+        universeBox
+        addressBox
         R.button [
             Button.Warning
-            OnClick (fun _ ->
-                clear UniverseEdit
-                clear AddressEdit
-                match displayUniv, displayAddr with
-                | Some(u), Some(a) -> Repatch(selected.id, Some(u, a)) |> dispatchServer
-                | _ -> ()
-            )
-        ] [ text "Repatch"]
+            OnClick handleRepatchButtonClick
+        ] [ R.str "Repatch"]
     ]
 
 

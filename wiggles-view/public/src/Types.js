@@ -5,7 +5,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 import { map, delay, toList } from "fable-core/Seq";
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { makeGeneric, compareUnions, equalsUnions, defaultArg, Tuple, Option, compareRecords, equalsRecords } from "fable-core/Util";
+import { compareUnions, equalsUnions, makeGeneric, defaultArg, Tuple, Option, compareRecords, equalsRecords } from "fable-core/Util";
 import { ofArray } from "fable-core/List";
 import List from "fable-core/List";
 export var Cmd = function (__exports) {
@@ -56,6 +56,43 @@ export var FixtureKind = function () {
   return FixtureKind;
 }();
 setType("Types.FixtureKind", FixtureKind);
+export var PatchRequest = function () {
+  function PatchRequest(name, kind, address) {
+    _classCallCheck(this, PatchRequest);
+
+    this.name = name;
+    this.kind = kind;
+    this.address = address;
+  }
+
+  _createClass(PatchRequest, [{
+    key: _Symbol.reflection,
+    value: function () {
+      return {
+        type: "Types.PatchRequest",
+        interfaces: ["FSharpRecord", "System.IEquatable", "System.IComparable"],
+        properties: {
+          name: "string",
+          kind: "string",
+          address: Option(Tuple(["number", "number"]))
+        }
+      };
+    }
+  }, {
+    key: "Equals",
+    value: function (other) {
+      return equalsRecords(this, other);
+    }
+  }, {
+    key: "CompareTo",
+    value: function (other) {
+      return compareRecords(this, other);
+    }
+  }]);
+
+  return PatchRequest;
+}();
+setType("Types.PatchRequest", PatchRequest);
 export var PatchItem = function () {
   function PatchItem(id, name, kind, address, channelCount) {
     _classCallCheck(this, PatchItem);
@@ -129,7 +166,9 @@ export var ServerRequest = function () {
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
           GetKinds: [],
-          NewPatch: [PatchItem],
+          NewPatches: [makeGeneric(List, {
+            T: PatchRequest
+          })],
           PatchState: [],
           Remove: ["number"],
           Rename: ["number", "string"],
@@ -171,7 +210,9 @@ export var ServerResponse = function () {
           Kinds: [makeGeneric(List, {
             T: FixtureKind
           })],
-          NewPatch: [PatchItem],
+          NewPatches: [makeGeneric(List, {
+            T: PatchItem
+          })],
           PatchState: [makeGeneric(List, {
             T: PatchItem
           })],

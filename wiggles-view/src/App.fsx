@@ -19,8 +19,6 @@ module RT = Fable.Helpers.ReactToolbox
 open Types
 open Bootstrap
 
-let text x : (Fable.Import.React.ReactElement) = unbox x
-
 type Model = {
     patches: PatchItem list;
     // Current fixture ID we have selected, if any.
@@ -61,7 +59,16 @@ let initialModel () =
 
     (m, initCommands)
 
-let counter = ref 10
+let mutable counter = testPatches.Length
+
+let mockMakePatch (patchReq: PatchRequest) =
+    let id = counter
+    counter <- counter + 1
+    {id = id;
+     name = patchReq.name;
+     kind = patchReq.kind;
+     channelCount = if patchReq.name = "dimmer" then 1 else 2;
+     address = patchReq.address;}
 
 /// A fake server to emit messages as if we were talking to a real server.
 let mockServer model req =
@@ -78,7 +85,8 @@ let mockServer model req =
         if model.patches.IsEmpty then testPatches else model.patches
         |> PatchState
     | ServerRequest.GetKinds -> Kinds testKinds
-    | ServerRequest.NewPatches patches -> NewPatches patches
+    | ServerRequest.NewPatches patches ->
+        patches |> List.map mockMakePatch |> NewPatches
     | Rename (id, name) ->
         maybeUpdatePatch
             Update
@@ -146,7 +154,7 @@ let updateAndLog message model =
 
 /// Render a patch item as a basic table row.
 let viewPatchTableRow dispatch selectedId item =
-    let td x = R.td [] [text x]
+    let td x = R.td [] [R.str x]
     let universe, address =
         match item.address with
         | Some(u, a) -> string u, string a
@@ -167,7 +175,7 @@ let viewPatchTableRow dispatch selectedId item =
 
 let patchTableHeader =
     ["id"; "kind"; "name"; "universe"; "address"; "channel count"]
-    |> List.map (fun x -> R.th [] [text x])
+    |> List.map (fun x -> R.th [] [R.str x])
     |> R.tr []
 
 let viewPatchTable dispatch patches selectedId =
@@ -182,11 +190,11 @@ let viewPatchTable dispatch patches selectedId =
 let viewConsole dispatch lines =
     R.div [Form.Group] [
         R.span [] [
-            text "Console";
+            R.str "Console";
             R.button [
                 Button.Warning
                 OnClick (fun _ -> ClearConsole |> Action |> dispatch)
-            ] [ text "clear" ];
+            ] [ R.str "clear" ];
         ];
         R.div [] [
             R.textarea [

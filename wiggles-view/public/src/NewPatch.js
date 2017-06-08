@@ -6,7 +6,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { compare, compareUnions, equalsUnions, compareRecords, equalsRecords, Option, makeGeneric } from "fable-core/Util";
+import { compare, defaultArg, compareUnions, equalsUnions, compareRecords, equalsRecords, Option, makeGeneric } from "fable-core/Util";
 import { ofArray, map } from "fable-core/List";
 import List from "fable-core/List";
 import { FixtureKind } from "./Types";
@@ -14,16 +14,18 @@ import { fold, item, sortWith, toList, tryFind } from "fable-core/Seq";
 import { CmdModule } from "fable-elmish/elmish";
 import { createElement } from "react";
 import { fsFormat } from "fable-core/String";
-import { Grid, Form } from "./Bootstrap";
+import { Grid, Button, Form } from "./Bootstrap";
 export function text(x) {
   return x;
 }
 export var Model = function () {
-  function Model(kinds, selectedKind, address, quantity) {
+  function Model(kinds, selectedKind, name, universe, address, quantity) {
     _classCallCheck(this, Model);
 
     this.kinds = kinds;
     this.selectedKind = selectedKind;
+    this.name = name;
+    this.universe = universe;
     this.address = address;
     this.quantity = quantity;
   }
@@ -39,7 +41,9 @@ export var Model = function () {
             T: FixtureKind
           }),
           selectedKind: Option(FixtureKind),
-          address: "number",
+          name: "string",
+          universe: Option("number"),
+          address: Option("number"),
           quantity: "number"
         }
       };
@@ -81,9 +85,11 @@ export var Message = function () {
         type: "NewPatch.Message",
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
-          SetAddress: ["number"],
+          AdvanceAddress: [],
+          SetAddress: [Option("number")],
           SetQuantity: ["number"],
           SetSelected: ["string"],
+          SetUniverse: [Option("number")],
           UpdateKinds: [makeGeneric(List, {
             T: FixtureKind
           })]
@@ -106,7 +112,14 @@ export var Message = function () {
 }();
 setType("NewPatch.Message", Message);
 export function initialModel() {
-  return new Model(new List(), null, 1, 1);
+  return new Model(new List(), null, "", null, null, 1);
+}
+export function positive(x) {
+  if (x > 0) {
+    return x;
+  } else {
+    return 0;
+  }
 }
 export function update(message, model) {
   return function (m) {
@@ -118,15 +131,35 @@ export function update(message, model) {
       return model;
     } else {
       var selectedKind = matchValue;
-      return new Model(model.kinds, selectedKind, model.address, model.quantity);
+      return new Model(model.kinds, selectedKind, model.name, model.universe, model.address, model.quantity);
     }
-  }() : message.Case === "SetAddress" ? (message.Fields[0] > 0 ? message.Fields[0] < 513 : false) ? new Model(model.kinds, model.selectedKind, message.Fields[0], model.quantity) : model : message.Case === "SetQuantity" ? message.Fields[0] > 0 ? new Model(model.kinds, model.selectedKind, model.address, message.Fields[0]) : model : new Model(toList(sortWith(function (x, y) {
+  }() : message.Case === "SetUniverse" ? function () {
+    var universe = function (option) {
+      return defaultArg(option, null, function (x) {
+        return positive(x);
+      });
+    }(message.Fields[0]);
+
+    return new Model(model.kinds, model.selectedKind, model.name, universe, model.address, model.quantity);
+  }() : message.Case === "SetAddress" ? function () {
+    var address = defaultArg(message.Fields[0], null, function ($var23) {
+      return 1 > (512 < $var23 ? 512 : $var23) ? 1 : 512 < $var23 ? 512 : $var23;
+    });
+    return new Model(model.kinds, model.selectedKind, model.name, model.universe, address, model.quantity);
+  }() : message.Case === "SetQuantity" ? function () {
+    var quantity = positive(message.Fields[0]);
+    return new Model(model.kinds, model.selectedKind, model.name, model.universe, model.address, quantity);
+  }() : message.Case === "AdvanceAddress" ? model.address == null ? model : function () {
+    var channelCount = model.selectedKind == null ? 0 : model.selectedKind.channelCount;
+    var address_1 = 512 < model.address + model.quantity * channelCount ? 512 : model.address + model.quantity * channelCount;
+    return new Model(model.kinds, model.selectedKind, model.name, model.universe, address_1, model.quantity);
+  }() : new Model(toList(sortWith(function (x, y) {
     return compare(function (k) {
       return k.name;
     }(x), function (k) {
       return k.name;
     }(y));
-  }, message.Fields[0])), model.selectedKind, model.address, model.quantity));
+  }, message.Fields[0])), model.selectedKind, model.name, model.universe, model.address, model.quantity));
 }
 export var EnterKey = 13;
 export var EscapeKey = 27;
@@ -149,33 +182,56 @@ export function typeSelector(kinds, selectedKind, dispatchLocal) {
     return map(option, list);
   }(kinds)))));
 }
-export function numericEditBox(dispatchLocal, label, cmd, value) {
+export function numericEditBox(dispatchLocal, handleValue, label, cmd, value) {
   return createElement("label", {}, text(label), createElement("input", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
-  }, {}, [["value", String(value)], ["onChange", function (e_1) {
-    dispatchLocal(cmd(function () {
-      var matchValue_1 = e_1.target.value;
-
-      if (matchValue_1 === "") {
-        return 1;
-      } else {
-        return matchValue_1;
-      }
-    }()));
+  }, {}, [["value", value], ["onChange", function (e_1) {
+    dispatchLocal(cmd(handleValue(e_1.target.value)));
   }], ["type", "number"], Form.Control])));
+}
+export function patchButton(model, dispatchLocal, dispatchServer) {
+  return createElement("button", fold(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [["onClick", function (_arg1_1) {}], Button.Warning]), text("Patch"));
+}
+export function noneIfEmpty(s) {
+  if (s === "") {
+    return null;
+  } else {
+    return Number.parseInt(s);
+  }
+}
+export function emptyIfNone(_arg1) {
+  if (_arg1 != null) {
+    return String(_arg1);
+  } else {
+    return "";
+  }
 }
 export function view(model, dispatchLocal, dispatchServer) {
   if (model.kinds.tail == null) {
     return createElement("div", {}, text("No patch types available."));
   } else {
+    var universeEntry = numericEditBox(dispatchLocal, function (s) {
+      return noneIfEmpty(s);
+    }, "Universe", function (arg0) {
+      return new Message("SetUniverse", [arg0]);
+    }, emptyIfNone(model.universe));
+    var addressEntry = numericEditBox(dispatchLocal, function (s_1) {
+      return noneIfEmpty(s_1);
+    }, "Start address", function (arg0_1) {
+      return new Message("SetAddress", [arg0_1]);
+    }, emptyIfNone(model.address));
+    var quantityEntry = numericEditBox(dispatchLocal, function (v) {
+      return v === "" ? 1 : Number.parseInt(v);
+    }, "Quantity", function (arg0_2) {
+      return new Message("SetQuantity", [arg0_2]);
+    }, String(model.quantity));
     return createElement("div", fold(function (o, kv) {
       o[kv[0]] = kv[1];
       return o;
-    }, {}, [Form.Group]), createElement("span", {}, createElement("h3", {}, text("Create new patch"))), typeSelector(model.kinds, model.selectedKind, dispatchLocal), Grid.distribute(ofArray([ofArray([numericEditBox(dispatchLocal, "Quantity", function (arg0) {
-      return new Message("SetQuantity", [arg0]);
-    }, model.quantity)]), ofArray([numericEditBox(dispatchLocal, "Start address", function (arg0_1) {
-      return new Message("SetAddress", [arg0_1]);
-    }, model.address)])])));
+    }, {}, [Form.Group]), createElement("span", {}, createElement("h3", {}, text("Create new patch"))), typeSelector(model.kinds, model.selectedKind, dispatchLocal), Grid.distribute(ofArray([ofArray([universeEntry]), ofArray([addressEntry]), ofArray([quantityEntry])])));
   }
 }

@@ -45,6 +45,9 @@ module Grid =
 module Form =
     let Control = cn "form-control"
     let Group = cn "form-group"
+    let Success = cn "has-success"
+    let Warning = cn "has-warning"
+    let Error = cn "has-error"
 
 module Table =
     let Basic = cn "table"

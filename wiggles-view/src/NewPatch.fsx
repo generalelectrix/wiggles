@@ -18,8 +18,6 @@ module RT = Fable.Helpers.ReactToolbox
 open Types
 open Bootstrap
 
-let text x : (Fable.Import.React.ReactElement) = unbox x
-
 type Model =
     /// Fixture types we have available to patch.
    {kinds: FixtureKind list;
@@ -81,7 +79,7 @@ let typeSelector (kinds: FixtureKind list) selectedKind dispatchLocal =
     let option (kind: FixtureKind) =
         R.option
             [ Value (Case1 kind.name) ]
-            [ text (sprintf "%s (%d ch)" kind.name kind.channelCount) ]
+            [ R.str (sprintf "%s (%d ch)" kind.name kind.channelCount) ]
 
     let selected = defaultArg selectedKind kinds.[0]
     R.div [] [
@@ -94,7 +92,7 @@ let typeSelector (kinds: FixtureKind list) selectedKind dispatchLocal =
 
 let numericEditBox dispatchLocal handleValue label cmd value =
     R.label [] [
-        text label
+        R.str label
         R.input [
             Form.Control
             Type "number"
@@ -111,18 +109,22 @@ let patchButton model dispatchLocal dispatchServer =
     R.button [
         Button.Warning
         OnClick (fun _ ->
-            //AdvanceAddress |> dispatchLocal
-            //let requests =
-            //    if model.quantity = 1 then
-            //        let address =
-            //            match model.
-            //        {name = model.name; kind = model.selectedKind.name; 
+            match model.selectedKind with
+            | None -> ()
+            | Some(kind) ->
+                AdvanceAddress |> dispatchLocal
+                let requests =
+                    if model.quantity = 1 then
+                        {name = model.name;
+                         kind = kind.name;
+                         address = 
 
-            //let makeReq i address = 
-            //let patchRequest = {
-            ()
+
+                let makeReq i address = 
+                let patchRequest = {
+                
         )
-    ][ text "Patch" ]
+    ][ R.str "Patch" ]
 
 let noneIfEmpty s = if s = "" then None else Some(int s)
 let emptyIfNone = function | None -> "" | Some(x) -> string x
@@ -133,7 +135,7 @@ let emptyIfNone = function | None -> "" | Some(x) -> string x
 let view model dispatchLocal dispatchServer =
 
     if model.kinds.IsEmpty then
-        R.div [] [text "No patch types available."]
+        R.div [] [R.str "No patch types available."]
     else
         let universeEntry = 
             numericEditBox
@@ -160,7 +162,7 @@ let view model dispatchLocal dispatchServer =
                 (string model.quantity)
 
         R.div [Form.Group] [
-            R.span [] [ R.h3 [] [text "Create new patch"]]
+            R.span [] [ R.h3 [] [R.str "Create new patch"]]
             typeSelector model.kinds model.selectedKind dispatchLocal
             Grid.distribute [
                 [ universeEntry ]

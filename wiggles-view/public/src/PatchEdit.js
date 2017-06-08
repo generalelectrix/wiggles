@@ -250,7 +250,7 @@ export function addressEditor(selected, model, dispatchLocal, dispatchServer) {
       return new Message("AddressEdit", [arg0_5]);
     });
     var matchValue_1 = [displayUniv, displayAddr];
-    var $var6 = matchValue_1[0] != null ? matchValue_1[1] != null ? [0, matchValue_1[1], matchValue_1[0]] : [1] : [1];
+    var $var6 = matchValue_1[0] == null ? matchValue_1[1] == null ? [1] : [2] : matchValue_1[1] != null ? [0, matchValue_1[1], matchValue_1[0]] : [2];
 
     switch ($var6[0]) {
       case 0:
@@ -258,6 +258,10 @@ export function addressEditor(selected, model, dispatchLocal, dispatchServer) {
         break;
 
       case 1:
+        dispatchServer(new ServerRequest("Repatch", [selected.id, null]));
+        break;
+
+      case 2:
         break;
     }
   }], Button.Warning]), text("Repatch")));
