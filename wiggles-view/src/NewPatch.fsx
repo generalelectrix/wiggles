@@ -4,6 +4,7 @@ module NewPatch
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
 #load "../node_modules/fable-react-toolbox/Fable.Helpers.ReactToolbox.fs"
+#load "Util.fsx"
 #load "Types.fsx"
 #load "Bootstrap.fsx"
 
@@ -15,6 +16,7 @@ open Fable.Core.JsInterop
 module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
 module RT = Fable.Helpers.ReactToolbox
+open Util
 open Types
 open Bootstrap
 
@@ -105,29 +107,44 @@ let numericEditBox dispatchLocal handleValue label cmd value =
         ] []
     ]
 
+/// Create patch requests for 1 to N fixtures of the same kind with sequential addresses.
+let newPatchesSequential (name: string) (kind: FixtureKind) n startAddress : Result<PatchRequest list,unit> =
+    // Just do the naive thing and leave it up to the server to tell us if we made a mistake, like
+    // address conflicts.
+    let trimmedName = name.Trim()
+    let name = if trimmedName = "" then kind.name else trimmedName
+    if n < 1 then Error()
+    elif n = 1 then
+        Ok [{name = name; kind = kind.name; address = startAddress}]
+    else
+        // add a number into the name to keep things obvious
+        let makeOne i : PatchRequest =
+            let nameWithCount = sprintf "%s %d" name i
+            let addr = startAddress |> Option.map (fun (u, a) -> (u, a + kind.channelCount))
+            {name = nameWithCount; kind = kind.name; address = addr}
+        [1..n]
+        |> List.map makeOne
+        |> Ok
+
 let patchButton model dispatchLocal dispatchServer =
     R.button [
         Button.Warning
         OnClick (fun _ ->
-            //match model.selectedKind with
-            //| None -> ()
-            //| Some(kind) ->
-            //    AdvanceAddress |> dispatchLocal
-            //    let requests =
-            //        if model.quantity = 1 then
-            //            {name = model.name;
-            //             kind = kind.name;
-            //             address = 
-
-
-            //    let makeReq i address = 
-            //    let patchRequest = {
+            match model.selectedKind with
+            | None -> ()
+            | Some(kind) ->
+                AdvanceAddress |> dispatchLocal
+                match globalAddressFromOptions model.universe model.address with
+                | Error(_) -> ()
+                | Ok(address) ->
+                    let newPatchResult =
+                        newPatchesSequential model.name kind model.quantity address
+                    match newPatchResult with
+                    | Ok(patches) -> patches |> ServerRequest.NewPatches |> dispatchServer
+                    | _ -> ()
             ()
         )
     ][ R.str "Patch" ]
-
-let noneIfEmpty s = if s = "" then None else Some(int s)
-let emptyIfNone = function | None -> "" | Some(x) -> string x
 
 /// View function taking two different dispatch callbacks.
 /// dispatchLocal dispatches a message local to this subapp.
@@ -142,7 +159,7 @@ let view model dispatchLocal dispatchServer =
                 dispatchLocal
                 noneIfEmpty
                 "Universe"
-                SetUniverse
+                (parseInt >> SetUniverse)
                 (model.universe |> emptyIfNone)
 
         let addressEntry =
@@ -150,7 +167,7 @@ let view model dispatchLocal dispatchServer =
                 dispatchLocal
                 noneIfEmpty
                 "Start address"
-                SetAddress
+                (parseInt >> SetAddress)
                 (model.address |> emptyIfNone)
 
         let quantityEntry =
@@ -158,7 +175,7 @@ let view model dispatchLocal dispatchServer =
                 dispatchLocal
                 (fun v -> if v = "" then 1 else int v)
                 "Quantity"
-                SetQuantity
+                (parseInt >> Option.defaultValue 0 >> SetQuantity)
                 (string model.quantity)
 
         R.div [Form.Group] [
@@ -167,6 +184,9 @@ let view model dispatchLocal dispatchServer =
             Grid.distribute [
                 [ universeEntry ]
                 [ addressEntry ]
+            ]
+            Grid.distribute [
                 [ quantityEntry ]
+                [ patchButton model dispatchLocal dispatchServer ]
             ]
         ]
