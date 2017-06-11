@@ -141,7 +141,8 @@ let private addressEditor (selected: PatchItem) model dispatchLocal dispatchServ
     let removeButton =
         R.button [
             Button.Danger
-            OnClick (fun _ ->
+            OnClick (fun e ->
+                e.currentTarget.blur()
                 let confirmMessage =
                     sprintf
                         "Are you sure you want to delete fixture %d (%s)?"
