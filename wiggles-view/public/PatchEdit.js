@@ -245,7 +245,8 @@ function addressEditor(selected, model, dispatchLocal, dispatchServer, openModal
   var removeButton = createElement("button", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
-  }, {}, [["onClick", function (_arg1_2) {
+  }, {}, [["onClick", function (e_1) {
+    e_1.currentTarget.blur();
     var confirmMessage_1 = fsFormat("Are you sure you want to delete fixture %d (%s)?")(function (x) {
       return x;
     })(selected.id)(selected.name);
