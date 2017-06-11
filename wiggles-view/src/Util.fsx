@@ -14,14 +14,18 @@ open Fable.Core.JsInterop
 module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
 
+// Key codes
+/// Key code for 'enter'
+let [<Literal>] EnterKey = 13.0
+/// Key code for 'escape'
+let [<Literal>] EscapeKey = 27.0
+
 module Result =
+    /// Map Some(v) -> Ok(v), None -> Error()
     let ofOption o =
         match o with
         | Some(x) -> Ok(x)
         | None -> Error()
-
-module Option =
-    let orElse (x: 'a option) (y: 'a option) = if y.IsSome then y else x
 
 /// Stringify a option with an empty string for None.
 let emptyIfNone opt =
@@ -42,16 +46,33 @@ let parseInt (s: string) =
     if parsed |> float |> System.Double.IsNaN then None
     else Some parsed
 
+/// Roll a basic optional type to avoid the issues with doubly-nested Option represented as a
+/// nullable value.  Use this with edit boxes if your 'T will itself be an option.
+type Optional<'T> =
+    | Present of 'T
+    | Absent
+    with
+    override this.ToString() =
+        match this with
+        | Present(x) -> x.ToString()
+        | Absent -> ""
+
+module Optional =
+    let ofOption opt =
+        match opt with
+        | Some(x) -> Present(x)
+        | None -> Absent
+
 /// Parse an optional integer.  Validator is applied to a successfully parsed number.
 let parseOptionalNumber validator v =
     match noneIfEmpty v with
-    | None -> Ok(None)
+    | None -> Ok(Absent)
     | Some(v) ->
         v
         |> parseInt
         |> Result.ofOption
         |> Result.bind validator
-        |> Result.map Some
+        |> Result.map Present
 
 /// Concatenate two Fable KeyValueLists.
 [<Emit("Object.assign({}, $0, $1)")>]

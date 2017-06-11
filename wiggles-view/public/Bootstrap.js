@@ -35,7 +35,7 @@ export var Grid = function (__exports) {
   var row = __exports.row = divWithClass("row");
 
   var col = __exports.col = function (num, elems) {
-    return divWithClass(fsFormat("col-sm-%d")(function (x) {
+    return divWithClass(fsFormat("col-md-%d")(function (x) {
       return x;
     })(num))(elems);
   };
@@ -71,12 +71,18 @@ export var Form = function (__exports) {
   return __exports;
 }({});
 export var Table = function (__exports) {
+  var tableStyle = function tableStyle(flare) {
+    return cn(fsFormat("table table-%s")(function (x) {
+      return x;
+    })(flare));
+  };
+
   var Basic = __exports.Basic = cn("table");
-  var Striped = __exports.Striped = cn("table table-striped");
-  var Bordered = __exports.Bordered = cn("table table-bordered");
-  var Hover = __exports.Hover = cn("table table-hover");
-  var Condensed = __exports.Condensed = cn("table table-condensed");
-  var Responsive = __exports.Responsive = cn("table table-responsive");
+  var Striped = __exports.Striped = tableStyle("striped");
+  var Bordered = __exports.Bordered = tableStyle("bordered");
+  var Hover = __exports.Hover = tableStyle("hover");
+  var Condensed = __exports.Condensed = tableStyle("condensed");
+  var Responsive = __exports.Responsive = tableStyle("responsive");
 
   var Row = __exports.Row = function (__exports) {
     var Active = __exports.Active = cn("active");
@@ -90,7 +96,19 @@ export var Table = function (__exports) {
   return __exports;
 }({});
 export var Button = function (__exports) {
+  var buttonStyle = function buttonStyle(flare) {
+    return cn(fsFormat("btn btn-%s")(function (x) {
+      return x;
+    })(flare));
+  };
+
   var Basic = __exports.Basic = cn("btn");
-  var Warning = __exports.Warning = cn("btn btn-warning");
+  var Default = __exports.Default = buttonStyle("default");
+  var Primary = __exports.Primary = buttonStyle("primary");
+  var Success = __exports.Success = buttonStyle("success");
+  var Info = __exports.Info = buttonStyle("info");
+  var Warning = __exports.Warning = buttonStyle("warning");
+  var Danger = __exports.Danger = buttonStyle("danger");
+  var Link = __exports.Link = buttonStyle("link");
   return __exports;
 }({});

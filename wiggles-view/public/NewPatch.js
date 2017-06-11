@@ -7,11 +7,11 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
 import { defaultArg, compare, compareUnions, equalsUnions, makeGeneric, Option, Array as _Array } from "fable-core/Util";
-import { ServerRequest, globalAddressFromOptions, PatchRequest, parseDmxAddress, parseUniverseId, FixtureKind } from "./Types";
-import { view as view_1, $7C$Parsed$7C$_$7C$ as _Parsed___, update as update_1, setParsed, initialModel as initialModel_1, Message as Message_1, Model as Model_1 } from "./EditBox";
+import { ServerRequest, globalAddressFromOptionals, PatchRequest, parseDmxAddress, parseUniverseId, FixtureKind } from "./Types";
+import { view as view_1, $7C$Parsed$7C$_$7C$ as _Parsed___, update as update_1, setParsed, initialModel as initialModel_1, setFailed, Message as Message_1, Model as Model_1 } from "./EditBox";
+import { errorIfEmpty, parseInt, Result as Result_1, Optional } from "./Util";
 import { range, map, fold, sortWith, tryFind } from "fable-core/Seq";
 import { ResultModule, Result } from "fable-elmish/result";
-import { errorIfEmpty, parseInt, Result as Result_1 } from "./Util";
 import { CmdModule } from "fable-elmish/elmish";
 import { createElement } from "react";
 import { trim, fsFormat } from "fable-core/String";
@@ -42,10 +42,14 @@ export var Model = function () {
             T: "string"
           }),
           universe: makeGeneric(Model_1, {
-            T: Option("number")
+            T: makeGeneric(Optional, {
+              T: "number"
+            })
           }),
           address: makeGeneric(Model_1, {
-            T: Option("number")
+            T: makeGeneric(Optional, {
+              T: "number"
+            })
           }),
           quantity: makeGeneric(Model_1, {
             T: "number"
@@ -81,7 +85,9 @@ export var Message = function () {
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
           AddrEdit: [makeGeneric(Message_1, {
-            T: Option("number")
+            T: makeGeneric(Optional, {
+              T: "number"
+            })
           })],
           AdvanceAddress: [],
           NameEdit: [makeGeneric(Message_1, {
@@ -92,7 +98,9 @@ export var Message = function () {
           })],
           SetSelected: ["string"],
           UnivEdit: [makeGeneric(Message_1, {
-            T: Option("number")
+            T: makeGeneric(Optional, {
+              T: "number"
+            })
           })],
           UpdateKinds: [_Array(FixtureKind)]
         }
@@ -113,7 +121,8 @@ export var Message = function () {
   return Message;
 }();
 setType("NewPatch.Message", Message);
-export var parsePositiveInt = function parsePositiveInt($var45) {
+
+var parsePositiveInt = function parsePositiveInt($var56) {
   return function () {
     var f = function f(number) {
       if (number < 1) {
@@ -126,12 +135,13 @@ export var parsePositiveInt = function parsePositiveInt($var45) {
     return function (r) {
       return ResultModule.bind(f, r);
     };
-  }()(function ($var44) {
-    return Result_1.ofOption(parseInt($var44));
-  }($var45));
+  }()(function ($var55) {
+    return Result_1.ofOption(parseInt($var55));
+  }($var56));
 };
+
 export function initialModel() {
-  return new Model([], null, initialModel_1("Name:", errorIfEmpty, "text"), initialModel_1("Universe:", parseUniverseId, "number"), initialModel_1("Address:", parseDmxAddress, "number"), setParsed(1, initialModel_1("Quantity:", parsePositiveInt, "number")));
+  return new Model([], null, setFailed("", initialModel_1("Name:", errorIfEmpty, "text")), setParsed(new Optional("Absent", []), initialModel_1("Universe:", parseUniverseId, "number")), setParsed(new Optional("Absent", []), initialModel_1("Address:", parseDmxAddress, "number")), setParsed(1, initialModel_1("Quantity:", parsePositiveInt, "number")));
 }
 export function update(message, model) {
   return function (m) {
@@ -159,34 +169,34 @@ export function update(message, model) {
     return new Model(model.kinds, model.selectedKind, model.name, model.universe, model.address, quantity);
   }() : message.Case === "AdvanceAddress" ? function () {
     var matchValue_1 = [model.address, model.quantity, model.selectedKind];
-    var $var46 = void 0;
+    var $var57 = void 0;
 
-    var activePatternResult1488 = _Parsed___(matchValue_1[0]);
+    var activePatternResult353 = _Parsed___(matchValue_1[0]);
 
-    if (activePatternResult1488 != null) {
-      if (activePatternResult1488 != null) {
-        var activePatternResult1489 = _Parsed___(matchValue_1[1]);
+    if (activePatternResult353 != null) {
+      if (activePatternResult353.Case === "Present") {
+        var activePatternResult354 = _Parsed___(matchValue_1[1]);
 
-        if (activePatternResult1489 != null) {
+        if (activePatternResult354 != null) {
           if (matchValue_1[2] != null) {
-            $var46 = [0, activePatternResult1488, matchValue_1[2], activePatternResult1489];
+            $var57 = [0, activePatternResult353.Fields[0], matchValue_1[2], activePatternResult354];
           } else {
-            $var46 = [1];
+            $var57 = [1];
           }
         } else {
-          $var46 = [1];
+          $var57 = [1];
         }
       } else {
-        $var46 = [1];
+        $var57 = [1];
       }
     } else {
-      $var46 = [1];
+      $var57 = [1];
     }
 
-    switch ($var46[0]) {
+    switch ($var57[0]) {
       case 0:
-        var newStartAddress = 512 < $var46[1] + $var46[3] * $var46[2].channelCount ? 512 : $var46[1] + $var46[3] * $var46[2].channelCount;
-        var address_1 = setParsed(newStartAddress, model.address);
+        var newStartAddress = 512 < $var57[1] + $var57[3] * $var57[2].channelCount ? 512 : $var57[1] + $var57[3] * $var57[2].channelCount;
+        var address_1 = setParsed(new Optional("Present", [newStartAddress]), model.address);
         return new Model(model.kinds, model.selectedKind, model.name, model.universe, address_1, model.quantity);
 
       case 1:
@@ -205,7 +215,8 @@ export function update(message, model) {
 }
 export var EnterKey = 13;
 export var EscapeKey = 27;
-export function typeSelector(kinds, selectedKind, dispatchLocal) {
+
+function typeSelector(kinds, selectedKind, dispatchLocal) {
   var option = function option(kind) {
     return createElement("option", {
       value: kind.name
@@ -224,7 +235,8 @@ export function typeSelector(kinds, selectedKind, dispatchLocal) {
     return array.map(option);
   }(kinds))))));
 }
-export function newPatchesSequential(name, kind, n, startAddress) {
+
+function newPatchesSequential(name, kind, n, startAddress) {
   var trimmedName = trim(name, "both");
   var name_1 = trimmedName === "" ? kind.name : trimmedName;
 
@@ -236,19 +248,20 @@ export function newPatchesSequential(name, kind, n, startAddress) {
     var makeOne = function makeOne(i) {
       var nameWithCount = fsFormat("%s %d")(function (x) {
         return x;
-      })(name_1)(i);
+      })(name_1)(i + 1);
       var addr = defaultArg(startAddress, null, function (tupledArg) {
-        return [tupledArg[0], tupledArg[1] + kind.channelCount];
+        return [tupledArg[0], tupledArg[1] + kind.channelCount * i];
       });
       return new PatchRequest(nameWithCount, kind.name, addr);
     };
 
     return new Result("Ok", [function (array) {
       return Array.from(map(makeOne, array));
-    }(Int32Array.from(range(1, n)))]);
+    }(Int32Array.from(range(0, n - 1)))]);
   }
 }
-export function patchButton(model, dispatchLocal, dispatchServer) {
+
+function patchButton(model, dispatchLocal, dispatchServer) {
   return createElement("button", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
@@ -257,47 +270,47 @@ export function patchButton(model, dispatchLocal, dispatchServer) {
       console.log(x);
     })(model);
     var matchValue_2 = [model.selectedKind, model.name, model.universe, model.address, model.quantity];
-    var $var48 = void 0;
+    var $var59 = void 0;
 
     if (matchValue_2[0] != null) {
-      var activePatternResult1507_1 = _Parsed___(matchValue_2[1]);
+      var activePatternResult372_1 = _Parsed___(matchValue_2[1]);
 
-      if (activePatternResult1507_1 != null) {
-        var activePatternResult1508_1 = _Parsed___(matchValue_2[2]);
+      if (activePatternResult372_1 != null) {
+        var activePatternResult373_1 = _Parsed___(matchValue_2[2]);
 
-        if (activePatternResult1508_1 != null) {
-          var activePatternResult1509_1 = _Parsed___(matchValue_2[3]);
+        if (activePatternResult373_1 != null) {
+          var activePatternResult374_1 = _Parsed___(matchValue_2[3]);
 
-          if (activePatternResult1509_1 != null) {
-            var activePatternResult1510_1 = _Parsed___(matchValue_2[4]);
+          if (activePatternResult374_1 != null) {
+            var activePatternResult375_1 = _Parsed___(matchValue_2[4]);
 
-            if (activePatternResult1510_1 != null) {
-              $var48 = [0, activePatternResult1509_1, matchValue_2[0], activePatternResult1507_1, activePatternResult1510_1, activePatternResult1508_1];
+            if (activePatternResult375_1 != null) {
+              $var59 = [0, activePatternResult374_1, matchValue_2[0], activePatternResult372_1, activePatternResult375_1, activePatternResult373_1];
             } else {
-              $var48 = [1];
+              $var59 = [1];
             }
           } else {
-            $var48 = [1];
+            $var59 = [1];
           }
         } else {
-          $var48 = [1];
+          $var59 = [1];
         }
       } else {
-        $var48 = [1];
+        $var59 = [1];
       }
     } else {
-      $var48 = [1];
+      $var59 = [1];
     }
 
-    switch ($var48[0]) {
+    switch ($var59[0]) {
       case 0:
-        var matchValue_3 = globalAddressFromOptions($var48[5], $var48[1]);
+        var matchValue_3 = globalAddressFromOptionals($var59[5], $var59[1]);
 
         if (matchValue_3.Case === "Ok") {
           fsFormat("Addr: %+A")(function (x) {
             console.log(x);
           })(matchValue_3.Fields[0]);
-          var newPatchResult_1 = newPatchesSequential($var48[3], $var48[2], $var48[4], matchValue_3.Fields[0]);
+          var newPatchResult_1 = newPatchesSequential($var59[3], $var59[2], $var59[4], matchValue_3.Fields[0]);
 
           if (newPatchResult_1.Case === "Ok") {
             dispatchServer(new ServerRequest("NewPatches", [newPatchResult_1.Fields[0]]));
@@ -308,33 +321,37 @@ export function patchButton(model, dispatchLocal, dispatchServer) {
         break;
 
       case 1:
+        fsFormat("%+A")(function (x) {
+          console.log(x);
+        })(matchValue_2);
         break;
     }
   }], Button.Warning]), "Patch");
 }
+
 export function view(model, dispatchLocal, dispatchServer) {
   if (model.kinds.length === 0) {
     return createElement("div", {}, "No patch types available.");
   } else {
-    var nameEntry = view_1(null, "", model.name, function ($var49) {
+    var nameEntry = view_1(null, "", model.name, function ($var60) {
       return dispatchLocal(function (arg0) {
         return new Message("NameEdit", [arg0]);
-      }($var49));
+      }($var60));
     });
-    var universeEntry = view_1(null, "", model.universe, function ($var50) {
+    var universeEntry = view_1(null, "", model.universe, function ($var61) {
       return dispatchLocal(function (arg0_1) {
         return new Message("UnivEdit", [arg0_1]);
-      }($var50));
+      }($var61));
     });
-    var addressEntry = view_1(null, "", model.address, function ($var51) {
+    var addressEntry = view_1(null, "", model.address, function ($var62) {
       return dispatchLocal(function (arg0_2) {
         return new Message("AddrEdit", [arg0_2]);
-      }($var51));
+      }($var62));
     });
-    var quantityEntry = view_1(null, "", model.quantity, function ($var52) {
+    var quantityEntry = view_1(null, "", model.quantity, function ($var63) {
       return dispatchLocal(function (arg0_3) {
         return new Message("QuantEdit", [arg0_3]);
-      }($var52));
+      }($var63));
     });
     return createElement("div", fold(function (o, kv) {
       o[kv[0]] = kv[1];

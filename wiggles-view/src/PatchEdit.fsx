@@ -7,6 +7,7 @@ module PatchEdit
 #load "Types.fsx"
 #load "Bootstrap.fsx"
 #load "EditBox.fsx"
+#load "Modal.fsx"
 
 open Fable.Core
 open Fable.Import
@@ -23,15 +24,15 @@ type Model = {
     /// Real details of the currently-selected patch item.
     selected: PatchItem option
     nameEdit: EditBox.Model<string>
-    addressEdit: EditBox.Model<DmxAddress option>
-    universeEdit: EditBox.Model<UniverseId option>
+    addressEdit: EditBox.Model<Optional<DmxAddress>>
+    universeEdit: EditBox.Model<Optional<UniverseId>>
 }
     
 type Message =
     | SetState of PatchItem option
     | NameEdit of EditBox.Message<string>
-    | AddressEdit of EditBox.Message<DmxAddress option>
-    | UniverseEdit of EditBox.Message<UniverseId option>
+    | AddressEdit of EditBox.Message<Optional<DmxAddress>>
+    | UniverseEdit of EditBox.Message<Optional<UniverseId>>
 
 let initialModel () = {
     selected = None
@@ -66,12 +67,9 @@ let update message (model: Model) =
     | UniverseEdit u -> {model with universeEdit = EditBox.update u model.universeEdit}
     |> fun m -> (m, Cmd.none)
 
-let [<Literal>] EnterKey = 13.0
-let [<Literal>] EscapeKey = 27.0
-
 /// When the enter key is pressed, submit a rename request if we've made an edit.
 /// When the escape key is pressed, clear any existing edit.
-let nameEditOnKeyDown
+let private nameEditOnKeyDown
         fixtureId
         dispatchLocal
         dispatchServer
@@ -90,7 +88,7 @@ let nameEditOnKeyDown
         | _ -> ()
     ) :> IHTMLProp
 
-let nameEditBox selected model dispatchLocal dispatchServer = 
+let private nameEditBox selected model dispatchLocal dispatchServer = 
     let onKeyDown = nameEditOnKeyDown selected.id dispatchLocal dispatchServer
     EditBox.view
         (Some onKeyDown)
@@ -98,7 +96,7 @@ let nameEditBox selected model dispatchLocal dispatchServer =
         model.nameEdit
         (NameEdit >> dispatchLocal)
 
-let addressEditor (selected: PatchItem) model dispatchLocal dispatchServer =
+let private addressEditor (selected: PatchItem) model dispatchLocal dispatchServer openModal =
 
     let universeBox =
         EditBox.view
@@ -125,10 +123,10 @@ let addressEditor (selected: PatchItem) model dispatchLocal dispatchServer =
         if not model.addressEdit.IsOk || not model.universeEdit.IsOk then ()
         else
             // Get values for both
-            let univ = model.universeEdit.ParsedValueOr(selected.universe)
-            let addr = model.addressEdit.ParsedValueOr(selected.dmxAddress)
+            let univ = model.universeEdit.ParsedValueOr(selected.universe |> Optional.ofOption)
+            let addr = model.addressEdit.ParsedValueOr(selected.dmxAddress |> Optional.ofOption)
             // We can only do something if both are some or both are none.
-            match globalAddressFromOptions univ addr with
+            match globalAddressFromOptionals univ addr with
             | Ok a ->
                 ServerRequest.Repatch(selected.id, a) |> dispatchServer
                 clearAll()
@@ -140,17 +138,34 @@ let addressEditor (selected: PatchItem) model dispatchLocal dispatchServer =
             OnClick handleRepatchButtonClick
         ] [ R.str "Repatch"]
 
+    let removeButton =
+        R.button [
+            Button.Danger
+            OnClick (fun _ ->
+                let confirmMessage =
+                    sprintf
+                        "Are you sure you want to delete fixture %d (%s)?"
+                        selected.id
+                        selected.name
+                let removeAction _ =
+                    ServerRequest.Remove selected.id |> dispatchServer
+                Modal.confirm confirmMessage removeAction
+                |> openModal
+            )
+        ] [ R.str "Remove" ]
+
     R.div [Form.Group] [
         universeBox
         addressBox
         repatchButton
+        removeButton
     ]
     
 
-/// View function taking two different dispatch callbacks.
-/// dispatchLocal dispatches a message local to this subapp.
-/// dispatchServer sends a server request.
-let view model dispatchLocal dispatchServer =
+///<summary>
+/// Display the patch editor.
+///</summary>
+let view model dispatchLocal dispatchServer openModal =
     let header = R.h3 [] [ R.str "Edit patch" ]
     let editor =
         match model.selected with
@@ -162,7 +177,7 @@ let view model dispatchLocal dispatchServer =
                     (9, [R.str (sprintf "Type: %s" selected.kind)])
                 ]
                 nameEditBox selected model dispatchLocal dispatchServer
-                addressEditor selected model dispatchLocal dispatchServer
+                addressEditor selected model dispatchLocal dispatchServer openModal
             ]
     R.div [] [
         header

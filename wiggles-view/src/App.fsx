@@ -2,9 +2,9 @@
 #r "../node_modules/fable-react/Fable.React.dll"
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
-#load "../node_modules/fable-react-toolbox/Fable.Helpers.ReactToolbox.fs"
 #load "Types.fsx"
 #load "Bootstrap.fsx"
+#load "Modal.fsx"
 #load "PatchEdit.fsx"
 #load "NewPatch.fsx"
 
@@ -15,19 +15,21 @@ open Elmish.React
 open Fable.Core.JsInterop
 module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
-module RT = Fable.Helpers.ReactToolbox
 open Types
 open Bootstrap
 
 type Model = {
-    patches: PatchItem array;
+    patches: PatchItem array
     // Current fixture ID we have selected, if any.
-    selected: FixtureId option;
+    selected: FixtureId option
     // Model for the patch editor.
-    editorModel: PatchEdit.Model;
-    newPatchModel: NewPatch.Model;
+    editorModel: PatchEdit.Model
+    newPatchModel: NewPatch.Model
+    // Pop-over modal dialog.
+    modalDialog: Modal.Model
     // For now show errors in a console of infinite length.
-    consoleText: string array}
+    consoleText: string array
+}
 
 let withConsoleMessage msg model =
     {model with consoleText = Array.append model.consoleText [|msg|]}
@@ -43,15 +45,18 @@ type Message =
     | Action of UiAction
     | Edit of PatchEdit.Message
     | Create of NewPatch.Message
+    | ModalDialog of Modal.Message
 
 
 let initialModel () =
-    let m = 
-       {patches = Array.empty;
-        selected = None;
-        editorModel = PatchEdit.initialModel();
-        newPatchModel = NewPatch.initialModel();
-        consoleText = Array.empty}
+    let m = {
+        patches = Array.empty
+        selected = None
+        editorModel = PatchEdit.initialModel()
+        newPatchModel = NewPatch.initialModel()
+        modalDialog = Modal.initialModel()
+        consoleText = Array.empty
+    }
     let initCommands =
         [ServerRequest.PatchState; ServerRequest.GetKinds]
         |> List.map Cmd.ofMsg
@@ -133,7 +138,7 @@ let update message model =
                 |> Array.map (fun existing -> if existing.id = p.id then p else existing)
             {model with patches = newPatches}, updateEditorState newPatches model.selected
         | ServerResponse.Remove id ->
-            let newPatches = model.patches |> Array.filter (fun p -> p.id = id)
+            let newPatches = model.patches |> Array.filter (fun p -> p.id <> id)
             {model with patches = newPatches}, updateEditorState newPatches model.selected
         | ServerResponse.Kinds kinds ->
             model, kinds |> NewPatch.UpdateKinds |> Create |> Cmd.ofMsg
@@ -149,6 +154,8 @@ let update message model =
     | Create m ->
         let newPatchModel, newPatchCmds = NewPatch.update m model.newPatchModel
         {model with newPatchModel = newPatchModel}, newPatchCmds |> Cmd.map Create
+    | ModalDialog m ->
+        {model with modalDialog = Modal.update m model.modalDialog}, Cmd.none
     
 
 let updateAndLog message model =
@@ -169,15 +176,15 @@ let viewPatchTableRow dispatch selectedId item =
         else [onClick]
     R.tr rowAttrs [
         td item.id;
-        td item.kind;
         td item.name;
+        td item.kind;
         td universe;
         td address;
         td item.channelCount;
     ]
 
 let patchTableHeader =
-    ["id"; "kind"; "name"; "universe"; "address"; "channel count"]
+    ["id"; "name"; "kind"; "universe"; "address"; "channel count"]
     |> List.map (fun x -> R.th [] [R.str x])
     |> R.tr []
 
@@ -209,14 +216,20 @@ let viewConsole dispatch lines =
             ] [];
         ]
     ]
+
+
 let view model dispatch =
     let dispatchServer = Request >> dispatch
+
+    /// Helper function passed to views that want to be able to open modal dialogs to confirm actions.
+    let openModal req = req |> Modal.Open |> ModalDialog |> dispatch
+
     R.div [Container.Fluid] [
         Grid.layout [
             (8, [ viewPatchTable dispatch model.patches model.selected ])
             (4, [
                 Grid.fullRow [
-                    PatchEdit.view model.editorModel (Edit >> dispatch) dispatchServer]
+                    PatchEdit.view model.editorModel (Edit >> dispatch) dispatchServer openModal]
                 Grid.fullRow [
                     NewPatch.view model.newPatchModel (Create >> dispatch) dispatchServer]
             ])
@@ -224,6 +237,7 @@ let view model dispatch =
         Grid.fullRow [
             viewConsole dispatch model.consoleText
         ]
+        Modal.view model.modalDialog (ModalDialog >> dispatch)
     ]
 
 Program.mkProgram initialModel updateAndLog view

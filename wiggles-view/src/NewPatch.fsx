@@ -3,7 +3,6 @@ module NewPatch
 #r "../node_modules/fable-react/Fable.React.dll"
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
-#load "../node_modules/fable-react-toolbox/Fable.Helpers.ReactToolbox.fs"
 #load "Util.fsx"
 #load "Types.fsx"
 #load "Bootstrap.fsx"
@@ -16,7 +15,6 @@ open Elmish.React
 open Fable.Core.JsInterop
 module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
-module RT = Fable.Helpers.ReactToolbox
 open Util
 open Types
 open Bootstrap
@@ -27,8 +25,8 @@ type Model =
    {kinds: FixtureKind array
     selectedKind: FixtureKind option
     name: EditBox.Model<string>
-    universe: EditBox.Model<UniverseId option>
-    address: EditBox.Model<DmxAddress option>
+    universe: EditBox.Model<Optional<UniverseId>>
+    address: EditBox.Model<Optional<DmxAddress>>
     quantity: EditBox.Model<int>}
     with
     member this.TryGetNamedKind(name) = this.kinds |> Array.tryFind (fun k -> k.name = name)
@@ -37,14 +35,14 @@ type Message =
     | UpdateKinds of FixtureKind array
     | SetSelected of string
     | NameEdit of EditBox.Message<string>
-    | UnivEdit of EditBox.Message<UniverseId option>
-    | AddrEdit of EditBox.Message<DmxAddress option>
+    | UnivEdit of EditBox.Message<Optional<UniverseId>>
+    | AddrEdit of EditBox.Message<Optional<DmxAddress>>
     | QuantEdit of EditBox.Message<int>
     /// Convenience feature to advance the start address after patching.
     | AdvanceAddress
 
 /// Return Error if number is less than 1.
-let parsePositiveInt =
+let private parsePositiveInt =
     parseInt
     >> Result.ofOption
     >> Result.bind (fun number -> if number < 1 then Error() else Ok(number))
@@ -52,9 +50,15 @@ let parsePositiveInt =
 let initialModel () = {
     kinds = [||]
     selectedKind = None
-    name = EditBox.initialModel "Name:" errorIfEmpty "text"
-    universe = EditBox.initialModel "Universe:" parseUniverseId "number"
-    address = EditBox.initialModel "Address:" parseDmxAddress "number"
+    name =
+        EditBox.initialModel "Name:" errorIfEmpty "text"
+        |> EditBox.setFailed ""
+    universe =
+        EditBox.initialModel "Universe:" parseUniverseId "number"
+        |> EditBox.setParsed Absent
+    address =
+        EditBox.initialModel "Address:" parseDmxAddress "number"
+        |> EditBox.setParsed Absent
     quantity =
         EditBox.initialModel "Quantity:" parsePositiveInt "number"
         |> EditBox.setParsed 1
@@ -78,12 +82,12 @@ let update message (model: Model) =
     | AdvanceAddress ->
         match model.address, model.quantity, model.selectedKind with
         // We can only proceed if we have valid values for address, quantity, and have a kind selected.
-        | Parsed(Some(addr)), Parsed(quantity), Some(kind) ->
+        | Parsed(Present(addr)), Parsed(quantity), Some(kind) ->
             let newStartAddress =
                 (addr + (quantity*kind.channelCount))
                 |> min 512
 
-            {model with address = EditBox.setParsed (Some newStartAddress) model.address}
+            {model with address = EditBox.setParsed (Present newStartAddress) model.address}
         | _ -> model
 
     |> fun m -> (m, Cmd.none)
@@ -92,7 +96,7 @@ let [<Literal>] EnterKey = 13.0
 let [<Literal>] EscapeKey = 27.0
 
 /// Render type selector dropdown.
-let typeSelector (kinds: FixtureKind array) selectedKind dispatchLocal =
+let private typeSelector (kinds: FixtureKind array) selectedKind dispatchLocal =
     let option (kind: FixtureKind) =
         R.option
             [ Value (Case1 kind.name) ]
@@ -108,7 +112,7 @@ let typeSelector (kinds: FixtureKind array) selectedKind dispatchLocal =
     ]
 
 /// Create patch requests for 1 to N fixtures of the same kind with sequential addresses.
-let newPatchesSequential (name: string) (kind: FixtureKind) n startAddress : Result<PatchRequest array,unit> =
+let private newPatchesSequential (name: string) (kind: FixtureKind) n startAddress : Result<PatchRequest array,unit> =
     // Just do the naive thing and leave it up to the server to tell us if we made a mistake, like
     // address conflicts.
     let trimmedName = name.Trim()
@@ -119,22 +123,22 @@ let newPatchesSequential (name: string) (kind: FixtureKind) n startAddress : Res
     else
         // add a number into the name to keep things obvious
         let makeOne i : PatchRequest =
-            let nameWithCount = sprintf "%s %d" name i
-            let addr = startAddress |> Option.map (fun (u, a) -> (u, a + kind.channelCount))
+            let nameWithCount = sprintf "%s %d" name (i+1)
+            let addr = startAddress |> Option.map (fun (u, a) -> (u, a + kind.channelCount*i))
             {name = nameWithCount; kind = kind.name; address = addr}
-        [| 1..n |]
+        [| 0..n-1 |]
         |> Array.map makeOne
         |> Ok
 
 /// Issues a server request for new patches if all data is correctly parsed and valid.
-let patchButton model dispatchLocal dispatchServer =
+let private patchButton model dispatchLocal dispatchServer =
     R.button [
         Button.Warning
         OnClick (fun _ ->
             printfn "%+A" model
             match model.selectedKind, model.name, model.universe, model.address, model.quantity with
             | Some(kind), Parsed(name), Parsed(univ), Parsed(addr), Parsed(quant) ->
-                match globalAddressFromOptions univ addr with
+                match globalAddressFromOptionals univ addr with
                 | Error(_) -> ()
                 | Ok(globalAddress) ->
                     printfn "Addr: %+A" globalAddress
@@ -145,7 +149,9 @@ let patchButton model dispatchLocal dispatchServer =
                         patches |> ServerRequest.NewPatches |> dispatchServer
                         AdvanceAddress |> dispatchLocal
                     | _ -> ()
-            | _ -> ()
+            | x ->
+                printfn "%+A" x
+                ()
         )
     ][ R.str "Patch" ]
 

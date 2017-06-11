@@ -26,10 +26,10 @@ let parseUniverseId = parseOptionalNumber validUniverse
 
 type GlobalAddress = UniverseId * DmxAddress
 
-let globalAddressFromOptions univOpt addrOpt =
+let globalAddressFromOptionals univOpt addrOpt =
     match univOpt, addrOpt with
-    | Some(u), Some(a) -> Some(u, a) |> Ok
-    | None, None -> None |> Ok
+    | Present(u), Present(a) -> Some(u, a) |> Ok
+    | Absent, Absent -> None |> Ok
     | _ -> Error()
 
 type FixtureId = int

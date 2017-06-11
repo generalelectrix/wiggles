@@ -26,7 +26,7 @@ module Container =
 module Grid =
     let private divWithClass = elementWithClass R.div
     let row = divWithClass "row"
-    let col num elems = divWithClass (sprintf "col-sm-%d" num) elems
+    let col num elems = divWithClass (sprintf "col-md-%d" num) elems
     let fullRow elems =
         row [ col 12 elems ]
 
@@ -50,12 +50,13 @@ module Form =
     let GroupError = cn "form-group has-error"
 
 module Table =
+    let private tableStyle flare = sprintf "table table-%s" flare |> cn
     let Basic = cn "table"
-    let Striped = cn "table table-striped"
-    let Bordered = cn "table table-bordered"
-    let Hover = cn "table table-hover"
-    let Condensed = cn "table table-condensed"
-    let Responsive = cn "table table-responsive"
+    let Striped = tableStyle "striped"
+    let Bordered = tableStyle "bordered"
+    let Hover = tableStyle "hover"
+    let Condensed = tableStyle "condensed"
+    let Responsive = tableStyle "responsive"
 
     module Row =
         let Active = cn "active"
@@ -65,5 +66,12 @@ module Table =
         let Danger = cn "danger"
 
 module Button =
+    let private buttonStyle flare = sprintf "btn btn-%s" flare |> cn
     let Basic = cn "btn"
-    let Warning = cn "btn btn-warning"
+    let Default = buttonStyle "default"
+    let Primary = buttonStyle "primary"
+    let Success = buttonStyle "success"
+    let Info = buttonStyle "info"
+    let Warning = buttonStyle "warning"
+    let Danger = buttonStyle "danger"
+    let Link = buttonStyle "link"

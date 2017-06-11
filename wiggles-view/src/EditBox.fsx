@@ -5,7 +5,6 @@ module EditBox
 #r "../node_modules/fable-react/Fable.React.dll"
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
-#load "../node_modules/fable-react-toolbox/Fable.Helpers.ReactToolbox.fs"
 #load "Util.fsx"
 #load "Types.fsx"
 #load "Bootstrap.fsx"
@@ -17,7 +16,6 @@ open Elmish.React
 open Fable.Core.JsInterop
 module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
-module RT = Fable.Helpers.ReactToolbox
 open Util
 open Types
 open Bootstrap
@@ -67,6 +65,10 @@ let update message (model: Model<'T>) =
 /// Return an updated model with a successfully parsed value.
 /// Parents with children EditBoxes can use this to inject a correct value.
 let setParsed value model = {model with value = Some(Ok(value))}
+
+/// Return an updated model with a value that has supposedly failed to parse.
+/// Parents with children EditBoxes can use this to inject a bad default, such as an empty string.
+let setFailed value model = {model with value = Some(Error(value))}
 
 /// Active pattern matching an edit box with a parsed value.
 let (|Parsed|_|) model =
