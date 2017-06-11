@@ -7,6 +7,7 @@ module NewPatch
 #load "Util.fsx"
 #load "Types.fsx"
 #load "Bootstrap.fsx"
+#load "EditBox.fsx"
 
 open Fable.Core
 open Fable.Import
@@ -19,37 +20,42 @@ module RT = Fable.Helpers.ReactToolbox
 open Util
 open Types
 open Bootstrap
+open EditBox
 
 type Model =
     /// Fixture types we have available to patch.
-   {kinds: FixtureKind list;
-    selectedKind: FixtureKind option;
-    name: string;
-    universe: UniverseId option;
-    address: DmxAddress option;
-    quantity: int;}
+   {kinds: FixtureKind list
+    selectedKind: FixtureKind option
+    name: EditBox.Model<string>
+    universe: EditBox.Model<UniverseId option>
+    address: EditBox.Model<DmxAddress option>
+    quantity: EditBox.Model<int>}
     with
     member this.TryGetNamedKind(name) = this.kinds |> List.tryFind (fun k -> k.name = name)
     
 type Message = 
     | UpdateKinds of FixtureKind list
     | SetSelected of string
-    | SetUniverse of UniverseId option
-    | SetAddress of DmxAddress option
-    | SetQuantity of int
+    | UnivEdit of EditBox.Message<UniverseId option>
+    | AddrEdit of EditBox.Message<DmxAddress option>
+    | QuantEdit of EditBox.Message<int>
     /// Convenience feature to advance the start address after patching.
     | AdvanceAddress
+
+/// Return Error if number is less than 1.
+let parsePositiveInt =
+    parseInt
+    >> Result.ofOption
+    >> Result.bind (fun number -> if number < 1 then Error() else Ok(number))
 
 let initialModel () = {
     kinds = [];
     selectedKind = None;
-    name = "";
-    universe = None;
-    address = None;
-    quantity = 1;
+    name = EditBox.initialModel "Name:" errorIfEmpty "text";
+    universe = EditBox.initialModel "Universe:" parseUniverseId "number";
+    address = EditBox.initialModel "Address:" parseDmxAddress "number";
+    quantity = EditBox.initialModel "Quantity:" parsePositiveInt "number";
 }
-
-let positive x = max x 0
 
 let update message (model: Model) =
     match message with
@@ -58,9 +64,9 @@ let update message (model: Model) =
         match model.TryGetNamedKind(name) with
         | Some(kind) -> {model with selectedKind = Some kind}
         | None -> model
-    | SetUniverse u -> {model with universe = u |> Option.map positive}
-    | SetAddress a -> {model with address = a |> Option.map (min 512 >> max 1)}
-    | SetQuantity q -> {model with quantity = q |> positive}
+    | UnivEdit msg -> {model with universe = EditBox.update msg model.universe}
+    | AddrEdit msg -> {model with address = EditBox.update msg model.address}
+    | QuantEdit msg -> {model with quantity = EditBox.update msg model.quantity}
     | AdvanceAddress ->
         match model.address with
         | Some(addr) ->
@@ -90,21 +96,6 @@ let typeSelector (kinds: FixtureKind list) selectedKind dispatchLocal =
             OnChange (fun e -> SetSelected !!e.target?value |> dispatchLocal)
             Value (Case1 selected.name)
         ] (kinds |> List.map option)
-    ]
-
-let numericEditBox dispatchLocal handleValue label cmd value =
-    R.label [] [
-        R.str label
-        R.input [
-            Form.Control
-            Type "number"
-            OnChange (fun e -> 
-                !!e.target?value
-                |> handleValue
-                |> cmd
-                |> dispatchLocal);
-            Value (Case1 (value))
-        ] []
     ]
 
 /// Create patch requests for 1 to N fixtures of the same kind with sequential addresses.
@@ -154,29 +145,9 @@ let view model dispatchLocal dispatchServer =
     if model.kinds.IsEmpty then
         R.div [] [R.str "No patch types available."]
     else
-        let universeEntry = 
-            numericEditBox
-                dispatchLocal
-                noneIfEmpty
-                "Universe"
-                (parseInt >> SetUniverse)
-                (model.universe |> emptyIfNone)
-
-        let addressEntry =
-            numericEditBox
-                dispatchLocal
-                noneIfEmpty
-                "Start address"
-                (parseInt >> SetAddress)
-                (model.address |> emptyIfNone)
-
-        let quantityEntry =
-            numericEditBox
-                dispatchLocal
-                (fun v -> if v = "" then 1 else int v)
-                "Quantity"
-                (parseInt >> Option.defaultValue 0 >> SetQuantity)
-                (string model.quantity)
+        let universeEntry = EditBox.view None "" model.universe (UnivEdit >> dispatchLocal)
+        let addressEntry = EditBox.view None "" model.address (AddrEdit >> dispatchLocal)
+        let quantityEntry = EditBox.view None "1" model.quantity (QuantEdit >> dispatchLocal)
 
         R.div [Form.Group] [
             R.span [] [ R.h3 [] [R.str "Create new patch"]]

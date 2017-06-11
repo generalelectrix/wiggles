@@ -18,6 +18,12 @@ let validUniverse u = if u >= 0 then Ok(u) else Error()
 /// Return Ok(a) if this is a valid DMX address.
 let validDmxAddress a = if a > 0 && a < 513 then Ok(a) else Error()
 
+/// Try to parse a string as a DMX address, or None if it is empty.
+let parseDmxAddress = parseOptionalNumber validDmxAddress
+
+/// Try to parse a string as a universe id, or None if it is empty.
+let parseUniverseId = parseOptionalNumber validUniverse
+
 type GlobalAddress = UniverseId * DmxAddress
 
 let globalAddressFromOptions univOpt addrOpt =

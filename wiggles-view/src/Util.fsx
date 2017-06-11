@@ -32,12 +32,26 @@ let emptyIfNone opt =
 /// Lift a string into Option unless it is the empty string or whitespace.
 let noneIfEmpty (s: string) = if s.Trim() = "" then None else Some(s)
 
+/// Lift a string into Result unless it is the empty string or whitespace.
+let errorIfEmpty = noneIfEmpty >> Result.ofOption
+
 /// Try to parse a string as an integer.  Return None if it cannot be parsed.
 /// This uses Javascript's amazing number parsing that will happily parse "32foo" as 32.
 let parseInt (s: string) =
     let parsed = int s
     if parsed |> float |> System.Double.IsNaN then None
     else Some parsed
+
+/// Parse an optional integer.  Validator is applied to a successfully parsed number.
+let parseOptionalNumber validator v =
+    match noneIfEmpty v with
+    | None -> Ok(None)
+    | Some(v) ->
+        v
+        |> parseInt
+        |> Result.ofOption
+        |> Result.bind validator
+        |> Result.map Some
 
 /// Concatenate two Fable KeyValueLists.
 [<Emit("Object.assign({}, $0, $1)")>]
