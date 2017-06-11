@@ -39,11 +39,11 @@ export var Model = function () {
   }, {
     key: "ParsedValueOr",
     value: function (defaultValue) {
-      var $var7 = this.value != null ? this.value.Case === "Ok" ? [0, this.value.Fields[0]] : [1] : [1];
+      var $var10 = this.value != null ? this.value.Case === "Ok" ? [0, this.value.Fields[0]] : [1] : [1];
 
-      switch ($var7[0]) {
+      switch ($var10[0]) {
         case 0:
-          return $var7[1];
+          return $var10[1];
 
         case 1:
           return defaultValue;
@@ -52,9 +52,9 @@ export var Model = function () {
   }, {
     key: "IsOk",
     get: function () {
-      var $var5 = this.value != null ? this.value.Case === "Error" ? [0] : [1] : [1];
+      var $var8 = this.value != null ? this.value.Case === "Error" ? [0] : [1] : [1];
 
-      switch ($var5[0]) {
+      switch ($var8[0]) {
         case 0:
           return false;
 
@@ -65,9 +65,9 @@ export var Model = function () {
   }, {
     key: "HasParsed",
     get: function () {
-      var $var6 = this.value != null ? this.value.Case === "Ok" ? [0] : [1] : [1];
+      var $var9 = this.value != null ? this.value.Case === "Ok" ? [0] : [1] : [1];
 
-      switch ($var6[0]) {
+      switch ($var9[0]) {
         case 0:
           return true;
 
@@ -134,6 +134,23 @@ export function update(message, model) {
     return new Model(parseResult, model.parser, model.label, model.inputType);
   }
 }
+export function setParsed(value, model) {
+  return new Model(new Result("Ok", [value]), model.parser, model.label, model.inputType);
+}
+
+function _Parsed___(model) {
+  var $var11 = model.value != null ? model.value.Case === "Ok" ? [0, model.value.Fields[0]] : [1] : [1];
+
+  switch ($var11[0]) {
+    case 0:
+      return $var11[1];
+
+    case 1:
+      return null;
+  }
+}
+
+export { _Parsed___ as $7C$Parsed$7C$_$7C$ };
 export function view(extraAction, defaultValue, model, dispatch) {
   var value = model.value != null ? model.value.Case === "Error" ? model.value.Fields[0] : toString(model.value.Fields[0]) : defaultValue;
   var attrs = fold(function (o, kv) {

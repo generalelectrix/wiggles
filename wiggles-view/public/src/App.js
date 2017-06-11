@@ -6,15 +6,14 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { equals, toString, defaultArg, compareUnions, equalsUnions, Array as _Array, Option, makeGeneric } from "fable-core/Util";
-import { filter, append, ofArray, map } from "fable-core/List";
-import List from "fable-core/List";
+import { equals, toString, defaultArg, compareUnions, equalsUnions, Option, Array as _Array } from "fable-core/Util";
 import { testKinds, testPatches, ServerResponse, ServerRequest, PatchItem } from "./Types";
 import { view as view_1, update as update_1, initialModel as initialModel_1, Message as Message_2, Model as Model_1 } from "./PatchEdit";
 import { view as view_2, update as update_2, initialModel as initialModel_2, Message as Message_1, Model as Model_2 } from "./NewPatch";
 import { ProgramModule, CmdModule } from "fable-elmish/elmish";
+import { ofArray, map } from "fable-core/List";
 import { join, fsFormat } from "fable-core/String";
-import { map as map_1, singleton, append as append_1, delay, toList, fold, tryFind } from "fable-core/Seq";
+import { map as map_1, singleton, append, delay, toList, fold, tryFind } from "fable-core/Seq";
 import { createElement } from "react";
 import { Grid, Container, Button, Form, Table } from "./Bootstrap";
 import { withReact } from "fable-elmish-react/react";
@@ -36,9 +35,7 @@ export var Model = function () {
         type: "App.Model",
         interfaces: ["FSharpRecord"],
         properties: {
-          patches: makeGeneric(List, {
-            T: PatchItem
-          }),
+          patches: _Array(PatchItem),
           selected: Option("number"),
           editorModel: Model_1,
           newPatchModel: Model_2,
@@ -130,7 +127,7 @@ export var Message = function () {
 }();
 setType("App.Message", Message);
 export function initialModel() {
-  var m = new Model(new List(), null, initialModel_1(), initialModel_2(), new Array(0));
+  var m = new Model(new Array(0), null, initialModel_1(), initialModel_2(), new Array(0));
   var initCommands = CmdModule.map(function (arg0) {
     return new Message("Request", [arg0]);
   }, CmdModule.batch(map(function (msg) {
@@ -155,8 +152,8 @@ export function mockServer(model, req) {
           })(patchId)]) : _arg1;
         }(defaultArg(tryFind(function (p) {
           return p.id === patchId;
-        }, model.patches), null, function ($var54) {
-          return msgType(op($var54));
+        }, model.patches), null, function ($var62) {
+          return msgType(op($var62));
         }));
       };
     };
@@ -165,10 +162,10 @@ export function mockServer(model, req) {
   if (req.Case === "GetKinds") {
     return new ServerResponse("Kinds", [testKinds]);
   } else if (req.Case === "NewPatches") {
-    return new ServerResponse("NewPatches", [function (list) {
-      return map(function (patchReq) {
+    return new ServerResponse("NewPatches", [function (array) {
+      return array.map(function (patchReq) {
         return mockMakePatch(patchReq);
-      }, list);
+      });
     }(req.Fields[0])]);
   } else if (req.Case === "Rename") {
     return maybeUpdatePatch(function (arg0) {
@@ -189,7 +186,7 @@ export function mockServer(model, req) {
       return req.Fields[0];
     })(req.Fields[0]);
   } else {
-    return new ServerResponse("PatchState", [model.patches.tail == null ? testPatches : model.patches]);
+    return new ServerResponse("PatchState", [model.patches.length === 0 ? testPatches : model.patches]);
   }
 }
 export function updateEditorState(patches, selectedFixtureId) {
@@ -206,16 +203,16 @@ export function update(message, model) {
     if (message.Fields[0].Case === "PatchState") {
       return [new Model(message.Fields[0].Fields[0], model.selected, model.editorModel, model.newPatchModel, model.consoleText), updateEditorState(message.Fields[0].Fields[0], model.selected)];
     } else if (message.Fields[0].Case === "NewPatches") {
-      return [new Model(append(model.patches, message.Fields[0].Fields[0]), model.selected, model.editorModel, model.newPatchModel, model.consoleText), CmdModule.none()];
+      return [new Model(model.patches.concat(message.Fields[0].Fields[0]), model.selected, model.editorModel, model.newPatchModel, model.consoleText), CmdModule.none()];
     } else if (message.Fields[0].Case === "Update") {
-      var newPatches = map(function (existing) {
+      var newPatches = model.patches.map(function (existing) {
         return existing.id === message.Fields[0].Fields[0].id ? message.Fields[0].Fields[0] : existing;
-      }, model.patches);
+      });
       return [new Model(newPatches, model.selected, model.editorModel, model.newPatchModel, model.consoleText), updateEditorState(newPatches, model.selected)];
     } else if (message.Fields[0].Case === "Remove") {
-      var newPatches_1 = filter(function (p) {
+      var newPatches_1 = model.patches.filter(function (p) {
         return p.id === message.Fields[0].Fields[0];
-      }, model.patches);
+      });
       return [new Model(newPatches_1, model.selected, model.editorModel, model.newPatchModel, model.consoleText), updateEditorState(newPatches_1, model.selected)];
     } else if (message.Fields[0].Case === "Kinds") {
       return [model, CmdModule.ofMsg(new Message("Create", [new Message_1("UpdateKinds", [message.Fields[0].Fields[0]])]))];
@@ -303,7 +300,7 @@ export function viewPatchTable(dispatch, patches, selectedId) {
     o[kv[0]] = kv[1];
     return o;
   }, {}, [Table.Condensed]), createElement.apply(undefined, ["tbody", {}].concat(_toConsumableArray(toList(delay(function () {
-    return append_1(singleton(patchTableHeader), delay(function () {
+    return append(singleton(patchTableHeader), delay(function () {
       return map_1(function (patch) {
         return viewPatchTableRow(dispatch, selectedId, patch);
       }, patches);
@@ -327,23 +324,23 @@ export function viewConsole(dispatch, lines) {
   }], Form.Control]))));
 }
 export function view(model, dispatch) {
-  var dispatchServer = function dispatchServer($var55) {
+  var dispatchServer = function dispatchServer($var63) {
     return dispatch(function (arg0) {
       return new Message("Request", [arg0]);
-    }($var55));
+    }($var63));
   };
 
   return createElement("div", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
-  }, {}, [Container.Fluid]), Grid.layout(ofArray([[8, ofArray([viewPatchTable(dispatch, model.patches, model.selected)])], [4, ofArray([Grid.fullRow(ofArray([view_1(model.editorModel, function ($var56) {
+  }, {}, [Container.Fluid]), Grid.layout(ofArray([[8, ofArray([viewPatchTable(dispatch, model.patches, model.selected)])], [4, ofArray([Grid.fullRow(ofArray([view_1(model.editorModel, function ($var64) {
     return dispatch(function (arg0_1) {
       return new Message("Edit", [arg0_1]);
-    }($var56));
-  }, dispatchServer)])), Grid.fullRow(ofArray([view_2(model.newPatchModel, function ($var57) {
+    }($var64));
+  }, dispatchServer)])), Grid.fullRow(ofArray([view_2(model.newPatchModel, function ($var65) {
     return dispatch(function (arg0_2) {
       return new Message("Create", [arg0_2]);
-    }($var57));
+    }($var65));
   }, dispatchServer)]))])]])), Grid.fullRow(ofArray([viewConsole(dispatch, model.consoleText)])));
 }
 ProgramModule.run(ProgramModule.withConsoleTrace(withReact("app", ProgramModule.mkProgram(function () {

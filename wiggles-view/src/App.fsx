@@ -20,7 +20,7 @@ open Types
 open Bootstrap
 
 type Model = {
-    patches: PatchItem list;
+    patches: PatchItem array;
     // Current fixture ID we have selected, if any.
     selected: FixtureId option;
     // Model for the patch editor.
@@ -47,7 +47,7 @@ type Message =
 
 let initialModel () =
     let m = 
-       {patches = [];
+       {patches = Array.empty;
         selected = None;
         editorModel = PatchEdit.initialModel();
         newPatchModel = NewPatch.initialModel();
@@ -75,7 +75,7 @@ let mockMakePatch (patchReq: PatchRequest) =
 let mockServer model req =
     let maybeUpdatePatch msgType op patchId =
         model.patches
-        |> List.tryFind (fun p -> p.id = patchId)
+        |> Array.tryFind (fun p -> p.id = patchId)
         |> Option.map (op >> msgType)
         |> (function
             | Some p -> p
@@ -83,11 +83,11 @@ let mockServer model req =
 
     match req with
     | ServerRequest.PatchState ->
-        if model.patches.IsEmpty then testPatches else model.patches
+        if model.patches |> Array.isEmpty then testPatches else model.patches
         |> ServerResponse.PatchState
     | ServerRequest.GetKinds -> ServerResponse.Kinds testKinds
     | ServerRequest.NewPatches patches ->
-        patches |> List.map mockMakePatch |> ServerResponse.NewPatches
+        patches |> Array.map mockMakePatch |> ServerResponse.NewPatches
     | ServerRequest.Rename (id, name) ->
         maybeUpdatePatch
             ServerResponse.Update
@@ -108,7 +108,7 @@ let mockServer model req =
 let updateEditorState patches selectedFixtureId =
     selectedFixtureId
     |> Option.map (fun fixtureId ->
-        patches |> List.tryFind (fun p -> p.id = fixtureId))
+        patches |> Array.tryFind (fun p -> p.id = fixtureId))
     |> function | None -> None | Some x -> x // Option.flatten not supported by Fable, apparently.
     |> PatchEdit.SetState
     |> Edit
@@ -126,14 +126,14 @@ let update message model =
         | ServerResponse.PatchState s ->
             {model with patches = s}, updateEditorState s model.selected
         | ServerResponse.NewPatches patches ->
-            {model with patches = model.patches@patches}, Cmd.none
+            {model with patches = patches |> Array.append model.patches}, Cmd.none
         | ServerResponse.Update p ->
             let newPatches =
                 model.patches
-                |> List.map (fun existing -> if existing.id = p.id then p else existing)
+                |> Array.map (fun existing -> if existing.id = p.id then p else existing)
             {model with patches = newPatches}, updateEditorState newPatches model.selected
         | ServerResponse.Remove id ->
-            let newPatches = model.patches |> List.filter (fun p -> p.id = id)
+            let newPatches = model.patches |> Array.filter (fun p -> p.id = id)
             {model with patches = newPatches}, updateEditorState newPatches model.selected
         | ServerResponse.Kinds kinds ->
             model, kinds |> NewPatch.UpdateKinds |> Create |> Cmd.ofMsg

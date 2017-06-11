@@ -33,19 +33,6 @@ type Message =
     | AddressEdit of EditBox.Message<DmxAddress option>
     | UniverseEdit of EditBox.Message<UniverseId option>
 
-let parseOptionalNumber validator v =
-    match noneIfEmpty v with
-    | None -> Ok(None)
-    | Some(v) ->
-        v
-        |> parseInt
-        |> Result.ofOption
-        |> Result.bind validator
-        |> Result.map Some
-
-let parseDmxAddress = parseOptionalNumber validDmxAddress
-let parseUniverseId = parseOptionalNumber validUniverse
-
 let initialModel () = {
     selected = None
     nameEdit = EditBox.initialModel "Name:" (fun s -> Ok(s)) "text"

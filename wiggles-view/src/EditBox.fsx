@@ -64,6 +64,16 @@ let update message (model: Model<'T>) =
         {model with value = Some(parseResult)}
     | Clear -> {model with value = None}
 
+/// Return an updated model with a successfully parsed value.
+/// Parents with children EditBoxes can use this to inject a correct value.
+let setParsed value model = {model with value = Some(Ok(value))}
+
+/// Active pattern matching an edit box with a parsed value.
+let (|Parsed|_|) model =
+    match model.value with
+    | Some(Ok(value)) -> Some(value)
+    | _ -> None
+
 /// Draw this edit box.
 /// Optionally provide an additional attribute to attach to the input, such as a keypress handler.
 let view (extraAction: (Model<'T> -> IHTMLProp) option) defaultValue (model: Model<'T>) dispatch =

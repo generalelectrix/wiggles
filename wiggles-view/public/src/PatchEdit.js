@@ -5,11 +5,11 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
 import { compareUnions, equalsUnions, makeGeneric, Option } from "fable-core/Util";
-import { globalAddressFromOptions, ServerRequest, validUniverse, validDmxAddress, PatchItem } from "./Types";
+import { globalAddressFromOptions, ServerRequest, parseUniverseId, parseDmxAddress, PatchItem } from "./Types";
 import { view as view_1, update as update_1, initialModel as initialModel_1, Message as Message_1, Model as Model_1 } from "./EditBox";
-import { emptyIfNone, parseInt, Result, noneIfEmpty } from "./Util";
-import { Result as Result_1, ResultModule } from "fable-elmish/result";
+import { Result } from "fable-elmish/result";
 import { CmdModule } from "fable-elmish/elmish";
+import { emptyIfNone } from "./Util";
 import { createElement } from "react";
 import { fold } from "fable-core/Seq";
 import { Grid, Form, Button } from "./Bootstrap";
@@ -93,32 +93,9 @@ export var Message = function () {
   return Message;
 }();
 setType("PatchEdit.Message", Message);
-export function parseOptionalNumber(validator, v) {
-  var matchValue = noneIfEmpty(v);
-
-  if (matchValue != null) {
-    return ResultModule.map(function (arg0) {
-      return arg0;
-    }, function (r) {
-      return ResultModule.bind(validator, r);
-    }(Result.ofOption(parseInt(matchValue))));
-  } else {
-    return new Result_1("Ok", [null]);
-  }
-}
-export var parseDmxAddress = function parseDmxAddress(v) {
-  return parseOptionalNumber(function (a) {
-    return validDmxAddress(a);
-  }, v);
-};
-export var parseUniverseId = function parseUniverseId(v) {
-  return parseOptionalNumber(function (u) {
-    return validUniverse(u);
-  }, v);
-};
 export function initialModel() {
   return new Model(null, initialModel_1("Name:", function (s) {
-    return new Result_1("Ok", [s]);
+    return new Result("Ok", [s]);
   }, "text"), initialModel_1("Address:", parseDmxAddress, "number"), initialModel_1("Universe:", parseUniverseId, "number"));
 }
 export function update(message, model) {
@@ -140,11 +117,11 @@ export function update(message, model) {
   }() : function () {
     var clearBuffers = void 0;
     var matchValue = [model.selected, message.Fields[0]];
-    var $var19 = matchValue[0] != null ? matchValue[1] != null ? [0, matchValue[0], matchValue[1]] : [1] : [1];
+    var $var23 = matchValue[0] != null ? matchValue[1] != null ? [0, matchValue[0], matchValue[1]] : [1] : [1];
 
-    switch ($var19[0]) {
+    switch ($var23[0]) {
       case 0:
-        if ($var19[1].id !== $var19[2].id) {
+        if ($var23[1].id !== $var23[2].id) {
           clearBuffers = true;
         } else {
           clearBuffers = false;
@@ -181,12 +158,12 @@ export function nameEditOnKeyDown(fixtureId, dispatchLocal, dispatchServer, name
 
     switch (matchValue) {
       case 13:
-        var $var20 = nameEditModel.value != null ? nameEditModel.value.Case === "Ok" ? [0, nameEditModel.value.Fields[0]] : [1] : [1];
+        var $var24 = nameEditModel.value != null ? nameEditModel.value.Case === "Ok" ? [0, nameEditModel.value.Fields[0]] : [1] : [1];
 
-        switch ($var20[0]) {
+        switch ($var24[0]) {
           case 0:
             clear(null);
-            dispatchServer(new ServerRequest("Rename", [fixtureId, $var20[1]]));
+            dispatchServer(new ServerRequest("Rename", [fixtureId, $var24[1]]));
             break;
 
           case 1:
@@ -207,22 +184,22 @@ export function nameEditBox(selected, model, dispatchLocal, dispatchServer) {
     return nameEditOnKeyDown(selected.id, dispatchLocal, dispatchServer, nameEditModel);
   };
 
-  return view_1(onKeyDown, selected.name, model.nameEdit, function ($var21) {
+  return view_1(onKeyDown, selected.name, model.nameEdit, function ($var25) {
     return dispatchLocal(function (arg0) {
       return new Message("NameEdit", [arg0]);
-    }($var21));
+    }($var25));
   });
 }
 export function addressEditor(selected, model, dispatchLocal, dispatchServer) {
-  var universeBox = view_1(null, emptyIfNone(selected.universe), model.universeEdit, function ($var22) {
+  var universeBox = view_1(null, emptyIfNone(selected.universe), model.universeEdit, function ($var26) {
     return dispatchLocal(function (arg0) {
       return new Message("UniverseEdit", [arg0]);
-    }($var22));
+    }($var26));
   });
-  var addressBox = view_1(null, emptyIfNone(selected.dmxAddress), model.addressEdit, function ($var23) {
+  var addressBox = view_1(null, emptyIfNone(selected.dmxAddress), model.addressEdit, function ($var27) {
     return dispatchLocal(function (arg0_1) {
       return new Message("AddressEdit", [arg0_1]);
-    }($var23));
+    }($var27));
   });
 
   var clear = function clear(msg) {
@@ -266,7 +243,7 @@ export function view(model, dispatchLocal, dispatchServer) {
     return x;
   })(model.selected.id)])], [9, ofArray([fsFormat("Type: %s")(function (x) {
     return x;
-  })(model.selected.kind)])]])), Grid.fullRow(ofArray([nameEditBox(model.selected, model, dispatchLocal, dispatchServer)])), addressEditor(model.selected, model, dispatchLocal, dispatchServer)) : fsFormat("No fixture selected.")(function (x) {
+  })(model.selected.kind)])]])), nameEditBox(model.selected, model, dispatchLocal, dispatchServer), addressEditor(model.selected, model, dispatchLocal, dispatchServer)) : fsFormat("No fixture selected.")(function (x) {
     return x;
   });
   return createElement("div", {}, header, editor);

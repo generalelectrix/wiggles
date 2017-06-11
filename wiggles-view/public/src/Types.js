@@ -4,10 +4,9 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { compareUnions, equalsUnions, makeGeneric, defaultArg, Tuple, Option, compareRecords, equalsRecords } from "fable-core/Util";
+import { compareUnions, equalsUnions, Array as _Array, defaultArg, Tuple, Option, compareRecords, equalsRecords } from "fable-core/Util";
 import { Result } from "fable-elmish/result";
-import { ofArray } from "fable-core/List";
-import List from "fable-core/List";
+import { parseOptionalNumber } from "./Util";
 export var FixtureKind = function () {
   function FixtureKind(name, channelCount) {
     _classCallCheck(this, FixtureKind);
@@ -57,13 +56,23 @@ export function validDmxAddress(a) {
     return new Result("Error", [null]);
   }
 }
+export var parseDmxAddress = function parseDmxAddress(v) {
+  return parseOptionalNumber(function (a) {
+    return validDmxAddress(a);
+  }, v);
+};
+export var parseUniverseId = function parseUniverseId(v) {
+  return parseOptionalNumber(function (u) {
+    return validUniverse(u);
+  }, v);
+};
 export function globalAddressFromOptions(univOpt, addrOpt) {
   var matchValue = [univOpt, addrOpt];
-  var $var1 = matchValue[0] == null ? matchValue[1] == null ? [1] : [2] : matchValue[1] != null ? [0, matchValue[1], matchValue[0]] : [2];
+  var $var4 = matchValue[0] == null ? matchValue[1] == null ? [1] : [2] : matchValue[1] != null ? [0, matchValue[1], matchValue[0]] : [2];
 
-  switch ($var1[0]) {
+  switch ($var4[0]) {
     case 0:
-      return new Result("Ok", [[$var1[2], $var1[1]]]);
+      return new Result("Ok", [[$var4[2], $var4[1]]]);
 
     case 1:
       return new Result("Ok", [null]);
@@ -164,8 +173,8 @@ export var PatchItem = function () {
   return PatchItem;
 }();
 setType("Types.PatchItem", PatchItem);
-export var testPatches = ofArray([new PatchItem(0, "foo", "dimmer", null, 2), new PatchItem(1, "charlie", "roto", [0, 27], 1)]);
-export var testKinds = ofArray([new FixtureKind("dimmer", 1), new FixtureKind("roto", 2)]);
+export var testPatches = [new PatchItem(0, "foo", "dimmer", null, 2), new PatchItem(1, "charlie", "roto", [0, 27], 1)];
+export var testKinds = [new FixtureKind("dimmer", 1), new FixtureKind("roto", 2)];
 export var ServerRequest = function () {
   function ServerRequest(caseName, fields) {
     _classCallCheck(this, ServerRequest);
@@ -182,9 +191,7 @@ export var ServerRequest = function () {
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
           GetKinds: [],
-          NewPatches: [makeGeneric(List, {
-            T: PatchRequest
-          })],
+          NewPatches: [_Array(PatchRequest)],
           PatchState: [],
           Remove: ["number"],
           Rename: ["number", "string"],
@@ -223,15 +230,9 @@ export var ServerResponse = function () {
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
           Error: ["string"],
-          Kinds: [makeGeneric(List, {
-            T: FixtureKind
-          })],
-          NewPatches: [makeGeneric(List, {
-            T: PatchItem
-          })],
-          PatchState: [makeGeneric(List, {
-            T: PatchItem
-          })],
+          Kinds: [_Array(FixtureKind)],
+          NewPatches: [_Array(PatchItem)],
+          PatchState: [_Array(PatchItem)],
           Remove: ["number"],
           Update: [PatchItem]
         }

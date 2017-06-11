@@ -24,18 +24,19 @@ open EditBox
 
 type Model =
     /// Fixture types we have available to patch.
-   {kinds: FixtureKind list
+   {kinds: FixtureKind array
     selectedKind: FixtureKind option
     name: EditBox.Model<string>
     universe: EditBox.Model<UniverseId option>
     address: EditBox.Model<DmxAddress option>
     quantity: EditBox.Model<int>}
     with
-    member this.TryGetNamedKind(name) = this.kinds |> List.tryFind (fun k -> k.name = name)
+    member this.TryGetNamedKind(name) = this.kinds |> Array.tryFind (fun k -> k.name = name)
     
 type Message = 
-    | UpdateKinds of FixtureKind list
+    | UpdateKinds of FixtureKind array
     | SetSelected of string
+    | NameEdit of EditBox.Message<string>
     | UnivEdit of EditBox.Message<UniverseId option>
     | AddrEdit of EditBox.Message<DmxAddress option>
     | QuantEdit of EditBox.Message<int>
@@ -49,33 +50,41 @@ let parsePositiveInt =
     >> Result.bind (fun number -> if number < 1 then Error() else Ok(number))
 
 let initialModel () = {
-    kinds = [];
-    selectedKind = None;
-    name = EditBox.initialModel "Name:" errorIfEmpty "text";
-    universe = EditBox.initialModel "Universe:" parseUniverseId "number";
-    address = EditBox.initialModel "Address:" parseDmxAddress "number";
-    quantity = EditBox.initialModel "Quantity:" parsePositiveInt "number";
+    kinds = [||]
+    selectedKind = None
+    name = EditBox.initialModel "Name:" errorIfEmpty "text"
+    universe = EditBox.initialModel "Universe:" parseUniverseId "number"
+    address = EditBox.initialModel "Address:" parseDmxAddress "number"
+    quantity =
+        EditBox.initialModel "Quantity:" parsePositiveInt "number"
+        |> EditBox.setParsed 1
 }
 
 let update message (model: Model) =
     match message with
-    | UpdateKinds kinds -> {model with kinds = kinds |> List.sortBy (fun k -> k.name)}
+    | UpdateKinds kinds ->
+        let sortedKinds = kinds |> Array.sortBy (fun k -> k.name)
+        {model with
+            kinds = sortedKinds
+            selectedKind = if sortedKinds |> Array.isEmpty then None else Some sortedKinds.[0]}
     | SetSelected name ->
         match model.TryGetNamedKind(name) with
         | Some(kind) -> {model with selectedKind = Some kind}
         | None -> model
+    | NameEdit msg -> {model with name = EditBox.update msg model.name}
     | UnivEdit msg -> {model with universe = EditBox.update msg model.universe}
     | AddrEdit msg -> {model with address = EditBox.update msg model.address}
     | QuantEdit msg -> {model with quantity = EditBox.update msg model.quantity}
     | AdvanceAddress ->
-        match model.address with
-        | Some(addr) ->
-            let channelCount =
-                match model.selectedKind with
-                | Some(k) -> k.channelCount
-                | None -> 0
-            {model with address = (addr + (model.quantity*channelCount)) |> min 512 |> Some}
-        | None -> model
+        match model.address, model.quantity, model.selectedKind with
+        // We can only proceed if we have valid values for address, quantity, and have a kind selected.
+        | Parsed(Some(addr)), Parsed(quantity), Some(kind) ->
+            let newStartAddress =
+                (addr + (quantity*kind.channelCount))
+                |> min 512
+
+            {model with address = EditBox.setParsed (Some newStartAddress) model.address}
+        | _ -> model
 
     |> fun m -> (m, Cmd.none)
 
@@ -83,7 +92,7 @@ let [<Literal>] EnterKey = 13.0
 let [<Literal>] EscapeKey = 27.0
 
 /// Render type selector dropdown.
-let typeSelector (kinds: FixtureKind list) selectedKind dispatchLocal =
+let typeSelector (kinds: FixtureKind array) selectedKind dispatchLocal =
     let option (kind: FixtureKind) =
         R.option
             [ Value (Case1 kind.name) ]
@@ -95,45 +104,48 @@ let typeSelector (kinds: FixtureKind list) selectedKind dispatchLocal =
             Form.Control
             OnChange (fun e -> SetSelected !!e.target?value |> dispatchLocal)
             Value (Case1 selected.name)
-        ] (kinds |> List.map option)
+        ] (kinds |> Array.map option |> List.ofArray)
     ]
 
 /// Create patch requests for 1 to N fixtures of the same kind with sequential addresses.
-let newPatchesSequential (name: string) (kind: FixtureKind) n startAddress : Result<PatchRequest list,unit> =
+let newPatchesSequential (name: string) (kind: FixtureKind) n startAddress : Result<PatchRequest array,unit> =
     // Just do the naive thing and leave it up to the server to tell us if we made a mistake, like
     // address conflicts.
     let trimmedName = name.Trim()
     let name = if trimmedName = "" then kind.name else trimmedName
     if n < 1 then Error()
     elif n = 1 then
-        Ok [{name = name; kind = kind.name; address = startAddress}]
+        Ok [|{name = name; kind = kind.name; address = startAddress}|]
     else
         // add a number into the name to keep things obvious
         let makeOne i : PatchRequest =
             let nameWithCount = sprintf "%s %d" name i
             let addr = startAddress |> Option.map (fun (u, a) -> (u, a + kind.channelCount))
             {name = nameWithCount; kind = kind.name; address = addr}
-        [1..n]
-        |> List.map makeOne
+        [| 1..n |]
+        |> Array.map makeOne
         |> Ok
 
+/// Issues a server request for new patches if all data is correctly parsed and valid.
 let patchButton model dispatchLocal dispatchServer =
     R.button [
         Button.Warning
         OnClick (fun _ ->
-            match model.selectedKind with
-            | None -> ()
-            | Some(kind) ->
-                AdvanceAddress |> dispatchLocal
-                match globalAddressFromOptions model.universe model.address with
+            printfn "%+A" model
+            match model.selectedKind, model.name, model.universe, model.address, model.quantity with
+            | Some(kind), Parsed(name), Parsed(univ), Parsed(addr), Parsed(quant) ->
+                match globalAddressFromOptions univ addr with
                 | Error(_) -> ()
-                | Ok(address) ->
+                | Ok(globalAddress) ->
+                    printfn "Addr: %+A" globalAddress
                     let newPatchResult =
-                        newPatchesSequential model.name kind model.quantity address
+                        newPatchesSequential name kind quant globalAddress
                     match newPatchResult with
-                    | Ok(patches) -> patches |> ServerRequest.NewPatches |> dispatchServer
+                    | Ok(patches) ->
+                        patches |> ServerRequest.NewPatches |> dispatchServer
+                        AdvanceAddress |> dispatchLocal
                     | _ -> ()
-            ()
+            | _ -> ()
         )
     ][ R.str "Patch" ]
 
@@ -142,16 +154,18 @@ let patchButton model dispatchLocal dispatchServer =
 /// dispatchServer sends a server request.
 let view model dispatchLocal dispatchServer =
 
-    if model.kinds.IsEmpty then
+    if model.kinds |> Array.isEmpty then
         R.div [] [R.str "No patch types available."]
     else
+        let nameEntry = EditBox.view None "" model.name (NameEdit >> dispatchLocal)
         let universeEntry = EditBox.view None "" model.universe (UnivEdit >> dispatchLocal)
         let addressEntry = EditBox.view None "" model.address (AddrEdit >> dispatchLocal)
-        let quantityEntry = EditBox.view None "1" model.quantity (QuantEdit >> dispatchLocal)
+        let quantityEntry = EditBox.view None "" model.quantity (QuantEdit >> dispatchLocal)
 
         R.div [Form.Group] [
             R.span [] [ R.h3 [] [R.str "Create new patch"]]
             typeSelector model.kinds model.selectedKind dispatchLocal
+            nameEntry
             Grid.distribute [
                 [ universeEntry ]
                 [ addressEntry ]

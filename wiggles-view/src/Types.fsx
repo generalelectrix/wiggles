@@ -50,15 +50,15 @@ type PatchItem = {
     member this.universe = this.address |> Option.map fst
     member this.dmxAddress = this.address |> Option.map snd
 
-let testPatches = [
+let testPatches = [|
     {id = 0; name = "foo"; kind = "dimmer"; address = None; channelCount = 2}
     {id = 1; name = "charlie"; kind = "roto"; address = Some(0, 27); channelCount = 1}
-]
+|]
 
-let testKinds : FixtureKind list = [
+let testKinds : FixtureKind array = [|
     {name = "dimmer"; channelCount = 1}
     {name = "roto"; channelCount = 2}
-]
+|]
     
 
 /// All possible requests we can make to the patch server.
@@ -67,7 +67,7 @@ type ServerRequest =
     /// Request the full state of the patch to be sent.
     | PatchState
     /// Create one or more new patches; may fail.
-    | NewPatches of PatchRequest list
+    | NewPatches of PatchRequest array
     /// Rename a patch item by id.
     | Rename of FixtureId * string
     /// Repatch a fixture to a new universe/address, possibly unpatching.
@@ -83,12 +83,12 @@ type ServerResponse =
     /// Generic error message from the server, we may log or display to user.
     | Error of string
     /// Full current state of the patch.
-    | PatchState of PatchItem list
+    | PatchState of PatchItem array
     /// One or more new patches added.
-    | NewPatches of PatchItem list
+    | NewPatches of PatchItem array
     /// A patch has been updated, update our version if we have it.
     | Update of PatchItem
     /// A patch item has been removed.
     | Remove of FixtureId
     /// A listing of every available fixture kind.
-    | Kinds of FixtureKind list
+    | Kinds of FixtureKind array

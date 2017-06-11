@@ -1,4 +1,4 @@
-import { Result as Result_1 } from "fable-elmish/result";
+import { ResultModule, Result as Result_1 } from "fable-elmish/result";
 import { toString } from "fable-core/Util";
 import { trim } from "fable-core/String";
 export var Result = function (__exports) {
@@ -39,6 +39,9 @@ export function noneIfEmpty(s) {
     return s;
   }
 }
+export var errorIfEmpty = function errorIfEmpty($var1) {
+  return Result.ofOption(noneIfEmpty($var1));
+};
 export function parseInt(s) {
   var parsed = Number.parseInt(s);
 
@@ -46,5 +49,18 @@ export function parseInt(s) {
     return null;
   } else {
     return parsed;
+  }
+}
+export function parseOptionalNumber(validator, v) {
+  var matchValue = noneIfEmpty(v);
+
+  if (matchValue != null) {
+    return ResultModule.map(function (arg0) {
+      return arg0;
+    }, function (r) {
+      return ResultModule.bind(validator, r);
+    }(Result.ofOption(parseInt(matchValue))));
+  } else {
+    return new Result_1("Ok", [null]);
   }
 }
