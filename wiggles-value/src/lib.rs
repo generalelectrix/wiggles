@@ -5,6 +5,8 @@
 use std::cmp::{min, max};
 use std::ops::Deref;
 
+#[macro_use] extern crate serde_derive;
+
 pub enum DataError {
     EnumSizeLessThanTwo,
 }
@@ -12,7 +14,7 @@ pub enum DataError {
 pub type EnumValue = u32;
 
 // must be greater than 1 to make sense
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct EnumSize(EnumValue);
 
 impl EnumSize {
@@ -34,14 +36,14 @@ impl Deref for EnumSize {
 }
 
 /// Tag for describing datatypes in requests or other data structures.
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum Datatype {
     Unipolar,
     Bipolar,
     UInt(EnumSize),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Unipolar(pub f64);
 
 impl Unipolar {
@@ -79,7 +81,7 @@ impl Unipolar {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Bipolar(pub f64);
 
 impl Bipolar {
@@ -119,7 +121,7 @@ impl From<Data> for Bipolar {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct IntegerEnum {pub value: EnumValue, pub size: EnumSize}
 
 impl IntegerEnum {
@@ -138,7 +140,7 @@ impl IntegerEnum {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum Data {
     /// A float on the range [0.0, 1.0].
     Unipolar(Unipolar),
