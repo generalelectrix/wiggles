@@ -77,3 +77,14 @@ let parseOptionalNumber validator v =
 /// Concatenate two Fable KeyValueLists.
 [<Emit("Object.assign({}, $0, $1)")>]
 let ( ++ ) (a:'a list) (b:'a list) : 'a list = jsNative
+
+
+/// Push a new event action onto the end of the browser processing queue.
+/// Useful for running actions that need to wait until the DOM is done rendering, such as
+/// non-declarative DOM aspects like setting or removing focus upon drawing.
+/// Uses setTimeout of 0 to enqueue.
+let enqueueBrowserAction action =
+        Browser.window.setTimeout(
+            (fun _ -> action()),
+            0
+        ) |> ignore

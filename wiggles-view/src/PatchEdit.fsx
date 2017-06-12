@@ -142,7 +142,7 @@ let private addressEditor (selected: PatchItem) model dispatchLocal dispatchServ
         R.button [
             Button.Danger
             OnClick (fun e ->
-                e.currentTarget?blur()
+                e.currentTarget?blur() |> ignore
                 let confirmMessage =
                     sprintf
                         "Are you sure you want to delete fixture %d (%s)?"
@@ -161,7 +161,6 @@ let private addressEditor (selected: PatchItem) model dispatchLocal dispatchServ
         repatchButton
         removeButton
     ]
-    
 
 ///<summary>
 /// Display the patch editor.

@@ -122,7 +122,7 @@ export var Message = function () {
 }();
 setType("NewPatch.Message", Message);
 
-var parsePositiveInt = function parsePositiveInt($var56) {
+var parsePositiveInt = function parsePositiveInt($var58) {
   return function () {
     var f = function f(number) {
       if (number < 1) {
@@ -135,9 +135,9 @@ var parsePositiveInt = function parsePositiveInt($var56) {
     return function (r) {
       return ResultModule.bind(f, r);
     };
-  }()(function ($var55) {
-    return Result_1.ofOption(parseInt($var55));
-  }($var56));
+  }()(function ($var57) {
+    return Result_1.ofOption(parseInt($var57));
+  }($var58));
 };
 
 export function initialModel() {
@@ -169,33 +169,33 @@ export function update(message, model) {
     return new Model(model.kinds, model.selectedKind, model.name, model.universe, model.address, quantity);
   }() : message.Case === "AdvanceAddress" ? function () {
     var matchValue_1 = [model.address, model.quantity, model.selectedKind];
-    var $var57 = void 0;
+    var $var59 = void 0;
 
-    var activePatternResult353 = _Parsed___(matchValue_1[0]);
+    var activePatternResult358 = _Parsed___(matchValue_1[0]);
 
-    if (activePatternResult353 != null) {
-      if (activePatternResult353.Case === "Present") {
-        var activePatternResult354 = _Parsed___(matchValue_1[1]);
+    if (activePatternResult358 != null) {
+      if (activePatternResult358.Case === "Present") {
+        var activePatternResult359 = _Parsed___(matchValue_1[1]);
 
-        if (activePatternResult354 != null) {
+        if (activePatternResult359 != null) {
           if (matchValue_1[2] != null) {
-            $var57 = [0, activePatternResult353.Fields[0], matchValue_1[2], activePatternResult354];
+            $var59 = [0, activePatternResult358.Fields[0], matchValue_1[2], activePatternResult359];
           } else {
-            $var57 = [1];
+            $var59 = [1];
           }
         } else {
-          $var57 = [1];
+          $var59 = [1];
         }
       } else {
-        $var57 = [1];
+        $var59 = [1];
       }
     } else {
-      $var57 = [1];
+      $var59 = [1];
     }
 
-    switch ($var57[0]) {
+    switch ($var59[0]) {
       case 0:
-        var newStartAddress = 512 < $var57[1] + $var57[3] * $var57[2].channelCount ? 512 : $var57[1] + $var57[3] * $var57[2].channelCount;
+        var newStartAddress = 512 < $var59[1] + $var59[3] * $var59[2].channelCount ? 512 : $var59[1] + $var59[3] * $var59[2].channelCount;
         var address_1 = setParsed(new Optional("Present", [newStartAddress]), model.address);
         return new Model(model.kinds, model.selectedKind, model.name, model.universe, address_1, model.quantity);
 
@@ -270,47 +270,47 @@ function patchButton(model, dispatchLocal, dispatchServer) {
       console.log(x);
     })(model);
     var matchValue_2 = [model.selectedKind, model.name, model.universe, model.address, model.quantity];
-    var $var59 = void 0;
+    var $var61 = void 0;
 
     if (matchValue_2[0] != null) {
-      var activePatternResult372_1 = _Parsed___(matchValue_2[1]);
+      var activePatternResult377_1 = _Parsed___(matchValue_2[1]);
 
-      if (activePatternResult372_1 != null) {
-        var activePatternResult373_1 = _Parsed___(matchValue_2[2]);
+      if (activePatternResult377_1 != null) {
+        var activePatternResult378_1 = _Parsed___(matchValue_2[2]);
 
-        if (activePatternResult373_1 != null) {
-          var activePatternResult374_1 = _Parsed___(matchValue_2[3]);
+        if (activePatternResult378_1 != null) {
+          var activePatternResult379_1 = _Parsed___(matchValue_2[3]);
 
-          if (activePatternResult374_1 != null) {
-            var activePatternResult375_1 = _Parsed___(matchValue_2[4]);
+          if (activePatternResult379_1 != null) {
+            var activePatternResult380_1 = _Parsed___(matchValue_2[4]);
 
-            if (activePatternResult375_1 != null) {
-              $var59 = [0, activePatternResult374_1, matchValue_2[0], activePatternResult372_1, activePatternResult375_1, activePatternResult373_1];
+            if (activePatternResult380_1 != null) {
+              $var61 = [0, activePatternResult379_1, matchValue_2[0], activePatternResult377_1, activePatternResult380_1, activePatternResult378_1];
             } else {
-              $var59 = [1];
+              $var61 = [1];
             }
           } else {
-            $var59 = [1];
+            $var61 = [1];
           }
         } else {
-          $var59 = [1];
+          $var61 = [1];
         }
       } else {
-        $var59 = [1];
+        $var61 = [1];
       }
     } else {
-      $var59 = [1];
+      $var61 = [1];
     }
 
-    switch ($var59[0]) {
+    switch ($var61[0]) {
       case 0:
-        var matchValue_3 = globalAddressFromOptionals($var59[5], $var59[1]);
+        var matchValue_3 = globalAddressFromOptionals($var61[5], $var61[1]);
 
         if (matchValue_3.Case === "Ok") {
           fsFormat("Addr: %+A")(function (x) {
             console.log(x);
           })(matchValue_3.Fields[0]);
-          var newPatchResult_1 = newPatchesSequential($var59[3], $var59[2], $var59[4], matchValue_3.Fields[0]);
+          var newPatchResult_1 = newPatchesSequential($var61[3], $var61[2], $var61[4], matchValue_3.Fields[0]);
 
           if (newPatchResult_1.Case === "Ok") {
             dispatchServer(new ServerRequest("NewPatches", [newPatchResult_1.Fields[0]]));
@@ -333,25 +333,25 @@ export function view(model, dispatchLocal, dispatchServer) {
   if (model.kinds.length === 0) {
     return createElement("div", {}, "No patch types available.");
   } else {
-    var nameEntry = view_1(null, "", model.name, function ($var60) {
+    var nameEntry = view_1(null, "", model.name, function ($var62) {
       return dispatchLocal(function (arg0) {
         return new Message("NameEdit", [arg0]);
-      }($var60));
-    });
-    var universeEntry = view_1(null, "", model.universe, function ($var61) {
-      return dispatchLocal(function (arg0_1) {
-        return new Message("UnivEdit", [arg0_1]);
-      }($var61));
-    });
-    var addressEntry = view_1(null, "", model.address, function ($var62) {
-      return dispatchLocal(function (arg0_2) {
-        return new Message("AddrEdit", [arg0_2]);
       }($var62));
     });
-    var quantityEntry = view_1(null, "", model.quantity, function ($var63) {
+    var universeEntry = view_1(null, "", model.universe, function ($var63) {
+      return dispatchLocal(function (arg0_1) {
+        return new Message("UnivEdit", [arg0_1]);
+      }($var63));
+    });
+    var addressEntry = view_1(null, "", model.address, function ($var64) {
+      return dispatchLocal(function (arg0_2) {
+        return new Message("AddrEdit", [arg0_2]);
+      }($var64));
+    });
+    var quantityEntry = view_1(null, "", model.quantity, function ($var65) {
       return dispatchLocal(function (arg0_3) {
         return new Message("QuantEdit", [arg0_3]);
-      }($var63));
+      }($var65));
     });
     return createElement("div", fold(function (o, kv) {
       o[kv[0]] = kv[1];

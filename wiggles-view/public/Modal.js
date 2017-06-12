@@ -8,6 +8,7 @@ import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
 import { Option, Any } from "fable-core/Util";
 import { Button } from "./Bootstrap";
+import { enqueueBrowserAction } from "./Util";
 import { fold, singleton } from "fable-core/Seq";
 import { createElement } from "react";
 import { ofArray } from "fable-core/List";
@@ -81,6 +82,7 @@ export var Message = function () {
         interfaces: ["FSharpUnion"],
         cases: {
           Close: [],
+          Focus: [],
           Open: [ModalRequest]
         }
       };
@@ -100,24 +102,37 @@ export function confirm(message, action) {
 export function initialModel() {
   return new Array(0);
 }
+export var modalOkButtonId = "modal-ok-button";
 export function update(message, model) {
   if (message.Case === "Close") {
     return model.slice(1);
+  } else if (message.Case === "Focus") {
+    enqueueBrowserAction(function () {
+      document.getElementById(modalOkButtonId).focus();
+    });
+    return model;
   } else {
-    return function (array2) {
+    var newModel = function (array2) {
       return model.concat(array2);
     }(Array.from(singleton(message.Fields[0])));
+
+    return newModel;
   }
 }
 
-function modalActionButton(dispatch, action) {
-  return createElement("button", fold(function (o, kv) {
+function modalActionButton(dispatch, id, action) {
+  var onClick = ["onClick", function (e) {
+    dispatch(new Message("Close", []));
+    action.action(e);
+  }];
+  var buttonAttrs = id == null ? fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
-  }, {}, [["onClick", function (e_1) {
-    dispatch(new Message("Close", []));
-    action.action(e_1);
-  }], action.buttonType]), action.label);
+  }, {}, [onClick, action.buttonType]) : fold(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [onClick, action.buttonType, ["id", id]]);
+  return createElement("button", buttonAttrs, action.label);
 }
 
 export function view(model, dispatch) {
@@ -126,7 +141,16 @@ export function view(model, dispatch) {
   } else {
     var state = model[0];
     var message = createElement("p", {}, state.message);
-    var bodyContents = state.action1 == null ? ofArray([message, modalActionButton(dispatch, state.action0)]) : ofArray([message, modalActionButton(dispatch, state.action0), modalActionButton(dispatch, state.action1)]);
+    var bodyContents = void 0;
+    var okButton = modalActionButton(dispatch, modalOkButtonId, state.action0);
+
+    if (state.action1 == null) {
+      bodyContents = ofArray([message, okButton]);
+    } else {
+      bodyContents = ofArray([message, okButton, modalActionButton(dispatch, null, state.action1)]);
+    }
+
+    dispatch(new Message("Focus", []));
     return createElement("div", {
       className: "modal fade in",
       role: "dialog",

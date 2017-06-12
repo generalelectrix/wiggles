@@ -114,3 +114,8 @@ export function parseOptionalNumber(validator, v) {
     return new Result_1("Ok", [new Optional("Absent", [])]);
   }
 }
+export function enqueueBrowserAction(action) {
+  window.setTimeout(function (_arg1) {
+    return action(null);
+  }, 0);
+}

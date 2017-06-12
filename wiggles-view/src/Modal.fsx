@@ -42,6 +42,8 @@ type Model = ModalRequest array
 type Message = 
     /// Add a pending modal dialog interaction.
     | Open of ModalRequest
+    /// Set focus on the OK button of an open modal dialog.
+    | Focus
     /// Closes the currently-open modal dialog.
     /// Clicking any model dialog button will always emit this message.
     | Close
@@ -60,21 +62,34 @@ let confirm message action =
 
 let initialModel() = Array.empty
 
-let update message (model: Model) : Model =
+let modalOkButtonId = "modal-ok-button"
+
+let update message (model: Model) =
     match message with
-    | Open(req) -> req |> Array.singleton |> Array.append model
-    | Close -> model |> Array.skip 1
+    | Open(req) ->
+        let newModel = req |> Array.singleton |> Array.append model
+        newModel
+    | Close -> (model |> Array.skip 1)
+    | Focus ->
+        enqueueBrowserAction (fun () -> Browser.document.getElementById(modalOkButtonId).focus())
+        model
 
 /// Draw a button to present a modal action option, such as "Ok" or "Cancel".
 /// Clicking will run the provided action as well as close the dialog.
-let private modalActionButton dispatch action =
-    R.button [
-        action.buttonType
+/// Optionally assign the button an id.
+let private modalActionButton dispatch (id: string option) action =
+    let onClick =
         OnClick (fun e ->
             Close |> dispatch
             action.action e
-            )
-    ] [ R.str action.label ]
+        )
+
+    let buttonAttrs: IHTMLProp list =
+        match id with
+        | Some(id) -> [Id id; action.buttonType; onClick]
+        | None -> [action.buttonType; onClick]
+
+    R.button buttonAttrs [ R.str action.label ]
 
 ///// Display a float-on-top Bootstrap modal dialog.
 let view (model: Model) dispatch =
@@ -84,15 +99,17 @@ let view (model: Model) dispatch =
         let state = model.[0]
         let message = R.p [] [R.str state.message]
         let bodyContents =
+            let okButton = modalActionButton dispatch (Some modalOkButtonId) state.action0
             match state.action1 with
             | Some(action1) ->
                 [message
-                 modalActionButton dispatch state.action0
-                 modalActionButton dispatch action1]
-            | None ->
-                [message
-                 modalActionButton dispatch state.action0]
+                 okButton
+                 modalActionButton dispatch None action1]
+            | None -> [message; okButton]
 
+        // Emit a message to focus on our about-to-be-created OK button.
+        Focus |> dispatch
+           
         R.div [
             ClassName "modal fade in"
             Role "dialog"

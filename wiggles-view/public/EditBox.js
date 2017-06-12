@@ -39,11 +39,11 @@ export var Model = function () {
   }, {
     key: "ParsedValueOr",
     value: function (defaultValue) {
-      var $var19 = this.value != null ? this.value.Case === "Ok" ? [0, this.value.Fields[0]] : [1] : [1];
+      var $var21 = this.value != null ? this.value.Case === "Ok" ? [0, this.value.Fields[0]] : [1] : [1];
 
-      switch ($var19[0]) {
+      switch ($var21[0]) {
         case 0:
-          return $var19[1];
+          return $var21[1];
 
         case 1:
           return defaultValue;
@@ -52,9 +52,9 @@ export var Model = function () {
   }, {
     key: "IsOk",
     get: function () {
-      var $var17 = this.value != null ? this.value.Case === "Error" ? [0] : [1] : [1];
+      var $var19 = this.value != null ? this.value.Case === "Error" ? [0] : [1] : [1];
 
-      switch ($var17[0]) {
+      switch ($var19[0]) {
         case 0:
           return false;
 
@@ -65,9 +65,9 @@ export var Model = function () {
   }, {
     key: "HasParsed",
     get: function () {
-      var $var18 = this.value != null ? this.value.Case === "Ok" ? [0] : [1] : [1];
+      var $var20 = this.value != null ? this.value.Case === "Ok" ? [0] : [1] : [1];
 
-      switch ($var18[0]) {
+      switch ($var20[0]) {
         case 0:
           return true;
 
@@ -142,11 +142,11 @@ export function setFailed(value, model) {
 }
 
 function _Parsed___(model) {
-  var $var20 = model.value != null ? model.value.Case === "Ok" ? [0, model.value.Fields[0]] : [1] : [1];
+  var $var22 = model.value != null ? model.value.Case === "Ok" ? [0, model.value.Fields[0]] : [1] : [1];
 
-  switch ($var20[0]) {
+  switch ($var22[0]) {
     case 0:
-      return $var20[1];
+      return $var22[1];
 
     case 1:
       return null;
