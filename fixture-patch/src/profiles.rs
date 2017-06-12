@@ -4,7 +4,7 @@
 //! creation of a fixture editor.
 use std::cmp::min;
 use wiggles_value::{Data, Datatype, Unipolar, Bipolar, IntegerEnum};
-use fixture::{DmxFixture, FixtureControl, DmxValue};
+use fixture::{DmxFixture, FixtureControl, DmxValue, RenderFunc};
 
 // Helper functions for converting wiggles values into DMX.
 fn as_single_channel(data: Data) -> DmxValue {
@@ -25,4 +25,13 @@ fn render_dimmer(controls: &[FixtureControl], buffer: &mut [DmxValue]) {
 pub fn dimmer() -> DmxFixture {
     let control = FixtureControl::new("level", Datatype::Unipolar, Data::Unipolar(Unipolar(0.0)));
     DmxFixture::new("dimmer", 1, vec!(control), render_dimmer)
+}
+
+/// Match a fixture type name to a render function.
+/// Used during deserialization of saved states.
+pub fn render_func_for_type(name: &str) -> Option<RenderFunc> {
+    match name {
+        "dimmer" => Some(render_dimmer),
+        _ => None,
+    }
 }

@@ -1,11 +1,14 @@
 //! Dmx fixture abstraction.
 //! Accepts an arbitrary number of wiggles values as control parameters and
 //! opaquely renders these into a DMX buffer.
+use std::rc::Rc;
+use serde::{Serializer, Deserializer, de};
 use wiggles_value::{Datatype, Data};
 
 pub type DmxChannelCount = u16;
 pub type DmxValue = u8;
 
+#[derive(Serialize, Deserialize)]
 /// A single generic control for a fixture.
 /// A fixture will provide zero or more of these as its interface.
 // TODO: some kind of decoration on data type to aid in selection of things from finite range,
@@ -39,8 +42,38 @@ impl FixtureControl {
     }
 }
 
-type RenderFunc =  fn(&[FixtureControl], &mut [DmxValue]);
+pub type RenderFunc = &'static fn(&[FixtureControl], &mut [DmxValue]);
 
+#[derive(Copy, Clone)]
+pub struct RenderAction {
+    /// The name of this render action, probably the same as the associated fixture type.
+    /// Used to round-trip this action through serde.
+    name: &'static str,
+    func: RenderFunc,
+}
+
+impl RenderAction {
+    fn new(name: &'static str, func: RenderFunc) -> Self {
+        RenderAction {
+            name: name,
+            func: func,
+        }
+    }
+
+    fn serialize_to_name<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: Serializer
+    {
+        serializer.serialize_str(self.name)
+    }
+
+    fn deserialize_from_name<'de, D>(deserializer: D) -> Result<Self, D::Error>
+        where D: Deserializer<'de>
+    {
+        deserializer.
+    }
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct DmxFixture {
     /// What kind of fixture is this?
     kind: String,
@@ -48,8 +81,8 @@ pub struct DmxFixture {
     channel_count: DmxChannelCount,
     /// Controls for this fixture.
     controls: Vec<FixtureControl>,
-    /// Function to render this fixture's control values into a DMX buffer.
-    render_func: RenderFunc,
+    /// Action to render this fixture to DMX.
+    render_action: RenderAction,
 }
 
 impl DmxFixture {
@@ -57,12 +90,12 @@ impl DmxFixture {
             kind: K,
             channel_count: DmxChannelCount,
             controls: Vec<FixtureControl>,
-            render_func: RenderFunc) -> Self {
+            render_action: RenderAction) -> Self {
         DmxFixture {
             kind: kind.into(),
             channel_count: channel_count,
             controls: controls,
-            render_func: render_func,
+            render_action: render_action,
         }
     }
     pub fn kind(&self) -> &str {
@@ -75,7 +108,7 @@ impl DmxFixture {
     /// Use this fixture's render func and its controls to render into a DMX buffer.
     pub fn render(&self, buffer: &mut [DmxValue]) {
         debug_assert!(buffer.len() == self.channel_count as usize);
-        (self.render_func)(&self.controls, buffer);
+        (self.render_action.func)(&self.controls, buffer);
     }
     
     /// Set a control value.
