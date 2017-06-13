@@ -12,12 +12,14 @@ extern crate rust_dmx;
 extern crate serde_derive;
 extern crate serde;
 extern crate wiggles_value;
+#[macro_use] extern crate lazy_static;
 
 use rust_dmx::{DmxPort, Error as DmxPortError, OfflineDmxPort};
+use profiles::{Profile, PROFILES};
+use fixture::{DmxFixture, DmxValue, DmxChannelCount};
 
 mod fixture;
 mod profiles;
-use fixture::{DmxFixture, DmxValue, DmxChannelCount};
 
 pub type DmxAddress = u16;
 pub type UniverseId = u32;
@@ -123,13 +125,13 @@ impl Patch {
 
     /// Add a new fixture into the patch without specifying an address or universe.
     /// Provide a name for the fixture, or autogenerate one.
-    pub fn add(&mut self, fixture: DmxFixture, name: Option<String>) {
+    pub fn add(&mut self, profile: &Profile, name: Option<String>) {
         let item = PatchItem {
             id: self.next_id(),
-            name: name.unwrap_or(fixture.kind().to_string()),
+            name: name.unwrap_or(profile.name.to_string()),
             address: None,
             active: true,
-            fixture: fixture,
+            fixture: profile.create_fixture(),
         };
         self.items.push(item);
     }

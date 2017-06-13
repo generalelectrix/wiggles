@@ -8,3 +8,4 @@ wiggles_value = { path = "../wiggles-value" }
 rust_dmx = { git = "https://github.com/generalelectrix/rust-dmx" }
 serde = "*"
 serde_derive = "*"
+lazy_static = "*"
