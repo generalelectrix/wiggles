@@ -13,7 +13,6 @@ extern crate serde_derive;
 extern crate serde;
 extern crate wiggles_value;
 
-use serde::{Serialize, Deserialize};
 use rust_dmx::{DmxPort, Error as DmxPortError, OfflineDmxPort};
 
 mod fixture;
@@ -28,9 +27,18 @@ const UNIVERSE_SIZE: usize = 512;
 
 type UniverseSummary<T> = [Option<T>; UNIVERSE_SIZE];
 
+fn empty_buffer() -> [DmxValue; UNIVERSE_SIZE] {
+    [0; UNIVERSE_SIZE]
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct Universe {
     name: String,
+    #[serde(with="rust_dmx")]
     port: Box<DmxPort>,
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    #[serde(default="empty_buffer")]
     buffer: [DmxValue; UNIVERSE_SIZE],
 }
 
@@ -48,6 +56,7 @@ impl Universe {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Patch {
     universes: Vec<Option<Universe>>,
     items: Vec<PatchItem>,
@@ -119,6 +128,7 @@ impl Patch {
             id: self.next_id(),
             name: name.unwrap_or(fixture.kind().to_string()),
             address: None,
+            active: true,
             fixture: fixture,
         };
         self.items.push(item);
@@ -205,9 +215,27 @@ impl Patch {
         Ok(())
     }
 
+    /// Set the render state of a fixture.  If render is False, then the fixture will be ignored
+    /// during DMX output.
+    pub fn set_active(&mut self, id: FixtureId, state: bool) -> Result<(), PatchError> {
+        self.item_mut(id)?.active = state;
+        Ok(())
+    }
+
     /// Render every fixture to DMX.
     pub fn render(&mut self) -> Vec<DmxPortError> {
+        // Zero out every universe buffer.
+        for univ_opt in self.universes.iter_mut() {
+            match *univ_opt {
+                Some(ref mut u) => {u.buffer = empty_buffer()},
+                None => {},
+            }
+        }
+
         for item in self.items.iter() {
+            if ! item.active {
+                continue;
+            }
             if let Some((univ_id, addr)) = item.address {
                 if let Some(&mut Some(ref mut univ)) = self.universes.get_mut(univ_id as usize) {
                     let channel_count = item.channel_count();
@@ -233,10 +261,12 @@ impl Patch {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct PatchItem {
     id: FixtureId,
     pub name: String,
     address: Option<(UniverseId, DmxAddress)>,
+    active: bool,
     fixture: DmxFixture,
 }
 

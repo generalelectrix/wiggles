@@ -1,13 +1,11 @@
 //! Dmx fixture abstraction.
 //! Accepts an arbitrary number of wiggles values as control parameters and
 //! opaquely renders these into a DMX buffer.
-use std::rc::Rc;
 use std::str::FromStr;
 use std::fmt;
 use std::marker::PhantomData;
-use std::error::Error;
 use serde::{Serializer, Deserializer};
-use serde::de::{self, Visitor, Deserialize};
+use serde::de::{self, Visitor};
 use wiggles_value::{Datatype, Data};
 use profiles::render_func_for_type;
 
