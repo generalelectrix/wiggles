@@ -20,18 +20,21 @@ fn render_dimmer(controls: &[FixtureControl], buffer: &mut [DmxValue]) {
     let dmx_val = as_single_channel(controls[0].value());
     buffer[0] = dmx_val;
 }
+
+const DIMMER: &'static str = "dimmer";
+
 /// Basic 1-channel dimmer.
 /// Controlled by a single unipolar.
 pub fn dimmer() -> DmxFixture {
     let control = FixtureControl::new("level", Datatype::Unipolar, Data::Unipolar(Unipolar(0.0)));
-    DmxFixture::new("dimmer", 1, vec!(control), render_dimmer)
+    DmxFixture::new(DIMMER, 1, vec!(control), render_dimmer)
 }
 
 /// Match a fixture type name to a render function.
 /// Used during deserialization of saved states.
 pub fn render_func_for_type(name: &str) -> Option<RenderFunc> {
     match name {
-        "dimmer" => Some(render_dimmer),
+        DIMMER => Some(render_dimmer),
         _ => None,
     }
 }

@@ -2,8 +2,14 @@
 //! Accepts an arbitrary number of wiggles values as control parameters and
 //! opaquely renders these into a DMX buffer.
 use std::rc::Rc;
-use serde::{Serializer, Deserializer, de};
+use std::str::FromStr;
+use std::fmt;
+use std::marker::PhantomData;
+use std::error::Error;
+use serde::{Serializer, Deserializer};
+use serde::de::{self, Visitor, Deserialize};
 use wiggles_value::{Datatype, Data};
+use profiles::render_func_for_type;
 
 pub type DmxChannelCount = u16;
 pub type DmxValue = u8;
@@ -42,35 +48,57 @@ impl FixtureControl {
     }
 }
 
-pub type RenderFunc = &'static fn(&[FixtureControl], &mut [DmxValue]);
+pub type RenderFunc = fn(&[FixtureControl], &mut [DmxValue]);
 
-#[derive(Copy, Clone)]
-pub struct RenderAction {
+struct RenderAction {
     /// The name of this render action, probably the same as the associated fixture type.
     /// Used to round-trip this action through serde.
-    name: &'static str,
+    name: String,
     func: RenderFunc,
 }
 
 impl RenderAction {
-    fn new(name: &'static str, func: RenderFunc) -> Self {
-        RenderAction {
-            name: name,
-            func: func,
+    fn serialize_to_str<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: Serializer
+    {
+        serializer.serialize_str(&self.name)
+    }
+}
+
+impl FromStr for RenderAction {
+    type Err = String;
+    /// Use the precompiled table of render functions to try to look up this render action.
+    /// Used during deserialization.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        render_func_for_type(s)
+            .map(|func| RenderAction {name: s.to_string(), func: func})
+            .ok_or(format!("Unknown fixture type: '{}'.", s))
+    }
+}
+
+fn deserialize_from_str<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+    where D: Deserializer<'de>, T: FromStr<Err = String>
+{
+    // A visitor that expects a string and uses T's impl of FromStr to create itself.
+    struct DeserializeFromString<T>(PhantomData<T>);
+
+    impl<'de, T> Visitor<'de> for DeserializeFromString<T>
+        where T: FromStr<Err = String>
+    {
+        type Value = T;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("string")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<T, E>
+            where E: de::Error
+        {
+            FromStr::from_str(value).map_err(E::custom)
         }
     }
 
-    fn serialize_to_name<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: Serializer
-    {
-        serializer.serialize_str(self.name)
-    }
-
-    fn deserialize_from_name<'de, D>(deserializer: D) -> Result<Self, D::Error>
-        where D: Deserializer<'de>
-    {
-        deserializer.
-    }
+    deserializer.deserialize_string(DeserializeFromString(PhantomData))
 }
 
 #[derive(Serialize, Deserialize)]
@@ -81,6 +109,8 @@ pub struct DmxFixture {
     channel_count: DmxChannelCount,
     /// Controls for this fixture.
     controls: Vec<FixtureControl>,
+    #[serde(serialize_with="RenderAction::serialize_to_str")]
+    #[serde(deserialize_with="deserialize_from_str")]
     /// Action to render this fixture to DMX.
     render_action: RenderAction,
 }
@@ -90,9 +120,11 @@ impl DmxFixture {
             kind: K,
             channel_count: DmxChannelCount,
             controls: Vec<FixtureControl>,
-            render_action: RenderAction) -> Self {
+            render_func: RenderFunc) -> Self {
+        let kind = kind.into();
+        let render_action = RenderAction {name: kind.clone(), func: render_func};
         DmxFixture {
-            kind: kind.into(),
+            kind: kind,
             channel_count: channel_count,
             controls: controls,
             render_action: render_action,
