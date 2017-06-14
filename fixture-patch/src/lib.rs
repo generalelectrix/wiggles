@@ -187,7 +187,7 @@ impl Patch {
     pub fn add(&mut self, profile: &Profile, name: Option<String>) {
         let item = PatchItem {
             id: self.next_id(),
-            name: name.unwrap_or(profile.name.to_string()),
+            name: name.unwrap_or(profile.name().to_string()),
             address: None,
             active: true,
             fixture: profile.create_fixture(),
