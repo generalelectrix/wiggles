@@ -331,7 +331,7 @@ impl Patch {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum PatchError {
     InvalidFixtureId(FixtureId),
     InvalidUniverseId(UniverseId),
@@ -343,10 +343,11 @@ pub enum PatchError {
 
 impl fmt::Display for PatchError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use PatchError::*;
         match *self {
-            PatchError::InvalidFixtureId(id) => write!(f, "Invalid fixture id: {}.", id),
-            PatchError::InvalidUniverseId(id) => write!(f, "Invalid universe id: {}.", id),
-            PatchError::AddressConflict(fix, univ, addr, ref conflicts) => 
+            InvalidFixtureId(id) => write!(f, "Invalid fixture id: {}.", id),
+            InvalidUniverseId(id) => write!(f, "Invalid universe id: {}.", id),
+            AddressConflict(fix, univ, addr, ref conflicts) => 
                 write!(
                     f,
                     "Address conflict: fixture {}, universe {}, address {}. Conflicts with fixtures {:?}",
@@ -354,27 +355,28 @@ impl fmt::Display for PatchError {
                     univ,
                     addr,
                     conflicts),
-            PatchError::FixtureTooLongForAddress(addr, count) =>
+            FixtureTooLongForAddress(addr, count) =>
                 write!(
                     f,
                     "Fixture of channel count {} is too long to be patched at address {}.",
                     count,
                     addr),
-            PatchError::NonEmptyUniverse(id) => write!(f, "Universe {} is not empty.", id),
-            PatchError::PortError(ref e) => write!(f, "DMX port error: {}", e),
+            NonEmptyUniverse(id) => write!(f, "Universe {} is not empty.", id),
+            PortError(ref e) => write!(f, "DMX port error: {}", e),
         }
     }
 }
 
 impl std::error::Error for PatchError {
     fn description(&self) -> &str {
+        use PatchError::*;
         match *self {
-            PatchError::InvalidFixtureId(_) => "Invalid fixture id.",
-            PatchError::InvalidUniverseId(_) => "Invalid universe id.",
-            PatchError::AddressConflict(..) => "Addressing conflict.",
-            PatchError::FixtureTooLongForAddress(..) => "Channel count too high for address.",
-            PatchError::NonEmptyUniverse(_) => "Universe is not empty.",
-            PatchError::PortError(ref pe) => pe.description(),
+            InvalidFixtureId(_) => "Invalid fixture id.",
+            InvalidUniverseId(_) => "Invalid universe id.",
+            AddressConflict(..) => "Addressing conflict.",
+            FixtureTooLongForAddress(..) => "Channel count too high for address.",
+            NonEmptyUniverse(_) => "Universe is not empty.",
+            PortError(ref pe) => pe.description(),
         }
     }
 
