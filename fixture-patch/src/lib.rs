@@ -159,11 +159,17 @@ impl Patch {
     }
 
     /// Add a universe to the first available id.
-    pub fn add_universe(&mut self, universe: Universe) {
+    pub fn add_universe(&mut self, universe: Universe) -> UniverseId {
         let first_open_id = self.universes.iter().position(|u| u.is_none());
         match first_open_id {
-            Some(id) => self.universes[id] = Some(universe),
-            None => self.universes.push(Some(universe)),
+            Some(id) => {
+                self.universes[id] = Some(universe);
+                id as u32
+            },
+            None => {
+                self.universes.push(Some(universe));
+                (self.universes.len()-1) as u32
+            },
         }
     }
 
