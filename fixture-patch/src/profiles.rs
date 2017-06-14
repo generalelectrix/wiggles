@@ -75,7 +75,7 @@ pub fn render_func_for_type(name: &str) -> Option<RenderFunc> {
 // declare profiles in individual modules
 
 /// Basic 1-channel dimmer.
-mod dimmer {
+pub mod dimmer {
     use super::*;
 
     const CHANNEL_COUNT: DmxChannelCount = 1;
@@ -104,7 +104,7 @@ mod dimmer {
 
 /// Apollo Roto-Q DMX.
 /// Only provides access to rotating mode.
-mod apollo_roto_q_dmx {
+pub mod apollo_roto_q_dmx {
     use super::*;
 
     const CHANNEL_COUNT: DmxChannelCount = 2;
@@ -133,7 +133,7 @@ mod apollo_roto_q_dmx {
 
 /// Apollo smart move DMX.
 /// Only provides access to rotating mode.
-mod apollo_smart_move_dmx {
+pub mod apollo_smart_move_dmx {
     use super::*;
 
     const CHANNEL_COUNT: DmxChannelCount = 3;

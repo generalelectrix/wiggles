@@ -193,16 +193,38 @@ impl Patch {
 
     /// Add a new fixture into the patch without specifying an address or universe.
     /// Provide a name for the fixture, or autogenerate one.
-    pub fn add(&mut self, profile: &Profile, name: Option<String>) {
+    /// Return the fixture id.
+    pub fn add(&mut self, profile: &Profile, name: Option<String>) -> FixtureId {
+        let id = self.next_id();
         let item = PatchItem {
-            id: self.next_id(),
+            id: id,
             name: name.unwrap_or(profile.name().to_string()),
             address: None,
             active: true,
             fixture: profile.create_fixture(),
         };
         self.items.push(item);
+        id
     }
+    
+    /// Try to add a new fixture into the patch with a specified address.
+    /// Provide a name for the fixture, or autogenerate one.
+    pub fn add_at_address(
+        &mut self,
+        profile: &Profile,
+        name: Option<String>,
+        universe: UniverseId,
+        address: DmxAddress)
+        -> Result<FixtureId, PatchError> {
+            let id = self.add(profile, name);
+            match self.repatch(id, universe, address) {
+                Ok(_) => Ok(id),
+                Err(e) => {
+                    self.remove(id);
+                    Err(e)
+                }
+            }
+        }
 
     /// Remove a fixture by id, if it exists, and return it.
     pub fn remove(&mut self, id: FixtureId) -> Option<PatchItem> {
@@ -250,7 +272,7 @@ impl Patch {
     }
 
     /// Try to patch a fixture at a particular address in a particular universe.
-    pub fn patch(
+    pub fn repatch(
             &mut self,
             id: FixtureId,
             universe: UniverseId,
