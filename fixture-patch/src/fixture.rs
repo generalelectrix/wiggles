@@ -12,7 +12,11 @@ use profiles::render_func_for_type;
 pub type DmxChannelCount = u16;
 pub type DmxValue = u8;
 
-#[derive(Serialize, Deserialize)]
+// --------------------
+// Wiggles fixture control parameter
+// --------------------
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 /// A single generic control for a fixture.
 /// A fixture will provide zero or more of these as its interface.
 // TODO: some kind of decoration on data type to aid in selection of things from finite range,
@@ -46,6 +50,10 @@ impl FixtureControl {
     }
 }
 
+// ------------------
+// serialization helper wrapper type for render function
+// ------------------
+
 pub type RenderFunc = fn(&[FixtureControl], &mut [DmxValue]);
 
 struct RenderAction {
@@ -62,6 +70,21 @@ impl RenderAction {
         serializer.serialize_str(&self.name)
     }
 }
+
+impl fmt::Debug for RenderAction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RenderAction {{ name: {} }}", self.name)
+    }
+}
+
+impl PartialEq for RenderAction {
+    // Compare RenderActions using their unique string name.
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+
+impl Eq for RenderAction {}
 
 impl FromStr for RenderAction {
     type Err = String;
@@ -99,7 +122,11 @@ fn deserialize_from_str<'de, D, T>(deserializer: D) -> Result<T, D::Error>
     deserializer.deserialize_string(DeserializeFromString(PhantomData))
 }
 
-#[derive(Serialize, Deserialize)]
+// ---------------------
+// A single DMX-controlled fixture with a wiggles interface
+// ---------------------
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DmxFixture {
     /// What kind of fixture is this?
     kind: String,

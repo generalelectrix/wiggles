@@ -25,6 +25,10 @@ pub type DmxAddress = u16;
 pub type UniverseId = u32;
 pub type FixtureId = u32;
 
+// -----------------------
+// DMX Universe
+// -----------------------
+
 const UNIVERSE_SIZE: usize = 512;
 
 type UniverseSummary<T> = [Option<T>; UNIVERSE_SIZE];
@@ -53,10 +57,65 @@ impl Universe {
         }
     }
 
+    pub fn new_offline(name: String) -> Self {
+        let port = Box::new(OfflineDmxPort{});
+        Universe::new(name, port)
+    }
+
+    pub fn set_port(&mut self, port: Box<DmxPort>) {
+        self.port = port;
+    }
+
     pub fn write(&mut self) -> Result<(), DmxPortError> {
         self.port.write(&self.buffer)
     }
 }
+
+impl PartialEq for Universe {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+        && self.port.serializable() == other.port.serializable()
+        && self.buffer[..] == other.buffer[..]
+    }
+}
+
+impl Eq for Universe {}
+
+// -------------------------
+// Single patched item
+// -------------------------
+
+#[derive(Serialize, Deserialize)]
+pub struct PatchItem {
+    id: FixtureId,
+    pub name: String,
+    address: Option<(UniverseId, DmxAddress)>,
+    active: bool,
+    fixture: DmxFixture,
+}
+
+impl PatchItem {
+    /// Unique fixture id.
+    fn id(&self) -> FixtureId { 
+        self.id
+    }
+    /// The name of this kind of fixture.
+    fn kind(&self) -> &str {
+        self.fixture.kind()
+    }
+
+    fn universe(&self) -> Option<UniverseId> {
+        self.address.map(|(id, _)| id)
+    }
+
+    fn channel_count(&self) -> DmxChannelCount {
+        self.fixture.channel_count()
+    }
+}
+
+// -------------------------
+// The whole patch
+// -------------------------
 
 #[derive(Serialize, Deserialize)]
 pub struct Patch {
@@ -260,34 +319,6 @@ impl Patch {
             }
         }
         write_errs
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct PatchItem {
-    id: FixtureId,
-    pub name: String,
-    address: Option<(UniverseId, DmxAddress)>,
-    active: bool,
-    fixture: DmxFixture,
-}
-
-impl PatchItem {
-    /// Unique fixture id.
-    fn id(&self) -> FixtureId { 
-        self.id
-    }
-    /// The name of this kind of fixture.
-    fn kind(&self) -> &str {
-        self.fixture.kind()
-    }
-
-    fn universe(&self) -> Option<UniverseId> {
-        self.address.map(|(id, _)| id)
-    }
-
-    fn channel_count(&self) -> DmxChannelCount {
-        self.fixture.channel_count()
     }
 }
 
