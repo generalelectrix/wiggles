@@ -59,6 +59,8 @@ lazy_static! {
                 m.insert(profile.name, profile);
             };
             add(dimmer::PROFILE);
+            add(apollo_smart_move_dmx::PROFILE);
+            add(apollo_roto_q_dmx::PROFILE);
         }
         m
     };
@@ -76,25 +78,86 @@ pub fn render_func_for_type(name: &str) -> Option<RenderFunc> {
 mod dimmer {
     use super::*;
 
-    fn controls() -> Vec<FixtureControl> {
-        vec!(FixtureControl::new("level", Datatype::Unipolar, Data::Unipolar(Unipolar(0.0))))
-    }
-
-    fn render(controls: &[FixtureControl], buffer: &mut [DmxValue]) {
-        debug_assert!(controls.len() == 1);
-        debug_assert!(buffer.len() == 1);
-        let dmx_val = as_single_channel(controls[0].value());
-        buffer[0] = dmx_val;
-    }
+    const CHANNEL_COUNT: DmxChannelCount = 1;
 
     /// Basic 1-channel dimmer.
     /// Controlled by a single unipolar.
     pub const PROFILE: Profile = Profile {
         name: "dimmer",
         description: "1-channel linear dimmer.",
-        channel_count: 1,
+        channel_count: CHANNEL_COUNT,
         controls: controls,
         render_func: render,
     };
+
+    fn controls() -> Vec<FixtureControl> {
+        vec!(FixtureControl::new("level", Datatype::Unipolar, Data::Unipolar(Unipolar(0.0))))
+    }
+
+    fn render(controls: &[FixtureControl], buffer: &mut [DmxValue]) {
+        debug_assert!(controls.len() == 1);
+        debug_assert!(buffer.len() == CHANNEL_COUNT as usize);
+        let dmx_val = as_single_channel(controls[0].value());
+        buffer[0] = dmx_val;
+    }
+}
+
+/// Apollo Roto-Q DMX.
+/// Only provides access to rotating mode.
+mod apollo_roto_q_dmx {
+    use super::*;
+
+    const CHANNEL_COUNT: DmxChannelCount = 2;
+
+    /// Apollo Roto-Q DMX, controlled as a single bipolar.
+    pub const PROFILE: Profile = Profile {
+        name: "apollo:Roto-Q DMX",
+        description: "Not yet implemented. Apollo Roto-Q DMX, rotating mode only.",
+        channel_count: CHANNEL_COUNT,
+        controls: controls,
+        render_func: render,
+    };
+
+    fn controls() -> Vec<FixtureControl> {
+        vec!(FixtureControl::new("rotation", Datatype::Bipolar, Data::Bipolar(Bipolar(0.0))))
+    }
+
+    fn render(controls: &[FixtureControl], buffer: &mut [DmxValue]) {
+        debug_assert!(controls.len() == 1);
+        debug_assert!(buffer.len() == CHANNEL_COUNT as usize);
+        let dmx_val = 0; // FIXME: need to map exact dmx range for smart moves
+        buffer[0] = dmx_val;
+        buffer[1] = 0;
+    }
+}
+
+/// Apollo smart move DMX.
+/// Only provides access to rotating mode.
+mod apollo_smart_move_dmx {
+    use super::*;
+
+    const CHANNEL_COUNT: DmxChannelCount = 3;
+
+    /// Apollo smart move DMX, controlled as a single bipolar.
+    pub const PROFILE: Profile = Profile {
+        name: "apollo:Smart Move DMX",
+        description: "Not yet implemented. Apollo Smart Move DMX, rotating mode only.",
+        channel_count: CHANNEL_COUNT,
+        controls: controls,
+        render_func: render,
+    };
+
+    fn controls() -> Vec<FixtureControl> {
+        vec!(FixtureControl::new("rotation", Datatype::Bipolar, Data::Bipolar(Bipolar(0.0))))
+    }
+
+    fn render(controls: &[FixtureControl], buffer: &mut [DmxValue]) {
+        debug_assert!(controls.len() == 1);
+        debug_assert!(buffer.len() == CHANNEL_COUNT as usize);
+        let dmx_val = 0; // FIXME: need to map exact dmx range for smart moves
+        buffer[0] = dmx_val;
+        buffer[1] = 0;
+        buffer[2] = 0;
+    }
 }
 
