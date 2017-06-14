@@ -12,4 +12,6 @@ fn test_universe_create_and_delete() {
 
     assert!(patch.universe(0).is_ok());
     assert_eq!(PatchError::InvalidUniverseId(1), patch.universe(1).unwrap_err());
+    patch.remove_universe(0, false).unwrap();
+    assert_eq!(PatchError::InvalidUniverseId(0), patch.universe(0).unwrap_err());
 }
