@@ -14,12 +14,15 @@ extern crate serde;
 extern crate wiggles_value;
 #[macro_use] extern crate lazy_static;
 
+use std::fmt;
+
 use rust_dmx::{DmxPort, Error as DmxPortError, OfflineDmxPort};
 use profiles::{Profile, PROFILES};
 use fixture::{DmxFixture, DmxValue, DmxChannelCount};
 
 mod fixture;
 mod profiles;
+mod test;
 
 pub type DmxAddress = u16;
 pub type UniverseId = u32;
@@ -57,9 +60,9 @@ impl Universe {
         }
     }
 
-    pub fn new_offline(name: String) -> Self {
+    pub fn new_offline<N: Into<String>>(name: N) -> Self {
         let port = Box::new(OfflineDmxPort{});
-        Universe::new(name, port)
+        Universe::new(name.into(), port)
     }
 
     pub fn set_port(&mut self, port: Box<DmxPort>) {
@@ -68,6 +71,12 @@ impl Universe {
 
     pub fn write(&mut self) -> Result<(), DmxPortError> {
         self.port.write(&self.buffer)
+    }
+}
+
+impl fmt::Debug for Universe {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "Universe {{ name: {}, port: {:?} }}", self.name, self.port.serializable())
     }
 }
 
@@ -266,7 +275,7 @@ impl Patch {
         else {
             // Deduplicate the list of conflicting fixture ids.
             conflicting_fixtures.dedup();
-            Err(PatchError::AddressConflict(conflicting_fixtures))
+            Err(PatchError::AddressConflict(id, universe, address, conflicting_fixtures))
         }
     }
 
@@ -322,12 +331,58 @@ impl Patch {
     }
 }
 
-
+#[derive(Debug)]
 pub enum PatchError {
     InvalidFixtureId(FixtureId),
     InvalidUniverseId(UniverseId),
-    AddressConflict(Vec<FixtureId>),
+    AddressConflict(FixtureId, UniverseId, DmxAddress, Vec<FixtureId>),
     FixtureTooLongForAddress(DmxAddress, DmxChannelCount),
     NonEmptyUniverse(UniverseId),
     PortError(DmxPortError),
+}
+
+impl fmt::Display for PatchError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            PatchError::InvalidFixtureId(id) => write!(f, "Invalid fixture id: {}.", id),
+            PatchError::InvalidUniverseId(id) => write!(f, "Invalid universe id: {}.", id),
+            PatchError::AddressConflict(fix, univ, addr, ref conflicts) => 
+                write!(
+                    f,
+                    "Address conflict: fixture {}, universe {}, address {}. Conflicts with fixtures {:?}",
+                    fix,
+                    univ,
+                    addr,
+                    conflicts),
+            PatchError::FixtureTooLongForAddress(addr, count) =>
+                write!(
+                    f,
+                    "Fixture of channel count {} is too long to be patched at address {}.",
+                    count,
+                    addr),
+            PatchError::NonEmptyUniverse(id) => write!(f, "Universe {} is not empty.", id),
+            PatchError::PortError(ref e) => write!(f, "DMX port error: {}", e),
+        }
+    }
+}
+
+impl std::error::Error for PatchError {
+    fn description(&self) -> &str {
+        match *self {
+            PatchError::InvalidFixtureId(_) => "Invalid fixture id.",
+            PatchError::InvalidUniverseId(_) => "Invalid universe id.",
+            PatchError::AddressConflict(..) => "Addressing conflict.",
+            PatchError::FixtureTooLongForAddress(..) => "Channel count too high for address.",
+            PatchError::NonEmptyUniverse(_) => "Universe is not empty.",
+            PatchError::PortError(ref pe) => pe.description(),
+        }
+    }
+
+    fn cause(&self) -> Option<&std::error::Error> {
+        match *self {
+            PatchError::PortError(ref pe) => Some(pe),
+            _ => None,
+        }
+    }
+
 }
