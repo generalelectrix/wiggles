@@ -240,6 +240,11 @@ impl Patch {
         }
     }
 
+    /// Get an immutable reference to a patch item by id, if it exists.
+    pub fn item(&self, id: FixtureId) -> Result<&PatchItem, PatchError> {
+        self.items.iter().find(|item| item.id == id).ok_or(PatchError::InvalidFixtureId(id))
+    }
+
     fn item_mut(&mut self, id: FixtureId) -> Result<&mut PatchItem, PatchError> {
         self.items.iter_mut().find(|item| item.id == id).ok_or(PatchError::InvalidFixtureId(id))
     }
