@@ -140,6 +140,7 @@ lazy_static! {
             add(apollo_smart_move_dmx::PROFILE);
             add(apollo_roto_q_dmx::PROFILE);
             add(clay_paky_astroraggi_power::PROFILE);
+            add(clay_paky_atlas::PROFILE);
         }
         m
     };
@@ -256,7 +257,8 @@ pub mod clay_paky_atlas {
     fn render(controls: &[FixtureControl], buffer: &mut [DmxValue]) {
         debug_assert!(controls.len() == 2);
         debug_assert!(buffer.len() == CHANNEL_COUNT as usize);
-        let shutter_channel_val = {
+        // channel 0 - shutter/strobe
+        buffer[0] = {
             let Unipolar(strobe_rate) = controls[1].value().into();
             if strobe_rate > 0.01 {
                 // strobe is active
@@ -265,13 +267,9 @@ pub mod clay_paky_atlas {
             }
             else {
                 // no strobe, do aperture fanning
-                bipolar_as_range(controls[0].value(), 0, 127)
+                bipolar_as_unequal_range(controls[0].value(), 0, 139, 64)
             }
         };
-        // channel 0 - rotation
-        buffer[0] = bipolar_as_range(controls[3].value(), 128, 255);
-        // channel 1 - shutter/strobe
-        buffer[1] = shutter_channel_val;
     }
 }
 
