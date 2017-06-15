@@ -8,11 +8,60 @@ use wiggles_value::{Data, Datatype, Unipolar, Bipolar, IntegerEnum};
 use fixture::{DmxFixture, FixtureControl, DmxValue, RenderFunc, DmxChannelCount};
 
 // Helper functions for converting wiggles values into DMX.
+/// Interpret as unipolar and map directly to dmx values.
 fn as_single_channel(data: Data) -> DmxValue {
-    // for single channel, interpret as unipolar and do the dumb thing
+    unipolar_as_range(data, 0, 255)
+}
+
+/// Spread a unipolar value evenly across a DMX interval.
+fn unipolar_as_range(data: Data, min_val: DmxValue, max_val: DmxValue) -> DmxValue {
+    debug_assert!(max_val > min_val);
     let Unipolar(val) = data.into();
-    let scaled = (val * 256.0) as usize;
-    min(scaled, 255) as u8
+    let range_delta = max_val as usize - min_val as usize + 1;
+    let scaled = min_val as usize + (val * range_delta as f64) as usize;
+    min(scaled, max_val as usize) as u8
+}
+
+/// Spread a bipolar value evenly across a DMX interval.
+fn bipolar_as_range(data: Data, min_val: DmxValue, max_val: DmxValue) -> DmxValue {
+    // In this case, all we'd do is the same math as unipolar, so delegate to that
+    // function.  This is here to make it more clear what's going on.
+    unipolar_as_range(data, min_val, max_val)
+}
+
+mod test_helpers {
+    use super::*;
+    #[test]
+    fn test_unipolar_as_range() {
+        fn check_full_range(expected: DmxValue, unipolar: f64) {
+            assert_eq!(expected, as_single_channel(Data::Unipolar(Unipolar(unipolar))));
+        }
+        check_full_range(0, 0.0);
+        // make sure the bottom of the range has a full bin
+        check_full_range(0, 0.0038);
+        check_full_range(1, 0.004);
+        check_full_range(255, 1.0);
+        // make sure the top of the range has a full bin
+        check_full_range(255, 0.997);
+        check_full_range(254, 0.996);
+    }
+
+    #[test]
+    fn test_bipolar_as_range() {
+        fn check_full_range(expected: DmxValue, bipolar: f64) {
+            assert_eq!(expected, bipolar_as_range(Data::Bipolar(Bipolar(bipolar)), 0, 255));
+        }
+        check_full_range(0, -1.0);
+        check_full_range(255, 1.0);
+        check_full_range(128, 0.0);
+
+        fn check_half_range(expected: DmxValue, bipolar: f64) {
+            assert_eq!(expected, bipolar_as_range(Data::Bipolar(Bipolar(bipolar)), 128, 255));
+        }
+        check_half_range(128, -1.0);
+        check_half_range(192, 0.0);
+        check_half_range(255, 1.0);
+    }
 }
 
 type ControlsCreator = fn() -> Vec<FixtureControl>;
@@ -61,6 +110,7 @@ lazy_static! {
             add(dimmer::PROFILE);
             add(apollo_smart_move_dmx::PROFILE);
             add(apollo_roto_q_dmx::PROFILE);
+            add(clay_paky_astroraggi_power::PROFILE);
         }
         m
     };
@@ -100,6 +150,54 @@ pub mod dimmer {
         let dmx_val = as_single_channel(controls[0].value());
         buffer[0] = dmx_val;
     }
+}
+
+/// Astroraggi Power, eh!?
+pub mod clay_paky_astroraggi_power {
+    use super::*;
+
+    const CHANNEL_COUNT: DmxChannelCount = 2;
+
+    /// Clay Paky Astroraggi Power.
+    /// No dome indexing.
+    /// Breaks out shutter and strobe separately, nonzero strobe takes priority over shutter.
+    pub const PROFILE: Profile = Profile {
+        name: "clay paky:Astroraggi Power",
+        description: "The ORIGINAL moonflower.",
+        channel_count: CHANNEL_COUNT,
+        controls: controls,
+        render_func: render,
+    };
+
+    fn controls() -> Vec<FixtureControl> {
+        vec!(
+            FixtureControl::new("shutter", Datatype::Unipolar, Data::Unipolar(Unipolar(0.0))),
+            FixtureControl::new("strobe", Datatype::Unipolar, Data::Unipolar(Unipolar(0.0))),
+            FixtureControl::new("rotation", Datatype::Bipolar, Data::Bipolar(Bipolar(0.0))),
+        )
+    }
+
+    fn render(controls: &[FixtureControl], buffer: &mut [DmxValue]) {
+        debug_assert!(controls.len() == 3);
+        debug_assert!(buffer.len() == CHANNEL_COUNT as usize);
+        let shutter_channel_val = {
+            let Unipolar(strobe_rate) = controls[1].value().into();
+            if strobe_rate > 0.01 {
+                // strobe is active
+                // has a slight detent to account for crappy midi faders not being down all the way
+                unipolar_as_range(controls[1].value(), 140, 242)
+            }
+            else {
+                // no strobe, regular shutter
+                unipolar_as_range(controls[0].value(), 0, 127)
+            }
+        };
+        // channel 0 - rotation
+        buffer[0] = bipolar_as_range(controls[3].value(), 128, 255);
+        // channel 1 - shutter/strobe
+        buffer[1] = shutter_channel_val;
+    }
+
 }
 
 /// Apollo Roto-Q DMX.
