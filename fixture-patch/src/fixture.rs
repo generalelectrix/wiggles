@@ -4,6 +4,7 @@
 use std::str::FromStr;
 use std::fmt;
 use std::marker::PhantomData;
+use std::error::Error;
 use serde::{Serializer, Deserializer};
 use serde::de::{self, Visitor};
 use wiggles_value::{Datatype, Data};
@@ -171,7 +172,7 @@ impl DmxFixture {
     /// Set a control value.
     pub fn set_control(&mut self, control_id: usize, value: Data) -> Result<(), FixtureError> {
         if control_id >= self.controls.len() {
-            Err(FixtureError::ControlOutOfRange(control_id))
+            Err(FixtureError::InvalidControlId{id: control_id, control_count: self.controls.len()})
         } else {
             self.controls[control_id].set_value(value);
             Ok(())
@@ -179,6 +180,28 @@ impl DmxFixture {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum FixtureError {
-    ControlOutOfRange(usize),
+    InvalidControlId{ id: usize, control_count: usize},
+}
+
+impl fmt::Display for FixtureError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            FixtureError::InvalidControlId{id, control_count} =>
+                write!(f, "Invalid control id {}, fixture has {} controls.", id, control_count),
+        }
+    }
+}
+
+impl Error for FixtureError {
+    fn description(&self) -> &str {
+        match *self {
+            FixtureError::InvalidControlId{..} => "Invalid control id."
+        }
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        None
+    }
 }

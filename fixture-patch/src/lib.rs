@@ -18,9 +18,10 @@ extern crate wiggles_value;
 
 use std::fmt;
 
+use wiggles_value::Data;
 use rust_dmx::{DmxPort, Error as DmxPortError, OfflineDmxPort};
 use profiles::{Profile, PROFILES};
-use fixture::{DmxFixture, DmxValue, DmxChannelCount};
+use fixture::{DmxFixture, DmxValue, DmxChannelCount, FixtureError};
 
 mod fixture;
 mod profiles;
@@ -136,6 +137,10 @@ impl PatchItem {
 
     fn channel_count(&self) -> DmxChannelCount {
         self.fixture.channel_count()
+    }
+
+    fn set_control(&mut self, control_id: usize, value: Data) -> Result<(), PatchError> {
+        self.fixture.set_control(control_id, value).map_err(|fe| PatchError::from_fixture_error(fe, self.id))
     }
 }
 
@@ -263,7 +268,7 @@ impl Patch {
     }
 
     /// Get a mutable reference to a patch item by id, if it exists.
-    fn item_mut(&mut self, id: FixtureId) -> Result<&mut PatchItem, PatchError> {
+    pub fn item_mut(&mut self, id: FixtureId) -> Result<&mut PatchItem, PatchError> {
         self.items.iter_mut().find(|item| item.id == id).ok_or(PatchError::InvalidFixtureId(id))
     }
 
@@ -397,7 +402,14 @@ pub enum PatchError {
     AddressConflict(FixtureId, UniverseId, DmxAddress, Vec<FixtureId>),
     FixtureTooLongForAddress(DmxAddress, DmxChannelCount),
     NonEmptyUniverse(UniverseId),
+    Fixture(FixtureId, FixtureError),
     PortError(DmxPortError),
+}
+
+impl PatchError {
+    pub fn from_fixture_error(fe: FixtureError, id: FixtureId) -> Self {
+        PatchError::Fixture(id, fe)
+    }
 }
 
 impl fmt::Display for PatchError {
@@ -422,6 +434,10 @@ impl fmt::Display for PatchError {
                     count,
                     addr),
             NonEmptyUniverse(id) => write!(f, "Universe {} is not empty.", id),
+            Fixture(ref id, ref e) => {
+                write!(f, "Fixture {} error: ", id)?;
+                e.fmt(f)
+            },
             PortError(ref e) => write!(f, "DMX port error: {}", e),
         }
     }
@@ -437,6 +453,7 @@ impl std::error::Error for PatchError {
             AddressConflict(..) => "Addressing conflict.",
             FixtureTooLongForAddress(..) => "Channel count too high for address.",
             NonEmptyUniverse(_) => "Universe is not empty.",
+            Fixture(_, ref fe) => fe.description(),
             PortError(ref pe) => pe.description(),
         }
     }
@@ -444,6 +461,7 @@ impl std::error::Error for PatchError {
     fn cause(&self) -> Option<&std::error::Error> {
         match *self {
             PatchError::PortError(ref pe) => Some(pe),
+            PatchError::Fixture(_, ref fe) => Some(fe),
             _ => None,
         }
     }

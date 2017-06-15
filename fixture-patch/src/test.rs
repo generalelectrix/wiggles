@@ -2,6 +2,7 @@
 use super::*;
 use super::profiles::dimmer::PROFILE as dimmer_profile;
 use super::profiles::clay_paky_astroraggi_power::PROFILE as astro_profile;
+use wiggles_value::*;
 
 fn assert_fixture_patched_at(p: &Patch, id: FixtureId, address: Option<(UniverseId, DmxAddress)>) {
     assert_eq!(address, p.item(id).unwrap().address);
@@ -50,7 +51,27 @@ fn test_no_out_of_range_address() {
 }
 
 #[test]
-fn test_patch_repatch() {
+fn test_render() {
+    let mut patch = Patch::new();
+    let uid = patch.add_universe(Universe::new_offline("test universe 0"));
+    let fid = patch.add_at_address(&dimmer_profile, None, uid, 1).unwrap();
+    fn assert_all_zeros(patch: &Patch, uid: UniverseId) {
+        assert_eq!([0; 512][..], patch.universe(uid).unwrap().buffer[..]);
+    }
+    assert_all_zeros(&patch, uid);
+    patch.item_mut(fid).unwrap().set_control(0, Data::Unipolar(Unipolar(1.0)));
+    let errs = patch.render();
+    assert!(errs.is_empty());
+    {
+        let univ = patch.universe(uid).unwrap();
+        assert_eq!(255, univ.buffer[0]);
+        assert_eq!([0; 511][..], univ.buffer[1..]);
+    }
+    // Make sure inactive fixtures don't render.
+    patch.set_active(fid, false).unwrap();
+    let errs = patch.render();
+    assert!(errs.is_empty());
+    assert_all_zeros(&patch, uid);
 
 }
 
