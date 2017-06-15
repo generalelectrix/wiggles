@@ -25,18 +25,18 @@ fn test_universe_create_and_delete() {
 fn test_no_remove_universe_with_fixtures() {
     let mut patch = Patch::new();
     let uid = patch.add_universe(Universe::new_offline("test universe 0"));
-    let fid = patch.add_at_address(&dimmer_profile, None, uid, 0).unwrap();
+    let fid = patch.add_at_address(&dimmer_profile, None, uid, 1).unwrap();
     assert_eq!(PatchError::NonEmptyUniverse(uid), patch.remove_universe(uid, false).unwrap_err());
-    assert_fixture_patched_at(&patch, fid, Some((uid, 0)));
+    assert_fixture_patched_at(&patch, fid, Some((uid, 1)));
     // Add another universe and a fixture in it, to ensure universe removal unpatching does affect
     // others.
     let uid_other = patch.add_universe(Universe::new_offline("test universe 1"));
-    let fid_other = patch.add_at_address(&dimmer_profile, None, uid_other, 0).unwrap();
-    assert_fixture_patched_at(&patch, fid_other, Some((uid_other, 0)));
+    let fid_other = patch.add_at_address(&dimmer_profile, None, uid_other, 1).unwrap();
+    assert_fixture_patched_at(&patch, fid_other, Some((uid_other, 1)));
     // Force universe removal; it should unpatch the fixture in it.
     patch.remove_universe(uid, true).unwrap();
     assert_fixture_patched_at(&patch, fid, None);
-    assert_fixture_patched_at(&patch, fid_other, Some((uid_other, 0)));
+    assert_fixture_patched_at(&patch, fid_other, Some((uid_other, 1)));
 }
 
 #[test]
@@ -64,7 +64,7 @@ fn test_serde() {
     let fid1 = patch.add_at_address(&dimmer_profile, None, uid0, 127).unwrap();
     let fid2 = patch.add_at_address(&dimmer_profile, None, uid0, 511).unwrap();
     let fid3 = patch.add_at_address(&astro_profile, None, uid1, 127).unwrap();
-    let fid4 = patch.add_at_address(&dimmer_profile, None, uid1, 0).unwrap();
+    let fid4 = patch.add_at_address(&dimmer_profile, None, uid1, 1).unwrap();
     let fid5 = patch.add(&astro_profile, None);
     
     // serialize to json

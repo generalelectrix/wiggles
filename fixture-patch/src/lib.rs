@@ -26,10 +26,11 @@ mod fixture;
 mod profiles;
 mod test;
 
+/// DmxAddress, indexed from 1!  When indexing into a buffer, make sure to subtract 1.
 pub type DmxAddress = u16;
 /// Return the address if it is valid, or an error.
 fn valid_address(a: DmxAddress) -> Result<DmxAddress, PatchError> {
-    if a < 512 {
+    if a > 0 && a < 513 {
         Ok(a)
     }
     else {
@@ -127,6 +128,10 @@ impl PatchItem {
 
     fn universe(&self) -> Option<UniverseId> {
         self.address.map(|(id, _)| id)
+    }
+
+    fn address(&self) -> Option<DmxAddress> {
+        self.address.map(|(_, addr)| addr)
     }
 
     fn channel_count(&self) -> DmxChannelCount {
@@ -257,10 +262,12 @@ impl Patch {
         self.items.iter().find(|item| item.id == id).ok_or(PatchError::InvalidFixtureId(id))
     }
 
+    /// Get a mutable reference to a patch item by id, if it exists.
     fn item_mut(&mut self, id: FixtureId) -> Result<&mut PatchItem, PatchError> {
         self.items.iter_mut().find(|item| item.id == id).ok_or(PatchError::InvalidFixtureId(id))
     }
 
+    /// Get an immutable reference to a universe by id, if it exists.
     fn universe(&self, id: UniverseId) -> Result<&Universe, PatchError> {
         match self.universes.get(id as usize) {
             None | Some(&None) => Err(PatchError::InvalidUniverseId(id)),
@@ -286,6 +293,8 @@ impl Patch {
 
         for (item, addr) in items_in_univ {
             let id = item.id;
+            // Don't forget to subtract 1 to index!
+            let addr = addr - 1;
             for addr_slot in &mut summary[addr..addr+item.channel_count() as usize] {
                 *addr_slot = Some(id);
             }
@@ -302,16 +311,18 @@ impl Patch {
             address: DmxAddress)
             -> Result<(), PatchError> {
         let address = valid_address(address)?;
+        // Use this value for indexes!
+        let address_from_zero = address - 1;
         let univ_summary = self.universe_summary(universe)?;
         // get the relevant fixture
         let item = self.item_mut(id)?;
 
         let n_chan = item.channel_count();
-        if (address + n_chan) as usize > UNIVERSE_SIZE {
+        if (address_from_zero + n_chan) as usize > UNIVERSE_SIZE {
             return Err(PatchError::FixtureTooLongForAddress(address, n_chan));
         }
         
-        let proposed_channels = &univ_summary[address as usize..(address+n_chan) as usize];
+        let proposed_channels = &univ_summary[address_from_zero as usize..(address_from_zero+n_chan) as usize];
         let mut conflicting_fixtures = proposed_channels.iter().filter_map(|c| *c).collect::<Vec<_>>();
         if conflicting_fixtures.is_empty() {
             // No conflicts, good to patch.
@@ -354,8 +365,9 @@ impl Patch {
             }
             if let Some((univ_id, addr)) = item.address {
                 if let Some(&mut Some(ref mut univ)) = self.universes.get_mut(univ_id as usize) {
+                    let addr_from_zero = addr - 1;
                     let channel_count = item.channel_count();
-                    let buf_slice = &mut univ.buffer[addr as usize..(addr+channel_count) as usize];
+                    let buf_slice = &mut univ.buffer[addr_from_zero as usize..(addr_from_zero+channel_count) as usize];
                     item.fixture.render(buf_slice);
                 }
             }
