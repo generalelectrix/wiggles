@@ -29,6 +29,20 @@ fn bipolar_as_range(data: Data, min_val: DmxValue, max_val: DmxValue) -> DmxValu
     unipolar_as_range(data, min_val, max_val)
 }
 
+/// Spread a bipolar value unevenly across two DMX intervals, with custom zero-point.
+fn bipolar_as_unequal_range(
+        data: Data, min_val: DmxValue, max_val: DmxValue, center: DmxValue) -> DmxValue {
+    debug_assert!(max_val > center && center > min_val);
+
+    let Bipolar(val) = data.into();
+    if val < 0.0 {
+        unipolar_as_range(Data::Unipolar(Unipolar(val + 1.0)), min_val, center - 1)
+    }
+    else {
+        unipolar_as_range(Data::Unipolar(Unipolar(val)), center, max_val)
+    }
+}
+
 mod test_helpers {
     use super::*;
     #[test]
@@ -61,6 +75,21 @@ mod test_helpers {
         check_half_range(128, -1.0);
         check_half_range(192, 0.0);
         check_half_range(255, 1.0);
+    }
+
+    #[test]
+    fn test_bipolar_as_unequal_range() {
+        // test using full range, bottom 25% vs top 75%.
+        fn check(expected: DmxValue, bipolar: f64) {
+            assert_eq!(
+                expected,
+                bipolar_as_unequal_range(Data::Bipolar(Bipolar(bipolar)), 0, 255, 64));
+        }
+
+        check(0, -1.0);
+        check(63, -0.0001);
+        check(64, 0.0);
+        check(255, 1.0);
     }
 }
 
@@ -197,7 +226,53 @@ pub mod clay_paky_astroraggi_power {
         // channel 1 - shutter/strobe
         buffer[1] = shutter_channel_val;
     }
+}
 
+/// Atlas - the megaest fan light of them all
+pub mod clay_paky_atlas {
+    use super::*;
+
+    const CHANNEL_COUNT: DmxChannelCount = 1;
+
+    /// Clay Paky Atlas.
+    /// Breaks out shutter and strobe separately, nonzero strobe takes priority over shutter.
+    /// The apertures control is all closed at -1, all open at 0.0, and all closed again at +1,
+    /// allowing both directions of fanning action.
+    pub const PROFILE: Profile = Profile {
+        name: "clay paky:Atlas",
+        description: "The megaest fan light of them all.",
+        channel_count: CHANNEL_COUNT,
+        controls: controls,
+        render_func: render,
+    };
+
+    fn controls() -> Vec<FixtureControl> {
+        vec!(
+            FixtureControl::new("apertures", Datatype::Bipolar, Data::Bipolar(Bipolar(-1.0))),
+            FixtureControl::new("strobe", Datatype::Unipolar, Data::Unipolar(Unipolar(0.0))),
+        )
+    }
+
+    fn render(controls: &[FixtureControl], buffer: &mut [DmxValue]) {
+        debug_assert!(controls.len() == 2);
+        debug_assert!(buffer.len() == CHANNEL_COUNT as usize);
+        let shutter_channel_val = {
+            let Unipolar(strobe_rate) = controls[1].value().into();
+            if strobe_rate > 0.01 {
+                // strobe is active
+                // has a slight detent to account for crappy midi faders not being down all the way
+                unipolar_as_range(controls[1].value(), 140, 242)
+            }
+            else {
+                // no strobe, do aperture fanning
+                bipolar_as_range(controls[0].value(), 0, 127)
+            }
+        };
+        // channel 0 - rotation
+        buffer[0] = bipolar_as_range(controls[3].value(), 128, 255);
+        // channel 1 - shutter/strobe
+        buffer[1] = shutter_channel_val;
+    }
 }
 
 /// Apollo Roto-Q DMX.
