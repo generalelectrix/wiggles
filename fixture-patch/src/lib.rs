@@ -104,7 +104,7 @@ impl Eq for Universe {}
 // Single patched item
 // -------------------------
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PatchItem {
     id: FixtureId,
     pub name: String,
@@ -136,7 +136,7 @@ impl PatchItem {
 // The whole patch
 // -------------------------
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Patch {
     universes: Vec<Option<Universe>>,
     items: Vec<PatchItem>,
