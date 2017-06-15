@@ -90,12 +90,14 @@ fn test_serde() {
     
     // serialize to json
     let json_patch = serde_json::to_string(&patch).unwrap();
+    println!("{}", json_patch.len());
     // round-trip
     let json_round_trip_patch: Patch = serde_json::from_str(&json_patch).unwrap();
     assert_eq!(patch, json_round_trip_patch);
 
     // serialize to bincode
     let bincode_patch = bincode::serialize(&patch, bincode::Infinite).unwrap();
+    println!("{}", bincode_patch.len());
     // round-trip
     let bincode_round_trip_patch = bincode::deserialize(&bincode_patch).unwrap();
     assert_eq!(patch, bincode_round_trip_patch);

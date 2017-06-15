@@ -1,0 +1,12 @@
+[package]
+name = "console_server"
+version = "0.1.0"
+authors = ["general electrix <general.electrix@gmail.com>"]
+
+[dependencies]
+fixture-patch = { path = "../fixture-patch" }
+websocket = "*"
+hyper = "*"
+local-ip = "*"
+futures = "*"
+rand = "*"
