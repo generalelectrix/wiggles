@@ -13,6 +13,8 @@ extern crate serde_derive;
 extern crate serde;
 extern crate wiggles_value;
 #[macro_use] extern crate lazy_static;
+#[cfg(test)] extern crate serde_json;
+#[cfg(test)] extern crate bincode;
 
 use std::fmt;
 
@@ -27,7 +29,7 @@ mod test;
 pub type DmxAddress = u16;
 /// Return the address if it is valid, or an error.
 fn valid_address(a: DmxAddress) -> Result<DmxAddress, PatchError> {
-    if a < 511 {
+    if a < 512 {
         Ok(a)
     }
     else {

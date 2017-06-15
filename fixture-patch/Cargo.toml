@@ -9,3 +9,7 @@ rust_dmx = { git = "https://github.com/generalelectrix/rust-dmx" }
 serde = "*"
 serde_derive = "*"
 lazy_static = "*"
+
+[dev-dependencies]
+serde_json = "*"
+bincode = "*"
