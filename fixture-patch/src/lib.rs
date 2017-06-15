@@ -25,6 +25,16 @@ mod profiles;
 mod test;
 
 pub type DmxAddress = u16;
+/// Return the address if it is valid, or an error.
+fn valid_address(a: DmxAddress) -> Result<DmxAddress, PatchError> {
+    if a < 511 {
+        Ok(a)
+    }
+    else {
+        Err(PatchError::InvalidDmxAddress(a))
+    }
+    
+}
 pub type UniverseId = u32;
 pub type FixtureId = u32;
 
@@ -289,6 +299,7 @@ impl Patch {
             universe: UniverseId,
             address: DmxAddress)
             -> Result<(), PatchError> {
+        let address = valid_address(address)?;
         let univ_summary = self.universe_summary(universe)?;
         // get the relevant fixture
         let item = self.item_mut(id)?;
@@ -366,6 +377,7 @@ impl Patch {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum PatchError {
+    InvalidDmxAddress(DmxAddress),
     InvalidFixtureId(FixtureId),
     InvalidUniverseId(UniverseId),
     AddressConflict(FixtureId, UniverseId, DmxAddress, Vec<FixtureId>),
@@ -378,6 +390,7 @@ impl fmt::Display for PatchError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use PatchError::*;
         match *self {
+            InvalidDmxAddress(addr) => write!(f, "Invalid DMX address: {}", addr),
             InvalidFixtureId(id) => write!(f, "Invalid fixture id: {}.", id),
             InvalidUniverseId(id) => write!(f, "Invalid universe id: {}.", id),
             AddressConflict(fix, univ, addr, ref conflicts) => 
@@ -404,6 +417,7 @@ impl std::error::Error for PatchError {
     fn description(&self) -> &str {
         use PatchError::*;
         match *self {
+            InvalidDmxAddress(_) => "Invalid DMX address.",
             InvalidFixtureId(_) => "Invalid fixture id.",
             InvalidUniverseId(_) => "Invalid universe id.",
             AddressConflict(..) => "Addressing conflict.",
