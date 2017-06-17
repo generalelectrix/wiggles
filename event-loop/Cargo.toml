@@ -1,0 +1,6 @@
+[package]
+name = "event-loop"
+version = "0.1.0"
+authors = ["general electrix <general.electrix@gmail.com>"]
+
+[dependencies]
