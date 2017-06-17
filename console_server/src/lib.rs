@@ -17,6 +17,10 @@ use serde::{Serialize, Deserialize};
 
 pub struct LoadData;
 
+// impl LoadData<C> {
+//     fn load(&self) -> Result
+// }
+
 /// Outer command wrapper for the reactor, exposing administrative commands on top of the internal
 /// commands that the console itself provides.  Quitting the console, saving the show, and loading
 /// a different show are all considered top-level commands, as they require swapping out the state
@@ -29,6 +33,12 @@ pub enum Command<C> {
     Quit,
     /// A message to be passed into the console logic running in the reactor.
     Console(C),
+}
+
+impl<C> From<C> for Command<C> {
+    fn from(msg: C) -> Self {
+        Command::Console(msg)
+    }
 }
 
 /// Outer command wrapper for a response from the reactor, exposing messages indicating
@@ -45,10 +55,44 @@ pub enum Response<R, LE: Error> {
     Console(R),
 }
 
+impl<R, LE: Error> From<R> for Response<R, LE> {
+    fn from(msg: R) -> Self {
+        Response::Console(msg)
+    }
+}
+
 /// Small vector optimization for zero or 1 messages; console logic should use this type to return
-/// response messages.  May be removed if it turns out that consoles basically only ever emit one
-/// response message per command message.
-pub type Messages<T> = SmallVec<[T; 1]>;
+/// response messages.
+type MessagesInner<T> = [T; 1];
+pub struct Messages<T>(SmallVec<MessagesInner<T>>);
+
+impl<T> Messages<T> {
+    fn single(m: T) -> Self {
+        let mut msgs = SmallVec::new();
+        msgs.push(m);
+        Messages(msgs)
+    }
+
+    /// Empty message collection.
+    pub fn none() -> Self {
+        Messages(SmallVec::new())
+    }
+    
+    /// Add a message to this collection.
+    pub fn push(&mut self, item: T) {
+        self.0.push(item);
+    }
+
+    /// A collection that contains one message.
+    pub fn one<M: Into<T>>(msg: M) -> Self {
+        Messages::single(msg.into())
+    }
+
+    /// Convert a message collection that can be interpreted as this type.
+    pub fn wrap<M: Into<T>>(mut msgs: Messages<M>) -> Self {
+        Messages(msgs.0.drain().map(|m| m.into()).collect())
+    }
+}
 
 /// Console logic must implement this trait to be run in the Wiggles reactor.
 /// Note that none of these methods return Result; consoles are expected to be unconditionally
@@ -86,19 +130,15 @@ pub struct Reactor<'de, C, LE>
     quit: bool,
 }
 
-fn wrap_console_response<R, LE: Error>(mut msgs: Messages<R>) -> Messages<Response<R, LE>> {
-    msgs.drain().map(|r| Response::Console(r)).collect()
-}
-
 impl<'de, C, LE> Reactor<'de, C, LE>
     where C: Console<'de>, LE: Error
         {
     /// Run the console reactor.
     pub fn run(&mut self) {
-        loop {
+        'event: loop {
             if self.quit {
                 info!("Reactor is quitting.");
-                break;
+                break 'event;
             }
             let msgs = match self.event_source.next() {
                 Event::Idle(dt) => {
@@ -106,18 +146,26 @@ impl<'de, C, LE> Reactor<'de, C, LE>
                 },
                 Event::Autosave => {
                     self.autosave();
-                    SmallVec::new()
+                    Messages::none()
                 },
                 Event::Render => { 
-                    wrap_console_response(self.console.render())
+                    Messages::wrap(self.console.render())
                 },
                 Event::Update(dt) => {
-                    wrap_console_response(self.console.update(dt))
+                    Messages::wrap(self.console.update(dt))
                 },
             };
-            for msg in msgs {
-                // FIXME: decide how to be robust to the other end crashing.
-                self.resp_queue.send(msg).expect("Console response sink hung up.")
+            for msg in msgs.0 {
+                match self.resp_queue.send(msg) {
+                    Ok(_) => (),
+                    Err(e) => {
+                        // The response sink hung up.
+                        // This should only be able to happen if the control server panicked.
+                        // Not much we can do here except autosave and quit.
+                        self.abort();
+                        break 'event;
+                    }
+                }
             }
         }
     }
@@ -127,28 +175,39 @@ impl<'de, C, LE> Reactor<'de, C, LE>
         // block until we get a command or we time out.
         match self.cmd_queue.recv_timeout(dt) {
             Ok(Command::Console(msg)) => {
-                wrap_console_response(self.console.handle_command(msg))
+                Messages::wrap(self.console.handle_command(msg))
             },
             Ok(Command::Quit) => {
                 debug!("Reactor received the quit command.");
                 self.quit = true;
-                let mut msgs = SmallVec::new();
-                msgs.push(Response::Quit);
-                msgs
+                Messages::one(Response::Quit)
             },
             Ok(Command::Load(l)) => {
-                let mut msgs = SmallVec::new();
-                msgs.push(self.load_show(l));
-                msgs
+                Messages::one(self.load_show(l))
             },
             Err(RecvTimeoutError::Timeout) => {
-                SmallVec::new()
+                Messages::none()
             },
             Err(RecvTimeoutError::Disconnected) => {
-                // FIXME: decide how to be robust to the other end crashing.
-                panic!("Console event source hung up.");
+                // The event stream went away.
+                // The only way this should be able to happen is if the http server crashed.
+                // TODO: attempt to restart a fresh http server thread to continue running the show.
+                error!("Console event source hung up.");
+                self.abort()
             },
         }
+    }
+
+    /// If the console needs to crash because one of the other pieces of the application has
+    /// panicked and we cannot recover, use this method to quit the event loop.
+    /// Autosave, persist the state that the console has crashed, and then quit.
+    /// Return a message we can send to the other parts of the application to instruct them to
+    /// quit, though we may not be able to do anything with it.
+    fn abort(&mut self) -> Messages<Response<C::Response, LE>> {
+        error!("Console is aborting!");
+        self.autosave();
+        self.quit = true;
+        Messages::one(Response::Quit)
     }
 
     /// Save the current state of the show to a fast binary format.
