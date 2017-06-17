@@ -7,7 +7,7 @@ extern crate log;
 use std::time::{Duration, Instant};
 use std::cmp;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 /// Event loop settings.
 pub struct Settings {
     /// Fixed duration between updates.
@@ -46,11 +46,27 @@ pub enum Event {
     Idle(Duration),
 }
 
+#[derive(Debug)]
+struct LastEvents {
+    update: Instant,
+    render: Instant,
+    autosave: Instant,
+}
+
+impl LastEvents {
+    pub fn new(now: Instant) -> Self {
+        LastEvents {
+            update: now,
+            render: now,
+            autosave: now,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct EventLoop {
     pub settings: Settings,
-    last_update: Instant,
-    last_render: Instant,
-    last_autosave: Instant,
+    last: LastEvents,
 }
 
 /// Return the number of nanoseconds represented by this Duration.
@@ -78,42 +94,47 @@ impl EventLoop {
         let settings = Settings::default();
         EventLoop {
             settings: settings,
-            last_update: now,
-            last_render: now,
-            last_autosave: now,
+            last: LastEvents::new(now),
         }
     }
 
-    /// Get the next action that the application should undertake.
     pub fn next(&mut self) -> Event {
         let now = Instant::now();
-        let ns_until_render = ns_until(now, self.last_render, self.settings.render_interval);
-        let ns_until_update = ns_until(now, self.last_update, self.settings.update_interval);
-        let ns_until_autosave = 
-            if let Some(interval) = self.settings.autosave_interval {
-                ns_until(now, self.last_autosave, interval)
-            }
-            else {
-                std::i64::MAX
-            };
-        let ns_until_next = cmp::min(cmp::min(ns_until_update, ns_until_render), ns_until_autosave);
-        if ns_until_next <= 0 {
-            if ns_until_next == ns_until_update {
-                // Always update in completely deterministic timesteps.
-                self.last_update += self.settings.update_interval;
-                Event::Update(self.settings.update_interval)
-            }
-            else if ns_until_next == ns_until_render {
-                self.last_render = now;
-                Event::Render
-            }
-            else {
-                self.last_autosave = now;
-                Event::Autosave
-            }
+        next_event(now, &self.settings, &mut self.last)
+    }
+}
+
+
+#[inline(always)]
+/// Get the next action that the application should undertake.
+/// Broken out as a function to enable deterministic testing.
+fn next_event(now: Instant, settings: &Settings, last: &mut LastEvents) -> Event {
+    let ns_until_render = ns_until(now, last.render, settings.render_interval);
+    let ns_until_update = ns_until(now, last.update, settings.update_interval);
+    let ns_until_autosave = 
+        if let Some(interval) = settings.autosave_interval {
+            ns_until(now, last.autosave, interval)
         }
         else {
-            Event::Idle(Duration::new(0, ns_until_next as u32))
+            std::i64::MAX
+        };
+    let ns_until_next = cmp::min(cmp::min(ns_until_update, ns_until_render), ns_until_autosave);
+    if ns_until_next <= 0 {
+        if ns_until_next == ns_until_update {
+            // Always update in completely deterministic timesteps.
+            last.update += settings.update_interval;
+            Event::Update(settings.update_interval)
         }
+        else if ns_until_next == ns_until_render {
+            last.render = now;
+            Event::Render
+        }
+        else {
+            last.autosave = now;
+            Event::Autosave
+        }
+    }
+    else {
+        Event::Idle(Duration::new(0, ns_until_next as u32))
     }
 }
