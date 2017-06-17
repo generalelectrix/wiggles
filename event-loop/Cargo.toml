@@ -5,4 +5,3 @@ authors = ["general electrix <general.electrix@gmail.com>"]
 
 [dependencies]
 log = "*"
-smallvec = "*"

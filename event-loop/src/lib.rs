@@ -1,107 +1,131 @@
 //! An event loop for lighting controllers.
-//! Clients provide a struct implementing the required trais and the event loop then drives the
-//! controller by calling the appropriate trait methods.
-//! Provides debug-level logging for tracing event flow.
-//! Uses channels for asynchronous command and response to control actions.
+//! Clients poll the event loop which acts as an endless iterator of actions.
+//! Provides debug-level logging for tracing event triggering.
 
 extern crate log;
-extern crate smallvec;
 
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 use std::cmp;
 use std::error::Error;
-use std::sync::mpsc::{channel, Sender, Receiver};
-//use std::iter::Iterator;
-use smallvec::SmallVec;
+use std::iter::Iterator;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 /// Event loop settings.
 pub struct Settings {
-    /// Absolute fixed state update rate in fps.
-    pub updates_per_second: u64,
-    /// Maximum render rate in fps.
-    pub renders_per_second: u64,
-    /// Command the application to autosave at this interval (ms).
-    /// Setting this to 0 disables autosave.
-    pub autosave_interval: u64,
+    /// Fixed duration between updates.
+    pub update_interval: Duration,
+    /// Min duration between render events; could be more than this if the show is lagging due to
+    /// limited computational resources.
+    pub render_interval: Duration,
+    /// Command the application to autosave at this interval.
+    /// If None, do not use autosave.
+    pub autosave_interval: Option<Duration>,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Settings {
             // update at 100 fps
-            updates_per_second: 100,
+            update_interval: Duration::from_millis(10),
             // DMX is limited to 50 fps max
-            renders_per_second: 50,
+            render_interval: Duration::from_millis(20),
             // By default do not autosave.
-            autosave_interval: 0,
+            autosave_interval: None,
         }
     }
 }
 
-/// Small vector optimization for output messages, ensuring the most common cases of 0 and 1
-/// output messages require no allocation.
-type Responses<T> = SmallVec<[T; 1]>;
-
-/// Interface provided to the event loop by the show core.
-/// The fact that these methods all return events and not Results implies that the show's
-/// implementation of these actions must be infalliable, and should report failures via output
-/// messages to be communicated back out to other layers of the stack.
-pub trait Actor {
-    /// Used by the show to define the commands it accepts.
-    type Command;
-    /// Returned by the show as a result of updating, rendering, or handling user input.
-    type Response;
-
-    /// Render the current state of the show.
-    fn render(
-        &mut self,
-        frame_number: u64,
-        time_since_update: Duration)
-        -> Responses<Self::Response>;
-
-    /// Update the current state of the show.
-    fn update(
-        &mut self,
-        dt: Duration)
-        -> Responses<Self::Response>;
-
-    /// Handle a command message.
-    fn handle_command(
-        &mut self,
-        command: Self::Command)
-        -> Responses<Self::Response>;
+/// Events that can occur, to be interpreted and acted upon by the show.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum Event {
+    /// Command to render a frame.
+    Render,
+    /// Command to update the show state using this delta-t.
+    Update(Duration),
+    /// Command to autosave the show.
+    Autosave,
+    /// Instruct the show that it has this Duration to do work until the next event.
+    Idle(Duration),
 }
 
-pub struct EventLoop<A: Actor> {
+/// 
+enum State {
+
+}
+
+pub struct EventLoop {
     pub settings: Settings,
-    actor: A,
-    // Channel ends for sending and receiving messages.
-    cmd_send: Sender<A::Command>,
-    cmd_recv: Receiver<A::Command>,
-    resp_recv: Receiver<A::Response>,
-    resp_send: Sender<A::Response>,
-    
+    last_update: Instant,
+    last_render: Instant,
+    last_autosave: Instant,
+    first_frame: bool,
 }
 
-impl<A: Actor> EventLoop<A> {
-    /// Instantiate the event loop.
-    pub fn new(actor: A) -> Self {
-        let (cmd_send, cmd_recv) = channel();
-        let (resp_send, resp_recv) = channel();
+/// Return the number of nanoseconds represented by this Duration.
+fn nanoseconds(duration: Duration) -> u64 {
+    duration.as_secs() * 1_000_000_000 + duration.subsec_nanos() as u64
+}
+
+/// Return the number of nanoseconds until we need to perform an action.
+/// If this action is overdue, return a negative value.
+fn ns_until(now: Instant, last: Instant, interval: Duration) -> i64 {
+    let should_run_at = last + interval;
+    if should_run_at < now {
+        -1 * nanoseconds(now.duration_since(should_run_at)) as i64
+    }
+    else {
+        nanoseconds(should_run_at.duration_since(now)) as i64
+    }
+}
+
+impl EventLoop {
+    pub fn new() -> Self {
+        let now = Instant::now();
+        // Render our first frame immediately, with the first update coming one update interval
+        // later.
+        let settings = Settings::default();
         EventLoop {
-            settings: Settings::default(),
-            actor: actor,
-            cmd_send: cmd_send,
-            cmd_recv: cmd_recv,
-            resp_recv: resp_recv,
-            resp_send: resp_send,
+            settings: settings,
+            // The show starts initialized and does not need an update before render.
+            last_update: now,
+            // The first event is always a Render.
+            last_render: now,
+            last_autosave: now,
+            first_frame: true,
         }
     }
 
-    /// Get a clone of the command sender channel.
-    pub fn command_sender(&self) -> Sender<A::Command> {
-
+    /// Get the next action that the application should undertake.
+    pub fn next(&mut self) -> Event {
+        if self.first_frame {
+            self.first_frame = false;
+            return Event::Render;
+        }
+        let now = Instant::now();
+        let ns_until_render = ns_until(now, self.last_render, self.settings.render_interval);
+        let ns_until_update = ns_until(now, self.last_update, self.settings.update_interval);
+        let ns_until_autosave = 
+            if let Some(interval) = self.settings.autosave_interval {
+                ns_until(now, self.last_autosave, interval)
+            }
+            else {
+                std::i64::MAX
+            };
+        let ns_until_next = cmp::min(cmp::min(ns_until_update, ns_until_render), ns_until_autosave);
+        if ns_until_next <= 0 {
+            if ns_until_next == ns_until_update {
+                Event::Update(self.settings.update_interval)
+            }
+            else if ns_until_next == ns_until_render {
+                Event::Render
+            }
+            else {
+                Event::Autosave
+            }
+        }
+        else {
+            Event::Idle(Duration::new(0, ns_until_next as u32))
+        }
     }
 }
