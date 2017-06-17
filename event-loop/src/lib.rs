@@ -4,11 +4,8 @@
 
 extern crate log;
 
-use std::thread::sleep;
 use std::time::{Duration, Instant};
 use std::cmp;
-use std::error::Error;
-use std::iter::Iterator;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 /// Event loop settings.
@@ -49,17 +46,11 @@ pub enum Event {
     Idle(Duration),
 }
 
-/// 
-enum State {
-
-}
-
 pub struct EventLoop {
     pub settings: Settings,
     last_update: Instant,
     last_render: Instant,
     last_autosave: Instant,
-    first_frame: bool,
 }
 
 /// Return the number of nanoseconds represented by this Duration.
@@ -87,21 +78,14 @@ impl EventLoop {
         let settings = Settings::default();
         EventLoop {
             settings: settings,
-            // The show starts initialized and does not need an update before render.
             last_update: now,
-            // The first event is always a Render.
             last_render: now,
             last_autosave: now,
-            first_frame: true,
         }
     }
 
     /// Get the next action that the application should undertake.
     pub fn next(&mut self) -> Event {
-        if self.first_frame {
-            self.first_frame = false;
-            return Event::Render;
-        }
         let now = Instant::now();
         let ns_until_render = ns_until(now, self.last_render, self.settings.render_interval);
         let ns_until_update = ns_until(now, self.last_update, self.settings.update_interval);
@@ -115,12 +99,16 @@ impl EventLoop {
         let ns_until_next = cmp::min(cmp::min(ns_until_update, ns_until_render), ns_until_autosave);
         if ns_until_next <= 0 {
             if ns_until_next == ns_until_update {
+                // Always update in completely deterministic timesteps.
+                self.last_update += self.settings.update_interval;
                 Event::Update(self.settings.update_interval)
             }
             else if ns_until_next == ns_until_render {
+                self.last_render = now;
                 Event::Render
             }
             else {
+                self.last_autosave = now;
                 Event::Autosave
             }
         }
