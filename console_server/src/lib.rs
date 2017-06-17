@@ -4,15 +4,18 @@
 extern crate event_loop;
 extern crate smallvec;
 extern crate serde;
+extern crate serde_json;
+extern crate bincode;
+#[macro_use] extern crate log;
 
 use event_loop::{EventLoop, Event};
 use std::error::Error;
-use std::sync::mpsc::{channel, Sender, Receiver};
+use std::sync::mpsc::{channel, Sender, Receiver, RecvTimeoutError};
 use std::time::Duration;
 use smallvec::SmallVec;
 use serde::{Serialize, Deserialize};
 
-struct LoadData;
+pub struct LoadData;
 
 /// Outer command wrapper for the reactor, exposing administrative commands on top of the internal
 /// commands that the console itself provides.  Quitting the console, saving the show, and loading
@@ -31,11 +34,11 @@ pub enum Command<C> {
 /// Outer command wrapper for a response from the reactor, exposing messages indicating
 /// that administrative actions have occurred, as well as passing on messages from the console
 /// logic running in the reactor.
-pub enum Response<R, LE> {
+pub enum Response<R, LE: Error> {
     /// A new show was loaded, with this name.
     Loaded(String),
     /// Show load failed.
-    LoadFailed(LE: Error),
+    LoadFailed(LE),
     /// The console is going to quit.
     Quit,
     /// A response emanting from the console itself.
@@ -75,26 +78,93 @@ pub trait Console<'de>: Serialize + Deserialize<'de> {
 pub struct Reactor<'de, C, LE>
     where C: Console<'de>, LE: Error
         {
+    show_name: String,
     console: C,
     event_source: EventLoop,
     cmd_queue: Receiver<Command<C::Command>>,
     resp_queue: Sender<Response<C::Response, LE>>,
+    quit: bool,
 }
 
-// impl<Cmd, Resp, Save, Load, C> Reactor<Cmd, Resp, Save, Load, C>
-//     where C: Console 
-//         {
-//     /// Run the console reactor.
-//     pub fn run(&mut self) {
-//         loop {
-//             match self.event_source.next() {
-//                 Event::Idle(dt) => {
-//                     // we have dt until the next scheduled event.  use it to handle commands.
-//                     match self.
-//                 }
-//             }
-//         }
-//     }
+fn wrap_console_response<R, LE: Error>(mut msgs: Messages<R>) -> Messages<Response<R, LE>> {
+    msgs.drain().map(|r| Response::Console(r)).collect()
+}
 
-//     fn poll_command(&mut self) -> 
-// }
+impl<'de, C, LE> Reactor<'de, C, LE>
+    where C: Console<'de>, LE: Error
+        {
+    /// Run the console reactor.
+    pub fn run(&mut self) {
+        loop {
+            if self.quit {
+                info!("Reactor is quitting.");
+                break;
+            }
+            let msgs = match self.event_source.next() {
+                Event::Idle(dt) => {
+                    self.poll_command(dt)
+                },
+                Event::Autosave => {
+                    self.autosave();
+                    SmallVec::new()
+                },
+                Event::Render => { 
+                    wrap_console_response(self.console.render())
+                },
+                Event::Update(dt) => {
+                    wrap_console_response(self.console.update(dt))
+                },
+            };
+            for msg in msgs {
+                // FIXME: decide how to be robust to the other end crashing.
+                self.resp_queue.send(msg).expect("Console response sink hung up.")
+            }
+        }
+    }
+
+    fn poll_command(&mut self, dt: Duration) -> Messages<Response<C::Response, LE>> {
+        // we have dt until the next scheduled event.
+        // block until we get a command or we time out.
+        match self.cmd_queue.recv_timeout(dt) {
+            Ok(Command::Console(msg)) => {
+                wrap_console_response(self.console.handle_command(msg))
+            },
+            Ok(Command::Quit) => {
+                debug!("Reactor received the quit command.");
+                self.quit = true;
+                let mut msgs = SmallVec::new();
+                msgs.push(Response::Quit);
+                msgs
+            },
+            Ok(Command::Load(l)) => {
+                let mut msgs = SmallVec::new();
+                msgs.push(self.load_show(l));
+                msgs
+            },
+            Err(RecvTimeoutError::Timeout) => {
+                SmallVec::new()
+            },
+            Err(RecvTimeoutError::Disconnected) => {
+                // FIXME: decide how to be robust to the other end crashing.
+                panic!("Console event source hung up.");
+            },
+        }
+    }
+
+    /// Save the current state of the show to a fast binary format.
+    fn autosave(&self) {
+        // TODO: implement autosave using bincode
+        match bincode::serialize(&self.console, bincode::Infinite) {
+            Ok(serailized) => {
+                info!("Autosave successful.");
+                // TODO: actually do something with this data
+            },
+            Err(e) => info!("Autosave error: {}", e),
+        }
+    }
+
+    fn load_show(&mut self, l: LoadData) -> Response<C::Response, LE> {
+        // TODO: show load semantics
+        Response::Loaded("TODO".to_string())
+    }
+}

@@ -7,3 +7,6 @@ authors = ["general electrix <general.electrix@gmail.com>"]
 event_loop = { path = "../event_loop" }
 smallvec = "*"
 serde = "*"
+log = "*"
+bincode = "*"
+serde_json = "*"
