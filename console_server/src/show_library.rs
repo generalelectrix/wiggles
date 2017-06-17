@@ -14,7 +14,7 @@ use std::path::PathBuf;
 use std::marker::PhantomData;
 use std::error::Error;
 use std::fmt;
-use chrono::DateTime;
+use chrono::prelude::{TimeZone, FixedOffset};
 use serde_json::Error as JsonError;
 
 /// Top-level object owning a path to the directory that this console saves and loads shows from.
@@ -78,10 +78,12 @@ const DATE_FORMAT: &'static str = "%Y-%m-%d_%H:%M:%S%.9f";
 /// Parse a slice of strings as dates and return the index of the latest one, or None if none were
 /// valid dates.
 fn index_of_latest_date(candidates: &[&str]) -> Option<usize> {
+    // We just care about local times, ignore offset from UTC.
+    let parser = FixedOffset::west(0);
     candidates.iter()
         .enumerate()
         .filter_map(|(i, s)| {
-            DateTime::parse_from_str(s, DATE_FORMAT)
+            parser.datetime_from_str(s, DATE_FORMAT)
                 .ok()
                 .map(|t| (i, t))
         })
@@ -121,9 +123,14 @@ mod test {
         let d0 = "2017-10-01_09:07:32.678945000";
         let d1 = "2017-10-01_09:09:32.456213000";
         let d2 = "2017-10-01_09:09:37.345679785";
-        fn check(items: &[&str], expected: Option<usize>) {
-            assert_eq!(expected, index_of_latest_date(items));
-        }
+        let baddate = "baddate";
         
+        assert_eq!(index_of_latest_date(&[baddate]), None);
+        assert_eq!(index_of_latest_date(&[baddate, baddate, baddate]), None);
+        assert_eq!(index_of_latest_date(&[d0]), Some(0));
+        assert_eq!(index_of_latest_date(&[d0, baddate]), Some(0));
+        assert_eq!(index_of_latest_date(&[baddate, d0]), Some(1));
+        assert_eq!(index_of_latest_date(&[d0, d1, baddate, d2]), Some(3));
+        assert_eq!(index_of_latest_date(&[baddate, d2, d1, baddate, d0]), Some(1));
     }
 }
