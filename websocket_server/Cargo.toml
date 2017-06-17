@@ -1,10 +1,9 @@
 [package]
-name = "console_server"
+name = "websocket_server"
 version = "0.1.0"
 authors = ["general electrix <general.electrix@gmail.com>"]
 
 [dependencies]
-fixture-patch = { path = "../fixture_patch" }
 websocket = "*"
 hyper = "0.10.12"
 local-ip = "*"
