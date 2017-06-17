@@ -1,11 +1,13 @@
 //! The core structure of the console server, with the explicit message types and application
 //! logic abstracted away behind traits and type parameters.
+mod show_library;
 
 extern crate event_loop;
 extern crate smallvec;
 extern crate serde;
 extern crate serde_json;
 extern crate bincode;
+extern crate chrono;
 #[macro_use] extern crate log;
 
 use event_loop::{EventLoop, Event};
@@ -13,22 +15,18 @@ use std::error::Error;
 use std::sync::mpsc::{channel, Sender, Receiver, RecvTimeoutError};
 use std::time::Duration;
 use smallvec::SmallVec;
-use serde::{Serialize, Deserialize};
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 
-pub struct LoadData;
-
-// impl LoadData<C> {
-//     fn load(&self) -> Result
-// }
+use show_library::{Shows, Show, LibraryError, LoadSpec};
 
 /// Outer command wrapper for the reactor, exposing administrative commands on top of the internal
 /// commands that the console itself provides.  Quitting the console, saving the show, and loading
 /// a different show are all considered top-level commands, as they require swapping out the state
 /// of the reactor.
 pub enum Command<C> {
-    /// Load a different show, using a metadata type that is yet to be determined.
-    /// This may end up being a true path, or some kind of internal identifier.
-    Load(LoadData),
+    /// Load a show using this spec.
+    Load(LoadSpec),
     /// Quit the console, cleanly closing down every running thread.
     Quit,
     /// A message to be passed into the console logic running in the reactor.
@@ -98,7 +96,7 @@ impl<T> Messages<T> {
 /// Note that none of these methods return Result; consoles are expected to be unconditionally
 /// stable as far as the reactor is concerned.  If they need to indicate expected/safe errors, that
 /// should be done in-band as part of the Response type.
-pub trait Console<'de>: Serialize + Deserialize<'de> {
+pub trait Console: Serialize + DeserializeOwned {
     /// The native command message type used by this console.
     type Command;
     /// The native response message type used by this console.
@@ -119,10 +117,11 @@ pub trait Console<'de>: Serialize + Deserialize<'de> {
 /// renders the state of the show, and potentially keeps a store of autosaved data to ensure the
 /// console can recover from a crash without total disaster (even if you never remembered to hit
 /// save).
-pub struct Reactor<'de, C, LE>
-    where C: Console<'de>, LE: Error
+pub struct Reactor<C, LE>
+    where C: Console, LE: Error
         {
-    show_name: String,
+    show_library: Shows,
+    running_show: Show,
     console: C,
     event_source: EventLoop,
     cmd_queue: Receiver<Command<C::Command>>,
@@ -130,8 +129,8 @@ pub struct Reactor<'de, C, LE>
     quit: bool,
 }
 
-impl<'de, C, LE> Reactor<'de, C, LE>
-    where C: Console<'de>, LE: Error
+impl<'de, C, LE> Reactor<C, LE>
+    where C: Console, LE: Error
         {
     /// Run the console reactor.
     pub fn run(&mut self) {
@@ -158,10 +157,11 @@ impl<'de, C, LE> Reactor<'de, C, LE>
             for msg in msgs.0 {
                 match self.resp_queue.send(msg) {
                     Ok(_) => (),
-                    Err(e) => {
+                    Err(_) => {
                         // The response sink hung up.
                         // This should only be able to happen if the control server panicked.
                         // Not much we can do here except autosave and quit.
+                        error!("Console response sink hung up.");
                         self.abort();
                         break 'event;
                     }
@@ -214,7 +214,7 @@ impl<'de, C, LE> Reactor<'de, C, LE>
     fn autosave(&self) {
         // TODO: implement autosave using bincode
         match bincode::serialize(&self.console, bincode::Infinite) {
-            Ok(serailized) => {
+            Ok(serialized) => {
                 info!("Autosave successful.");
                 // TODO: actually do something with this data
             },
@@ -222,7 +222,8 @@ impl<'de, C, LE> Reactor<'de, C, LE>
         }
     }
 
-    fn load_show(&mut self, l: LoadData) -> Response<C::Response, LE> {
+    fn load_show(&mut self, l: LoadSpec) -> Response<C::Response, LE> {
+        debug!("Reactor is loading a new show: {}", l);
         // TODO: show load semantics
         Response::Loaded("TODO".to_string())
     }
