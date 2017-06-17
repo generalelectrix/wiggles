@@ -2,7 +2,7 @@
 //! Clients poll the event loop which acts as an endless iterator of actions.
 //! Provides debug-level logging for tracing event triggering.
 
-extern crate log;
+#[macro_use] extern crate log;
 
 use std::time::{Duration, Instant};
 use std::cmp;
@@ -121,11 +121,31 @@ fn next_event(now: Instant, settings: &Settings, last: &mut LastEvents) -> Event
     let ns_until_next = cmp::min(cmp::min(ns_until_update, ns_until_render), ns_until_autosave);
     if ns_until_next <= 0 {
         if ns_until_next == ns_until_update {
-            // Always update in completely deterministic timesteps.
-            last.update += settings.update_interval;
-            Event::Update(settings.update_interval)
+            // Always update in exactly deterministic timesteps; if we're running low on
+            // computational resources and we are behind on updates, "batch" several updates by
+            // running one update step with an integer multiple of update interval.
+            // This is really not ideal, so log it as a warning if we're doing this.
+            // We only do this if we're more than two updates behind.
+            let updates_needed = 1 + (ns_until_update.abs() as u64 / nanoseconds(settings.update_interval)) as u32;
+            if updates_needed > 2 {
+                // if we're three steps behind, run 2x; four steps -> 3x, etc. 
+                let updates_to_run = updates_needed - 1;
+                warn!(
+                    "Event loop is {} updates behind, batching {} updates to try to catch up.",
+                    updates_needed,
+                    updates_to_run);
+                let fat_update_interval = settings.update_interval * updates_to_run;
+                last.update += fat_update_interval;
+                Event::Update(fat_update_interval)
+            }
+            else {
+                // garden variety update
+                last.update += settings.update_interval;
+                Event::Update(settings.update_interval)
+            }
         }
         else if ns_until_next == ns_until_render {
+            // ideally we should always update if our state is stale;
             last.render = now;
             Event::Render
         }
@@ -136,5 +156,88 @@ fn next_event(now: Instant, settings: &Settings, last: &mut LastEvents) -> Event
     }
     else {
         Event::Idle(Duration::new(0, ns_until_next as u32))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use super::Event::*;
+
+    #[inline(always)]
+    /// Shorthand for creating a Duration from milliseconds.
+    fn millis(milliseconds: u64) -> Duration {
+        Duration::from_millis(milliseconds)
+    }
+
+    #[test]
+    fn test_event_loop_no_autosave() {
+        let mut now = Instant::now();
+        let mut last = LastEvents::new(now);
+        let update_interval = millis(10);
+        let settings = Settings {
+            update_interval: update_interval,
+            render_interval: millis(13),
+            autosave_interval: None,
+        };
+
+        let mut assert_event = |time, event| {
+            assert_eq!(event, next_event(time, &settings, &mut last));
+        };
+
+        let update_event = Update(update_interval);
+
+        assert_event(now, Idle(millis(10)));
+        now += millis(5);
+        assert_event(now, Idle(millis(5)));
+        now += millis(5);
+        assert_event(now, update_event);
+        // If we run again immediately, we should be idle until render at 13.
+        assert_event(now, Idle(millis(3)));
+        now += millis(3);
+        assert_event(now, Render);
+        assert_event(now, Idle(millis(7)));
+        // If we wait too long, we should still run the next pending event.
+        now += millis(10);
+        assert_event(now, update_event);
+        assert_event(now, Idle(millis(3)));
+        // Get through the next render, then wait long enough that we should batch updates.
+        now += millis(3);
+        assert_event(now, Render);
+        // Delay more than 2 update cycles, make sure we get a fat update.
+        now += millis(35);
+        assert_event(now, Update(update_interval * 3));
+        // We should get a render next, which we're late on as well.
+        assert_event(now, Render);
+        // We're still behind on updates, so we should get another.
+        assert_event(now, update_event);
+        assert_event(now, Idle(millis(9)));
+    }
+
+    #[test]
+    fn test_event_loop_with_autosave() {
+        let mut now = Instant::now();
+        let mut last = LastEvents::new(now);
+        let update_interval = millis(10);
+        let settings = Settings {
+            update_interval: update_interval,
+            render_interval: millis(13),
+            autosave_interval: Some(millis(17)),
+        };
+
+        let mut assert_event = |time, event| {
+            assert_eq!(event, next_event(time, &settings, &mut last));
+        };
+
+        let update_event = Update(update_interval);
+
+        assert_event(now, Idle(millis(10)));
+        now += millis(10);
+        assert_event(now, update_event);
+        now += millis(17);
+        assert_event(now, Render);
+        assert_event(now, Autosave);
+        assert_event(now, update_event);
+        assert_event(now, Idle(millis(3)));
     }
 }
