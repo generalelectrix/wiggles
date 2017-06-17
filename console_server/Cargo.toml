@@ -6,3 +6,4 @@ authors = ["general electrix <general.electrix@gmail.com>"]
 [dependencies]
 event_loop = { path = "../event_loop" }
 smallvec = "*"
+serde = "*"
