@@ -1,10 +1,10 @@
 [package]
-name = "fixture-patch"
+name = "fixture_patch"
 version = "0.1.0"
 authors = ["general electrix <general.electrix@gmail.com>"]
 
 [dependencies]
-wiggles_value = { path = "../wiggles-value" }
+wiggles_value = { path = "../wiggles_value" }
 rust_dmx = { git = "https://github.com/generalelectrix/rust-dmx" }
 serde = "*"
 serde_derive = "*"
