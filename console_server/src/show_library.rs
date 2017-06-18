@@ -74,6 +74,12 @@ impl fmt::Display for LoadSpec {
 /// parsing.
 const DATE_FORMAT: &'static str = "%Y-%m-%d_%H:%M:%S_%f";
 
+const AUTOSAVE_EXTENSION: &'static str = ".wiggles_autosave";
+const SAVE_EXTENSION: &'static str = ".wiggles";
+// If we cleanly close a show, we will create this file.
+// Upon load, if it is missing, we will prompt to restore from autosave or use last regular save.
+const CLEAN_CLOSE_FILE: &'static str = ".clean_close";
+
 /// Return a vector of the file names in this directory.
 fn filenames(dir: &Path) -> Result<Vec<String>, IoError> {
     let entry_iter = fs::read_dir(dir)?;
@@ -205,12 +211,18 @@ impl ShowLibrary {
         // sure we don't have rogue stuff in the library folder.
         if let Err(e) = fs::create_dir(show.autosave_dir()) {
             error!("Could not create autosave dir due to an error: {}", e);
-            if let Err(remove_dir_err) = fs::remove_dir(&show.base_folder) {
-                error!("Error trying to remove show directory: {}", remove_dir_err);
-            }
+            show.delete();
             return Err(LibraryError::DuplicateName(name));
         }
-        // 
+        // Make initial save and autosave of this show.
+        if let Err(e) = show.autosave() {
+            show.delete();
+            return Err(e);
+        }
+        if let Err(e) = show.save() {
+            show.delete();
+            return Err(e);
+        }
         Ok(show)
     }
 
@@ -218,9 +230,9 @@ impl ShowLibrary {
     /// Errors here are logged but this function returns unconditionally.
     fn delete(self) {
         // Delete all autosave files.
-        for file in fs::read_dir(self.autosave_dir()) {
-
-        }
+        remove_directory_and_files(&self.autosave_dir(), &[AUTOSAVE_EXTENSION]);
+        // Delete the show directory.
+        remove_directory_and_files(&self.base_folder, &[SAVE_EXTENSION, CLEAN_CLOSE_FILE]);
     }
 
     /// Load a saved version of this show.
