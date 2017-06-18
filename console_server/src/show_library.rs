@@ -23,9 +23,8 @@ use serde_json;
 use bincode;
 
 /// A listing of the shows available in this library.
-/// Return an empty vector if something went wrong.
-pub fn shows(library_path: &Path) -> Vec<String> {
-    dir_items(library_path, false).unwrap_or(Vec::new())
+pub fn shows(library_path: &Path) -> Result<Vec<String>, IoError> {
+    dir_items(library_path, false)
 }
 
 /// The subdirectory used to store autosaves.
