@@ -27,7 +27,7 @@ impl Default for Settings {
             update_interval: Duration::from_millis(10),
             // DMX is limited to 50 fps max
             render_interval: Duration::from_millis(20),
-            // By default do not autosave.
+            // By default autosave once a minute.
             autosave_interval: None,
         }
     }

@@ -15,7 +15,7 @@ extern crate chrono;
 #[cfg(test)] #[macro_use] extern crate serde_derive;
 
 use std::path::PathBuf;
-use event_loop::{EventLoop, Event};
+use event_loop::{EventLoop, Event, Settings};
 use std::error::Error;
 use std::sync::mpsc::{channel, Sender, Receiver, RecvTimeoutError};
 use std::time::Duration;
@@ -23,7 +23,7 @@ use smallvec::SmallVec;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use show_library::{ShowLibrary, LibraryError, LoadShow};
+use show_library::{ShowLibrary, LibraryError, LoadShow, LoadSpec};
 
 /// Outer command wrapper for the reactor, exposing administrative commands on top of the internal
 /// commands that the console itself provides.  Quitting the console, saving the show, and loading
@@ -161,9 +161,44 @@ pub struct Reactor<C>
     quit: bool,
 }
 
+type InitializedReactor<C: Console> = (Reactor<C>, Sender<Command<C::Command>>, Receiver<Response<C::Response>>);
+
 impl<C> Reactor<C>
     where C: Console
         {
+    /// Create a new reactor running the specified show.
+    /// Optionally provide overridden settings for the event loop.
+    pub fn new(
+        console_constructor: Box<Fn()->C>,
+        library_path: PathBuf,
+        show_library: ShowLibrary,
+        load_spec: LoadSpec,
+        event_settings: Option<Settings>)
+        -> Result<InitializedReactor<C>, LibraryError>
+    {
+        // make sure we can load the provided show
+        let console = show_library.load(load_spec)?;
+
+        // initialize message channels
+        let (cmd_send, cmd_recv) = channel();
+        let (resp_send, resp_recv) = channel();
+        let mut event_source = EventLoop::new();
+        if let Some(settings) = event_settings {
+            event_source.settings = settings;
+        }
+        let reactor = Reactor {
+            console_constructor: console_constructor,
+            library_path: library_path,
+            show_lib: show_library,
+            console: console,
+            event_source: event_source,
+            cmd_queue: cmd_recv,
+            resp_queue: resp_send,
+            quit: false,
+        };
+        Ok((reactor, cmd_send, resp_recv))
+    }
+
     /// Run the console reactor.
     pub fn run(&mut self) {
         let mut running = true;
