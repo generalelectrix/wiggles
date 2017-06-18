@@ -17,12 +17,11 @@
 //! file when loading a new show.  If absent, we return this fact to the caller to enable future
 //! UI action to determine whether to recover from an autosave.
 use std::path::{Path, PathBuf};
-use std::ffi::OsString;
-use std::marker::PhantomData;
 use std::error::Error;
 use std::io::Error as IoError;
 use std::fmt;
 use std::fs;
+use std::cmp;
 use serde::{Serialize};
 use serde::de::DeserializeOwned;
 use chrono::prelude::*;
@@ -58,9 +57,13 @@ impl fmt::Display for LoadShow {
 
 #[derive(Debug)]
 pub enum LoadSpec {
+    /// Load the latest saved state.
     Latest,
+    /// Load this particular saved state.  Should consist only of a timestamp with no extension.
     Exact(String),
+    /// Load the latest autosave.
     LatestAutosave,
+    /// Load this particular autosave.  Should consist only of a timestamp with no extension.
     ExactAutosave(String),
 }
 
@@ -89,6 +92,18 @@ fn filenames(dir: &Path) -> Result<Vec<String>, IoError> {
         .filter_map(|filename| filename.into_string().ok())
         .collect();
     Ok(filenames)
+}
+
+/// Trim these strings by shortening them by the same length as the provided extension.
+/// If the strings are already shorter, they will be empty.
+/// Return a listing of the names of the available autosaves.
+fn trim_extensions(names: &mut Vec<String>, ext: &str) {
+    let ext_len = ext.len();
+    for name in names.iter_mut() {
+        let name_len = name.len();
+        let new_len = if name_len < ext_len { 0 } else { name_len - ext_len };
+        name.truncate(new_len);
+    }
 }
 
 /// Parse a slice of strings as dates and return the index of the latest one, or None if none were
@@ -134,14 +149,14 @@ fn remove_directory_and_files(path: &Path, extensions: &[&str]) {
     let mut files_to_remove = Vec::new();
 
     match fs::read_dir(&path) {
-        Err(e) => error!("Could not read the directory '{:?}' because of an error: {}", path, e),
+        Err(e) => error!("Could not read the directory {:?} because of an error: {}", path, e),
         Ok(items) => {
 
             for item in items.filter_map(Result::ok) {
                 // If this is a directory (or if we can't determine if it is or not), do not proceed.
                 if item.file_type().map(|f| f.is_dir()).unwrap_or(true) {
                     error!(
-                        "Not removing directory '{:?}' as it contains a subdirectory '{:?}'.",
+                        "Not removing directory {:?} as it contains a subdirectory {:?}.",
                         path,
                         item.file_name());
                     return
@@ -159,7 +174,7 @@ fn remove_directory_and_files(path: &Path, extensions: &[&str]) {
                 // This file didn't have a valid extension abort removal.
                 if ! valid_extension {
                     error!(
-                        "Not removing directory '{:?}' as file '{}' has an unrecognized extension.",
+                        "Not removing directory {:?} as file '{}' has an unrecognized extension.",
                         path,
                         file_name);
                     return
@@ -265,14 +280,33 @@ impl ShowLibrary {
         bincode::serialize_into(&mut file, console, bincode::Infinite).map_err(Into::into)
     }
 
+    /// Return a listing of the names of the available autosaves.
+    pub fn autosaves(&self) -> Result<Vec<String>, LibraryError> {
+        filenames(&self.autosave_dir())
+            .map_err(Into::into)
+            .map(|mut filenames| {
+                for name in filenames.iter_mut() {
+                    let new_len = name.len() - AUTOSAVE_EXTENSION.len();
+                    name.truncate(new_len);
+                }
+                filenames
+            })
+    }
+
     /// Load a saved version of this show.
-    pub fn load<C: DeserializeOwned>(&self, spec: &LoadSpec) -> Result<C, LibraryError> {
+    pub fn load<C: DeserializeOwned>(&self, spec: LoadSpec) -> Result<C, LibraryError> {
         debug!("Loading state for show '{}' using spec {:?}.", self.name, spec);        
-        match *spec {
+        match spec {
             LoadSpec::Latest => self.load_latest(),
-            LoadSpec::Exact(ref name) => self.load_from_save_file(name),
+            LoadSpec::Exact(mut name) => {
+                name.push_str(SAVE_EXTENSION);
+                self.load_from_save_file(&name)
+            },
             LoadSpec::LatestAutosave => self.load_latest_autosave(),
-            LoadSpec::ExactAutosave(ref name) => self.load_from_autosave_file(name),
+            LoadSpec::ExactAutosave(mut name) => {
+                name.push_str(AUTOSAVE_EXTENSION);
+                self.load_from_autosave_file(&name)
+            },
         }
     }
 
@@ -298,7 +332,7 @@ impl ShowLibrary {
         use LibraryError::*;
         let mut file_names = 
             filenames(base_folder)
-            .map_err(|e| {
+            .map_err(|_| {
                 error!("Folder '{}' could not be opened.", base_folder.to_str().unwrap_or(""));
                 ShowDoesNotExist(self.name.clone())
             })?;
@@ -323,10 +357,10 @@ impl ShowLibrary {
     /// Open a named file in base_dir.
     fn open_file(&self, filename: &str, base_dir: &Path) -> Result<fs::File, LibraryError> {
         let mut filepath = PathBuf::from(base_dir);
-        filepath.set_file_name(filename);
-        fs::File::open(filepath)
+        filepath.push(filename);
+        fs::File::open(&filepath)
         .map_err(|e| {
-            error!("Could not open file '{}' due to an error:\n{}", filename, e);
+            error!("Could not open file '{}' at path {:?} due to an error:\n{}", filename, filepath, e);
             LibraryError::SaveNotFound {
                 name: self.name.clone(),
                 save_name: filename.to_string(),
@@ -426,6 +460,11 @@ impl Error for LibraryError {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::env::current_dir;
+    use simple_logger;
+    use log::LogLevel;
+    use rand::{thread_rng, Rng};
+    use std::thread::sleep_ms;
     
     #[test]
     fn test_index_of_latest_date() {
@@ -441,5 +480,90 @@ mod test {
         assert_eq!(index_of_latest_date(&[baddate, d0]), Some(1));
         assert_eq!(index_of_latest_date(&[d0, d1, baddate, d2]), Some(3));
         assert_eq!(index_of_latest_date(&[baddate, d2, d1, baddate, d0]), Some(1));
+    }
+
+    #[test]
+    fn test_trim_extensions() {
+        fn own(strs: Vec<&str>) -> Vec<String> {
+            strs.iter().map(|s| s.to_string()).collect()
+        }
+        let mut vals_good = own(vec!("foo.bar", "baz.bar", "qux.bar"));
+        let vals_unchanged = vals_good.clone();
+        trim_extensions(&mut vals_good, "");
+        assert_eq!(vals_unchanged, vals_good);
+        let ext = ".bar";
+        trim_extensions(&mut vals_good, ext);
+        assert_eq!(vec!("foo", "baz", "qux"), vals_good);
+
+        let mut vals_short = own(vec!("", "f", "fo", "foo", "foo.", "foo.b", "foo.ba"));
+        trim_extensions(&mut vals_short, ext);
+        assert_eq!(vec!("", "", "", "", "", "f", "fo"), vals_short);
+    }
+
+    #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+    /// A struct used as a fake console for testing saving and loading a show library.
+    struct MockConsole {
+        name: String,
+        data: Vec<u64>,
+    }
+
+    impl MockConsole {
+        /// Randomly generate some data for mock console use.
+        fn new() -> Self {
+            // FIXME: should use an RNG that is deterministically seeded.
+            let mut rng = thread_rng();
+            let name = rng.gen_ascii_chars().take(16).collect();
+            // generate u32s so we can do things like add small numbers without worrying about
+            // extremely unlikely random test failures.
+            let data = rng.gen_iter::<u32>().take(8).map(|n| n as u64).collect();
+            MockConsole {
+                name: name,
+                data: data,
+            }
+        }
+    }
+
+    struct TestLibrary {
+        lib_path: PathBuf,
+    }
+
+    impl TestLibrary {
+        /// Create a test library which will be deleted on drop.
+        /// Initialize the logger while we're at it.
+        pub fn new(name: &str) -> Self {
+            simple_logger::init_with_level(LogLevel::Debug);
+            let mut dir = current_dir().unwrap();
+            dir.push(name);
+            fs::create_dir(&dir).unwrap();
+            TestLibrary {
+                lib_path: dir
+            }
+        }
+    }
+
+    impl Drop for TestLibrary {
+        fn drop(&mut self) {
+            fs::remove_dir_all(&self.lib_path);
+        }
+    }
+
+    #[test]
+    fn test_create() {
+        let lib = TestLibrary::new("test_create");
+        let mut d = MockConsole::new();
+        let show_lib = ShowLibrary::create_new(&lib.lib_path, "test show", &d).unwrap();
+        assert_eq!(d, show_lib.load(LoadSpec::Latest).unwrap());
+        assert_eq!(d, show_lib.load(LoadSpec::LatestAutosave).unwrap());
+        d.data[0] += 1;
+        assert!(d != show_lib.load(LoadSpec::Latest).unwrap());
+        assert!(d != show_lib.load(LoadSpec::LatestAutosave).unwrap());
+        // If we autosave, we should match the new state.
+        show_lib.autosave(&d).unwrap();
+        assert_eq!(d, show_lib.load(LoadSpec::LatestAutosave).unwrap());
+        // Latest save should still not match.
+        assert!(d != show_lib.load(LoadSpec::Latest).unwrap());
+        // Save and it should match.
+        show_lib.save(&d).unwrap();
+        assert_eq!(d, show_lib.load(LoadSpec::Latest).unwrap());
     }
 }

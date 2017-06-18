@@ -10,6 +10,10 @@ extern crate bincode;
 extern crate chrono;
 #[macro_use] extern crate log;
 
+#[cfg(test)] extern crate simple_logger;
+#[cfg(test)] extern crate rand;
+#[cfg(test)] #[macro_use] extern crate serde_derive;
+
 use std::path::PathBuf;
 use event_loop::{EventLoop, Event};
 use std::error::Error;
@@ -276,7 +280,7 @@ impl<C> Reactor<C>
             Err(e) => Response::ShowLibErr(e),
             Ok(show_lib) => {
                 // try to load the save specified by the spec
-                match show_lib.load(&l.spec) {
+                match show_lib.load(l.spec) {
                     Err(e) => Response::ShowLibErr(e),
                     Ok(console) => {
                         // we successfully loaded the new show

@@ -11,3 +11,8 @@ log = "*"
 bincode = "*"
 serde_json = "*"
 chrono = "*"
+
+[dev-dependencies]
+simple_logger = "*"
+serde_derive = "*"
+rand = "*"
