@@ -266,6 +266,7 @@ impl ShowLibrary {
         new_path.pop();
         new_path.push(&name);
         if new_path.exists() {
+            debug!("Not renaming show, '{}' is used already.", name);
             Err(LibraryError::DuplicateName(name))
         }
         else {
@@ -658,5 +659,10 @@ mod test {
         assert!(!original_path.exists());
         assert!(show_lib.base_folder.exists());
         assert_eq!(new_name, show_lib.base_folder.file_name().unwrap());
+
+        match show_lib.rename(new_name) {
+            Err(LibraryError::DuplicateName(name)) => assert_eq!(new_name, name),
+            _ => panic!("No duplicate check did not fire."),
+        }
     }
 }
