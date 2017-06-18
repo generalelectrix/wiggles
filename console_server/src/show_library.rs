@@ -1,14 +1,21 @@
 //! Saving and loading shows to and from disk.
+//!
 //! Shows are stored in a folder hierarchy.  The outermost folder has the same name as the show.
 //! Individual saves will have a timestamp as their name, in this format:
-//! yyyy_mm_dd_hh:mm:ss_mmmm
+//! yyyy_mm_dd_hh:mm:ss_nnnnnnnnn
 //! where hh employs 24 time.  This will get interesting when we inevitably run this console on the
 //! night in fall where DST ends and the system clock falls back an hour.
+//!
 //! Inside this folder is a series of save files in a marginally human-readable format, probably
-//! a big pile of json.  They are named with the timestamp format above with a .json extension.
+//! a big pile of json.  They are named with the timestamp format above with a .wiggles extension.
 //! Inside this folder is a folder named "autosave" which stores show snapshots in a more compact
 //! but non-human-readable binary format, probably bincode.  These autosaves are saved with the same
-//! filename as a regular save but with the extension .wiggles
+//! filename as a regular save but with the extension .wiggles_autosave
+//!
+//! We also store a marker file named .clean_close in the show directory, which is written when
+//! the console swaps shows or gracefully exists.  We check for the presence or absence of this
+//! file when loading a new show.  If absent, we return this fact to the caller to enable future
+//! UI action to determine whether to recover from an autosave.
 use std::path::{Path, PathBuf};
 use std::ffi::OsString;
 use std::marker::PhantomData;
@@ -18,7 +25,7 @@ use std::fmt;
 use std::fs;
 use serde::{Serialize};
 use serde::de::DeserializeOwned;
-use chrono::prelude::{TimeZone, FixedOffset};
+use chrono::prelude::*;
 use serde_json;
 use bincode;
 
@@ -195,7 +202,7 @@ impl ShowLibrary {
         if let Err(e) = fs::create_dir(show.autosave_dir()) {
             error!("Could not create autosave dir due to an error: {}", e);
             show.delete();
-            return Err(LibraryError::DuplicateName(name));
+            return Err(e.into());
         }
         // Make initial save and autosave of this show.
         if let Err(e) = show.autosave(console) {
@@ -207,6 +214,16 @@ impl ShowLibrary {
             return Err(e);
         }
         Ok(show)
+    }
+
+    /// Save a snapshot of the current state of this show, probably as the result of someone
+    /// deciding to hit a save button somewhere.
+    fn save<C: Serialize>(&self, console: C) -> Result<(), LibraryError> {
+        let now = Local::now();
+        let filename = format!("{}{}", now.format(DATE_FORMAT), SAVE_EXTENSION);
+        let path = extend_path(&self.base_folder, &filename);
+        let file = fs::File::create(path)?;
+        serde_json::to_writer_pretty(file, &console).map_err(Into::into)
     }
 
     /// Delete the show directory and all of its contents.
@@ -298,22 +315,30 @@ pub enum LibraryError {
     /// A saved state for this show could not be found.
     SaveNotFound{name: String, save_name: String},
     /// An error occurred during deserialization.
-    LoadError(serde_json::Error),
+    JsonError(serde_json::Error),
     /// An error occurred during autosave deserialization.
-    AutosaveLoadError(bincode::Error),
+    Bincode(bincode::Error),
     /// A show of this name already exists.
     DuplicateName(String),
+    /// A save or load operation failed due to a file system error.
+    Io(IoError),
 }
 
 impl From<serde_json::Error> for LibraryError {
     fn from(e: serde_json::Error) -> Self {
-        LibraryError::LoadError(e)
+        LibraryError::JsonError(e)
     }
 }
 
 impl From<bincode::Error> for LibraryError {
     fn from(e: bincode::Error) -> Self {
-        LibraryError::AutosaveLoadError(e)
+        LibraryError::Bincode(e)
+    }
+}
+
+impl From<IoError> for LibraryError {
+    fn from(e: IoError) -> Self {
+        LibraryError::Io(e)
     }
 }
 
@@ -325,8 +350,9 @@ impl fmt::Display for LibraryError {
             ShowDoesNotExist(ref name) => write!(f, "The show '{}' does not exist.", name),
             SaveNotFound{name: ref name, save_name: ref save_name} =>
                 write!(f, "Could not load the save file '{}' for show '{}'.", save_name, name),
-            LoadError(ref e) => write!(f, "Show load error: {}", e),
-            AutosaveLoadError(ref e) => write!(f, "Autosave load error: {}", e),
+            JsonError(ref e) => write!(f, "Show load error: {}", e),
+            Bincode(ref e) => write!(f, "Autosave load error: {}", e),
+            Io(ref e) => write!(f, "An IO error occurred: {}", e),
         }
     }
 }
@@ -338,8 +364,9 @@ impl Error for LibraryError {
             DuplicateName(_) => "Duplicate show name.",
             ShowDoesNotExist(_) => "Show does not exist.",
             SaveNotFound{..} => "Save file not found.",
-            LoadError(_) => "Show could not be loaded.",
-            AutosaveLoadError(_) => "Autosave could not be loaded.",
+            JsonError(_) => "Show could not be loaded.",
+            Bincode(_) => "Autosave could not be loaded.",
+            Io(_) => "IO error occurred.",
         }
     }
 
@@ -349,8 +376,9 @@ impl Error for LibraryError {
             DuplicateName(_) => None,
             ShowDoesNotExist(_) => None,
             SaveNotFound{..} => None,
-            LoadError(ref e) => Some(e),
-            AutosaveLoadError(ref e) => Some(e),
+            JsonError(ref e) => Some(e),
+            Bincode(ref e) => Some(e),
+            Io(ref e) => Some(e),
         }
     }
 }

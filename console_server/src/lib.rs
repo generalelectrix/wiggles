@@ -18,7 +18,7 @@ use smallvec::SmallVec;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use show_library::{Shows, Show, LibraryError, LoadSpec};
+use show_library::{ShowLibrary, LibraryError, LoadSpec};
 
 /// Outer command wrapper for the reactor, exposing administrative commands on top of the internal
 /// commands that the console itself provides.  Quitting the console, saving the show, and loading
@@ -120,9 +120,11 @@ pub trait Console: Serialize + DeserializeOwned {
 pub struct Reactor<C, LE>
     where C: Console, LE: Error
         {
-    show_library: Shows,
-    running_show: Show,
+    /// The on-disk library of saved states for this show.
+    show_lib: ShowLibrary,
+    /// The actual core show logic.
     console: C,
+    /// 
     event_source: EventLoop,
     cmd_queue: Receiver<Command<C::Command>>,
     resp_queue: Sender<Response<C::Response, LE>>,
