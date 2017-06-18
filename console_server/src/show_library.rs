@@ -555,7 +555,7 @@ mod test {
 
     #[test]
     fn test_create_save_load() {
-        let lib = TestLibrary::new("test_create");
+        let lib = TestLibrary::new("test_create_save_load");
         let mut d = MockConsole::new();
         let show_lib = ShowLibrary::create_new(&lib.lib_path, "test show", &d).unwrap();
         // Should have saved and autosaved.
@@ -601,5 +601,18 @@ mod test {
         // Test opening another view into the library.
         let show_lib_1 = ShowLibrary::open_existing(&lib.lib_path, "test show").unwrap();
         assert_eq!(show_lib, show_lib_1);
+    }
+
+    #[test]
+    fn test_no_double_create() {
+        let lib = TestLibrary::new("test_no_double_create");
+        let mut d = MockConsole::new();
+        let show_name = "test show";
+        let show_lib = ShowLibrary::create_new(&lib.lib_path, show_name, &d).unwrap();
+        match ShowLibrary::create_new(&lib.lib_path, show_name, &d) {
+            Ok(_) => panic!("Duplicate show create did not return an error."),
+            Err(LibraryError::DuplicateName(name)) => assert_eq!(show_name, name),
+            Err(bad) => panic!("Wrong error result: {}", bad),
+        }
     }
 }
