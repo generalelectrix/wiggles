@@ -11,11 +11,6 @@
 //! Inside this folder is a folder named "autosave" which stores show snapshots in a more compact
 //! but non-human-readable binary format, probably bincode.  These autosaves are saved with the same
 //! filename as a regular save but with the extension .wiggles_autosave
-//!
-//! We also store a marker file named .clean_close in the show directory, which is written when
-//! the console swaps shows or gracefully exists.  We check for the presence or absence of this
-//! file when loading a new show.  If absent, we return this fact to the caller to enable future
-//! UI action to determine whether to recover from an autosave.
 use std::path::{Path, PathBuf};
 use std::error::Error;
 use std::io::Error as IoError;
@@ -38,9 +33,6 @@ const DATE_FORMAT: &'static str = "%Y-%m-%d_%H:%M:%S_%f";
 
 const AUTOSAVE_EXTENSION: &'static str = ".wiggles_autosave";
 const SAVE_EXTENSION: &'static str = ".wiggles";
-// If we cleanly close a show, we will create this file.
-// Upon load, if it is missing, we will prompt to restore from autosave or use last regular save.
-const CLEAN_CLOSE_FILE: &'static str = ".clean_close";
 
 #[derive(Debug)]
 pub struct LoadShow {
@@ -343,7 +335,7 @@ impl ShowLibrary {
         // Delete all autosave files.
         remove_directory_and_files(&self.autosave_dir(), &[AUTOSAVE_EXTENSION]);
         // Delete the show directory.
-        remove_directory_and_files(&self.base_folder, &[SAVE_EXTENSION, CLEAN_CLOSE_FILE]);
+        remove_directory_and_files(&self.base_folder, &[SAVE_EXTENSION]);
     }
 
     /// Return the path to the directory in which this show stores autosaves.
