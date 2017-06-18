@@ -16,7 +16,6 @@ extern crate chrono;
 
 use std::path::PathBuf;
 use event_loop::{EventLoop, Event, Settings};
-use std::error::Error;
 use std::sync::mpsc::{channel, Sender, Receiver, RecvTimeoutError};
 use std::time::Duration;
 use smallvec::SmallVec;
@@ -73,8 +72,8 @@ impl<T> From<T> for Command<T> {
 
 /// Message type with client data.
 pub struct CommandWrapper<T> {
-    client_data: ClientData,
-    payload: T,
+    pub client_data: ClientData,
+    pub payload: T,
 }
 
 /// The message type received by the reactor.
@@ -100,6 +99,18 @@ pub enum Response<T> {
     Console(T),
 }
 
+impl<T> Response<T> {
+    /// Wrap this response with client data.
+    pub fn with_client(self, client_data: ClientData) -> ResponseWrapper<Response<T>> {
+        ResponseWrapper::with_client(self, client_data)
+    }
+
+    /// Wrap this response without client data.
+    pub fn no_client(self) -> ResponseWrapper<Response<T>> {
+        ResponseWrapper::no_client(self)
+    }
+}
+
 impl<T> From<T> for Response<T> {
     fn from(msg: T) -> Self {
         Response::Console(msg)
@@ -108,8 +119,26 @@ impl<T> From<T> for Response<T> {
 
 /// Message type for outgoing messages.  Has optional client data.
 pub struct ResponseWrapper<T> {
-    client_data: Option<ClientData>,
-    payload: T,
+    pub client_data: Option<ClientData>,
+    pub payload: T,
+}
+
+impl<T> ResponseWrapper<T> {
+    /// Wrap a message payload without client data.
+    pub fn no_client(payload: T) -> Self {
+        ResponseWrapper {
+            payload: payload,
+            client_data: None,
+        }
+    }
+
+    /// Wrap a message payload with client data.
+    pub fn with_client(payload: T, client_data: ClientData) -> Self {
+        ResponseWrapper {
+            payload: payload,
+            client_data: Some(client_data),
+        }
+    }
 }
 
 /// The message type sent out by the reactor.
@@ -161,7 +190,10 @@ pub trait Console: Serialize + DeserializeOwned {
     fn update(&mut self, dt: Duration) -> Messages<ResponseWrapper<Self::Response>>;
 
     /// Handle a command, probably emitting messages.
-    fn handle_command(&mut self, command: Self::Command) -> Messages<ResponseWrapper<Self::Response>>;
+    fn handle_command(
+        &mut self,
+        command: CommandWrapper<Self::Command>)
+        -> Messages<ResponseWrapper<Self::Response>>;
 }
 
 /// The heart of the console.
@@ -193,8 +225,8 @@ pub struct Reactor<C>
 
 type InitializedReactor<C: Console> = (
     Reactor<C>,
-    Sender<Message<Command<C::Command>>>,
-    Receiver<Message<Response<C::Response>>>,
+    Sender<CommandMessage<C::Command>>,
+    Receiver<ResponseMessage<C::Response>>,
 );
 
 impl<C> Reactor<C>
@@ -243,6 +275,22 @@ impl<C> Reactor<C>
         info!("Console reactor quit.");
     }
 
+    /// Lift messages coming out of the console up into the reactor response type.
+    fn lift_response_messages(
+        &self,
+        mut msgs: Messages<ResponseWrapper<C::Response>>)
+        -> Messages<ResponseMessage<C::Response>>
+    {
+        Messages(
+            msgs.0.drain().map(|m|
+                ResponseWrapper {
+                    payload: Response::Console(m.payload),
+                    client_data: m.client_data,
+                })
+                .collect()
+        )
+    }
+
     /// Run one iteration of the event loop.
     /// Return true if the loop should run another iteration, or false if we should break.
     fn run_one_iteration(&mut self) -> bool {
@@ -258,11 +306,13 @@ impl<C> Reactor<C>
                 self.autosave();
                 Messages::none()
             },
-            Event::Render => { 
-                Messages::wrap(self.console.render())
+            Event::Render => {
+                let msgs = self.console.render();
+                self.lift_response_messages(msgs)
             },
             Event::Update(dt) => {
-                Messages::wrap(self.console.update(dt))
+                let msgs = self.console.update(dt);
+                self.lift_response_messages(msgs)
             },
         };
         for msg in msgs.0 {
@@ -281,7 +331,9 @@ impl<C> Reactor<C>
         true
     }
 
-    fn poll_command(&mut self, dt: Duration) -> Messages<Response<C::Response>> {
+    /// Block waiting for a command for at most dt.
+    /// If a command is received, process it and return response messages.
+    fn poll_command(&mut self, dt: Duration) -> Messages<ResponseMessage<C::Response>> {
         // we have dt until the next scheduled event.
         // block until we get a command or we time out.
         match self.cmd_queue.recv_timeout(dt) {
@@ -293,62 +345,75 @@ impl<C> Reactor<C>
                 // The only way this should be able to happen is if the http server crashed.
                 // TODO: attempt to restart a fresh http server thread to continue running the show.
                 error!("Console event source hung up.");
-                self.abort()
+                Messages::one(self.abort())
             },
             Ok(message) => self.handle_command(message),
         }
     }
 
-    fn handle_command(&mut self, command: Message<Command<C::Command>>) -> Messages<Response<C::Response>> {
-        let client_options = command.client_options;
+    fn handle_command(&mut self, command: CommandMessage<C::Command>) -> Messages<ResponseMessage<C::Response>> {
+        let client_data = command.client_data;
         match command.payload {
             Command::Console(msg) => {
-                Messages::wrap(self.console.handle_command(msg))
+                let console_cmd = CommandWrapper {payload: msg, client_data: client_data};
+                let console_msgs = self.console.handle_command(console_cmd);
+                self.lift_response_messages(console_msgs)
             },
             Command::Quit => {
                 debug!("Reactor received the quit command.");
                 self.quit = true;
-                Messages::one(Response::Quit)
+                Messages::one(ResponseWrapper::no_client(Response::Quit))
             },
             Command::AvailableSaves => {
                 debug!("Getting a listing of available saved show states.");
                 let saves = self.show_lib.saves().unwrap_or(Vec::new());
                 let autosaves = self.show_lib.autosaves().unwrap_or(Vec::new());
-                Messages::one(Response::SavesAvailable{saves: saves, autosaves: autosaves})
+                Messages::one(
+                    Response::SavesAvailable{saves: saves, autosaves: autosaves}
+                    .with_client(client_data))
             }
             Command::Save => {
                 info!("Saving show.");
                 match self.save() {
-                    Ok(()) => Messages::one(Response::Saved),
-                    Err(e) => Messages::one(Response::ShowLibErr(e)),
+                    Ok(()) => Messages::one(Response::Saved.with_client(client_data)),
+                    Err(e) => Messages::one(Response::ShowLibErr(e).with_client(client_data)),
                 }
             }
             Command::SaveAs(name) => {
                 match ShowLibrary::create_new(&self.library_path, name.clone(), &self.console) {
-                    Err(e) => Messages::one(Response::ShowLibErr(e)),
+                    Err(e) => Messages::one(Response::ShowLibErr(e).with_client(client_data)),
                     Ok(show_lib) => {
                         debug!("Saving show as '{}'.", name);
                         // make an autosave in our current name to be thorough
                         self.autosave();
                         // swap just our show lib, since save as doesn't change the state of the show
                         self.show_lib = show_lib;
-                        Messages::one(Response::Renamed(name))
+                        // rename message should go to all clients
+                        Messages::one(Response::Renamed(name).no_client())
                     }
                 }
             }
             Command::Rename(name) => {
                 debug!("Renaming show as '{}'.", name);
                 match self.show_lib.rename(name.clone()) {
-                    Ok(()) => Messages::one(Response::Renamed(name)),
-                    Err(e) => Messages::one(Response::ShowLibErr(e)),
+                    Ok(()) => Messages::one(Response::Renamed(name).with_client(client_data)),
+                    Err(e) => Messages::one(Response::ShowLibErr(e).no_client()),
                 }
             }
             Command::NewShow(name) => {
                 debug!("Creating a new show.");
-                Messages::one(self.new_show(name))
+                let resp = match self.new_show(name) {
+                    Ok(()) => Response::Loaded(self.show_lib.name().to_string()).no_client(),
+                    Err(e) => Response::ShowLibErr(e).with_client(client_data),
+                };
+                Messages::one(resp)
             }
             Command::Load(l) => {
-                Messages::one(self.load_show(l))
+                let resp = match self.load_show(l) {
+                    Ok(()) => Response::Loaded(self.show_lib.name().to_string()).no_client(),
+                    Err(e) => Response::ShowLibErr(e).with_client(client_data),
+                };
+                Messages::one(resp)
             },
         }
     }
@@ -358,11 +423,11 @@ impl<C> Reactor<C>
     /// Autosave, persist the state that the console has crashed, and then quit.
     /// Return a message we can send to the other parts of the application to instruct them to
     /// quit, though we may not be able to do anything with it.
-    fn abort(&mut self) -> Messages<Response<C::Response>> {
+    fn abort(&mut self) -> ResponseMessage<C::Response> {
         error!("Console is aborting!");
         self.autosave();
         self.quit = true;
-        Messages::one(Response::Quit)
+        Response::Quit.no_client()
     }
 
     /// Save the current state of the show to a fast binary format.
@@ -378,45 +443,33 @@ impl<C> Reactor<C>
     }
 
     /// Create a fresh, empty show, saved with this name.
-    fn new_show(&mut self, name: String) -> Response<C::Response> {
+    fn new_show(&mut self, name: String) -> Result<(), LibraryError> {
         debug!("Reactor is creating a new show: {}.", name);
         let new_console = (self.console_constructor)();
-        match ShowLibrary::create_new(&self.library_path, name, &new_console) {
-            Err(e) => Response::ShowLibErr(e),
-            Ok(show_lib) => {
-                // swap the fresh show in
-                self.swap_show(show_lib, new_console)
-            }
-        }
+        let show_lib = ShowLibrary::create_new(&self.library_path, name, &new_console)?;
+        // swap the fresh show in
+        self.swap_show(show_lib, new_console);
+        Ok(())
     }
 
-    fn load_show(&mut self, l: LoadShow) -> Response<C::Response> {
+    fn load_show(&mut self, l: LoadShow) -> Result<(), LibraryError> {
         debug!("Reactor is loading a show: {}", l);
-        match ShowLibrary::open_existing(&self.library_path, l.name) {
-            Err(e) => Response::ShowLibErr(e),
-            Ok(show_lib) => {
-                // try to load the save specified by the spec
-                match show_lib.load(l.spec) {
-                    Err(e) => Response::ShowLibErr(e),
-                    Ok(console) => {
-                        // we successfully loaded the new show
-                        // swap out the running show
-                        self.swap_show(show_lib, console)
-                    }
-                }
-            }
-        }
+        let show_lib = ShowLibrary::open_existing(&self.library_path, l.name)?;
+        let console = show_lib.load(l.spec)?;
+        // we successfully loaded the new show
+        // swap out the running show
+        self.swap_show(show_lib, console);
+        Ok(())
     }
 
     /// Swap the show running in the reactor.  Save the running show before doing so.
-    fn swap_show(&mut self, show_lib: ShowLibrary, console: C) -> Response<C::Response> {
+    fn swap_show(&mut self, new_show_lib: ShowLibrary, console: C) {
         self.autosave();
         if let Err(e) = self.save() {
             error!("The running show failed to save before loading a new show.  Error: {}", e);
         }
-        self.show_lib = show_lib;
+        self.show_lib = new_show_lib;
         self.console = console;
         self.event_source.reset();
-        Response::Loaded(self.show_lib.name().to_string())
     }
 }

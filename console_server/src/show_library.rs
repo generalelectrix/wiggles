@@ -21,7 +21,6 @@ use std::error::Error;
 use std::io::Error as IoError;
 use std::fmt;
 use std::fs;
-use std::cmp;
 use serde::{Serialize};
 use serde::de::DeserializeOwned;
 use chrono::prelude::*;
@@ -491,7 +490,6 @@ mod test {
     use simple_logger;
     use log::LogLevel;
     use rand::{thread_rng, Rng};
-    use std::thread::sleep_ms;
     
     #[test]
     fn test_index_of_latest_date() {
@@ -627,7 +625,7 @@ mod test {
     #[test]
     fn test_no_double_create() {
         let lib = TestLibrary::new("test_no_double_create");
-        let mut d = MockConsole::new();
+        let d = MockConsole::new();
         let show_name = "test show";
         let show_lib = ShowLibrary::create_new(&lib.lib_path, show_name, &d).unwrap();
         match ShowLibrary::create_new(&lib.lib_path, show_name, &d) {
@@ -640,7 +638,7 @@ mod test {
     #[test]
     fn test_delete() {
         let lib = TestLibrary::new("test_no_double_create");
-        let mut d = MockConsole::new();
+        let d = MockConsole::new();
         let show_lib = ShowLibrary::create_new(&lib.lib_path, "test show", &d).unwrap();
         let show_lib_path = show_lib.base_folder.clone();
         assert!(show_lib_path.exists());
@@ -651,7 +649,7 @@ mod test {
     #[test]
     fn test_rename() {
         let lib = TestLibrary::new("test_rename");
-        let mut d = MockConsole::new();
+        let d = MockConsole::new();
         let mut show_lib = ShowLibrary::create_new(&lib.lib_path, "test show", &d).unwrap();
         let original_path = show_lib.base_folder.clone();
         let new_name = "a different name";
