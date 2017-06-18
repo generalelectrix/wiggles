@@ -615,4 +615,15 @@ mod test {
             Err(bad) => panic!("Wrong error result: {}", bad),
         }
     }
+
+    #[test]
+    fn test_delete() {
+        let lib = TestLibrary::new("test_no_double_create");
+        let mut d = MockConsole::new();
+        let show_lib = ShowLibrary::create_new(&lib.lib_path, "test show", &d).unwrap();
+        let show_lib_path = show_lib.base_folder.clone();
+        assert!(show_lib_path.exists());
+        show_lib.delete();
+        assert!(!show_lib_path.exists());
+    }
 }
