@@ -25,11 +25,26 @@ use serde::de::DeserializeOwned;
 
 use show_library::{ShowLibrary, LibraryError, LoadShow, LoadSpec};
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+/// Metadata attached to commands and optionally attached to responses.
+/// Used for filtering response messages as they are send out to clients.
+pub struct ClientData {
+    /// The id of the client.
+    id: u32,
+    /// If false, the client does not want to be informed about happy-path messages related to this
+    /// one.  This helps avoid jittery sliders due to the round-trip latency from and back to the UI.
+    talkback: bool,
+    /// If true, the client is suggesting that the result of this command or response is only of
+    /// interest to it.  The server may or may not respect this option.
+    exclusive: bool,
+}
+
+#[derive(Debug)]
 /// Outer command wrapper for the reactor, exposing administrative commands on top of the internal
 /// commands that the console itself provides.  Quitting the console, saving the show, and loading
 /// a different show are all considered top-level commands, as they require swapping out the state
 /// of the reactor.
-pub enum Command<C> {
+pub enum Command<T> {
     /// Create a new, empty show.
     NewShow(String),
     /// List all available saves and autosaves.
@@ -47,19 +62,28 @@ pub enum Command<C> {
     /// Quit the console, cleanly closing down every running thread.
     Quit,
     /// A message to be passed into the console logic running in the reactor.
-    Console(C),
+    Console(T),
 }
 
-impl<C> From<C> for Command<C> {
-    fn from(msg: C) -> Self {
+impl<T> From<T> for Command<T> {
+    fn from(msg: T) -> Self {
         Command::Console(msg)
     }
 }
 
+/// Message type with client data.
+pub struct CommandWrapper<T> {
+    client_data: ClientData,
+    payload: T,
+}
+
+/// The message type received by the reactor.
+type CommandMessage<T> = CommandWrapper<Command<T>>;
+
 /// Outer command wrapper for a response from the reactor, exposing messages indicating
 /// that administrative actions have occurred, as well as passing on messages from the console
 /// logic running in the reactor.
-pub enum Response<R> {
+pub enum Response<T> {
     /// A listing of all available save and autosave files for the running show.
     SavesAvailable{saves: Vec<String>, autosaves: Vec<String>},
     /// A new show was loaded, with this name.
@@ -73,22 +97,30 @@ pub enum Response<R> {
     /// The console is going to quit.
     Quit,
     /// A response emanting from the console itself.
-    Console(R),
+    Console(T),
 }
 
-impl<R> From<R> for Response<R> {
-    fn from(msg: R) -> Self {
+impl<T> From<T> for Response<T> {
+    fn from(msg: T) -> Self {
         Response::Console(msg)
     }
 }
 
+/// Message type for outgoing messages.  Has optional client data.
+pub struct ResponseWrapper<T> {
+    client_data: Option<ClientData>,
+    payload: T,
+}
+
+/// The message type sent out by the reactor.
+type ResponseMessage<T> = ResponseWrapper<Response<T>>;
+
 /// Small vector optimization for zero or 1 messages; console logic should use this type to return
 /// response messages.
-type MessagesInner<T> = [T; 1];
-pub struct Messages<T>(SmallVec<MessagesInner<T>>);
+pub struct Messages<T>(SmallVec<[T; 1]>);
 
 impl<T> Messages<T> {
-    fn single(m: T) -> Self {
+    fn one(m: T) -> Self {
         let mut msgs = SmallVec::new();
         msgs.push(m);
         Messages(msgs)
@@ -100,18 +132,16 @@ impl<T> Messages<T> {
     }
     
     /// Add a message to this collection.
-    pub fn push(&mut self, item: T) {
+    pub fn push(&mut self, item:T) {
         self.0.push(item);
     }
 
-    /// A collection that contains one message.
-    pub fn one<M: Into<T>>(msg: M) -> Self {
-        Messages::single(msg.into())
-    }
-
     /// Convert a message collection that can be interpreted as this type.
-    pub fn wrap<M: Into<T>>(mut msgs: Messages<M>) -> Self {
-        Messages(msgs.0.drain().map(|m| m.into()).collect())
+    pub fn wrap<M: Into<T>>(mut msgs: Messages<M>) -> Messages<T> {
+        Messages(
+            msgs.0.drain()
+                .map(|m| m.into())
+                .collect())
     }
 }
 
@@ -125,13 +155,13 @@ pub trait Console: Serialize + DeserializeOwned {
     /// The native response message type used by this console.
     type Response;
     /// Render a show frame, potentially emitting messages.
-    fn render(&mut self) -> Messages<Self::Response>;
+    fn render(&mut self) -> Messages<ResponseWrapper<Self::Response>>;
 
     /// Update the show state, potentially emitting messages.
-    fn update(&mut self, dt: Duration) -> Messages<Self::Response>;
+    fn update(&mut self, dt: Duration) -> Messages<ResponseWrapper<Self::Response>>;
 
     /// Handle a command, probably emitting messages.
-    fn handle_command(&mut self, command: Self::Command) -> Messages<Self::Response>;
+    fn handle_command(&mut self, command: Self::Command) -> Messages<ResponseWrapper<Self::Response>>;
 }
 
 /// The heart of the console.
@@ -154,14 +184,18 @@ pub struct Reactor<C>
     /// The source of show events, polled by the reactor.
     event_source: EventLoop,
     /// Channel on which the reactor will receive commands.
-    cmd_queue: Receiver<Command<C::Command>>,
+    cmd_queue: Receiver<CommandMessage<C::Command>>,
     /// Channel on which the reactor will send responses to commands or spontaneously emit messages.
-    resp_queue: Sender<Response<C::Response>>,
+    resp_queue: Sender<ResponseMessage<C::Response>>,
     /// If true, the reactor loop will exit at the start of its next iteration.
     quit: bool,
 }
 
-type InitializedReactor<C: Console> = (Reactor<C>, Sender<Command<C::Command>>, Receiver<Response<C::Response>>);
+type InitializedReactor<C: Console> = (
+    Reactor<C>,
+    Sender<Message<Command<C::Command>>>,
+    Receiver<Message<Response<C::Response>>>,
+);
 
 impl<C> Reactor<C>
     where C: Console
@@ -251,28 +285,45 @@ impl<C> Reactor<C>
         // we have dt until the next scheduled event.
         // block until we get a command or we time out.
         match self.cmd_queue.recv_timeout(dt) {
-            Ok(Command::Console(msg)) => {
+            Err(RecvTimeoutError::Timeout) => {
+                Messages::none()
+            },
+            Err(RecvTimeoutError::Disconnected) => {
+                // The event stream went away.
+                // The only way this should be able to happen is if the http server crashed.
+                // TODO: attempt to restart a fresh http server thread to continue running the show.
+                error!("Console event source hung up.");
+                self.abort()
+            },
+            Ok(message) => self.handle_command(message),
+        }
+    }
+
+    fn handle_command(&mut self, command: Message<Command<C::Command>>) -> Messages<Response<C::Response>> {
+        let client_options = command.client_options;
+        match command.payload {
+            Command::Console(msg) => {
                 Messages::wrap(self.console.handle_command(msg))
             },
-            Ok(Command::Quit) => {
+            Command::Quit => {
                 debug!("Reactor received the quit command.");
                 self.quit = true;
                 Messages::one(Response::Quit)
             },
-            Ok(Command::AvailableSaves) => {
+            Command::AvailableSaves => {
                 debug!("Getting a listing of available saved show states.");
                 let saves = self.show_lib.saves().unwrap_or(Vec::new());
                 let autosaves = self.show_lib.autosaves().unwrap_or(Vec::new());
                 Messages::one(Response::SavesAvailable{saves: saves, autosaves: autosaves})
             }
-            Ok(Command::Save) => {
+            Command::Save => {
                 info!("Saving show.");
                 match self.save() {
                     Ok(()) => Messages::one(Response::Saved),
                     Err(e) => Messages::one(Response::ShowLibErr(e)),
                 }
             }
-            Ok(Command::SaveAs(name)) => {
+            Command::SaveAs(name) => {
                 match ShowLibrary::create_new(&self.library_path, name.clone(), &self.console) {
                     Err(e) => Messages::one(Response::ShowLibErr(e)),
                     Ok(show_lib) => {
@@ -285,29 +336,19 @@ impl<C> Reactor<C>
                     }
                 }
             }
-            Ok(Command::Rename(name)) => {
+            Command::Rename(name) => {
                 debug!("Renaming show as '{}'.", name);
                 match self.show_lib.rename(name.clone()) {
                     Ok(()) => Messages::one(Response::Renamed(name)),
                     Err(e) => Messages::one(Response::ShowLibErr(e)),
                 }
             }
-            Ok(Command::NewShow(name)) => {
+            Command::NewShow(name) => {
                 debug!("Creating a new show.");
                 Messages::one(self.new_show(name))
             }
-            Ok(Command::Load(l)) => {
+            Command::Load(l) => {
                 Messages::one(self.load_show(l))
-            },
-            Err(RecvTimeoutError::Timeout) => {
-                Messages::none()
-            },
-            Err(RecvTimeoutError::Disconnected) => {
-                // The event stream went away.
-                // The only way this should be able to happen is if the http server crashed.
-                // TODO: attempt to restart a fresh http server thread to continue running the show.
-                error!("Console event source hung up.");
-                self.abort()
             },
         }
     }
