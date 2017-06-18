@@ -32,6 +32,8 @@ use show_library::{ShowLibrary, LibraryError, LoadShow};
 pub enum Command<C> {
     /// Create a new, empty show.
     NewShow(String),
+    /// List all available saves and autosaves.
+    AvailableSaves,
     /// Load a show using this spec.
     Load(LoadShow),
     /// Save the current state of the show.
@@ -58,6 +60,8 @@ impl<C> From<C> for Command<C> {
 /// that administrative actions have occurred, as well as passing on messages from the console
 /// logic running in the reactor.
 pub enum Response<R> {
+    /// A listing of all available save and autosave files for the running show.
+    SavesAvailable{saves: Vec<String>, autosaves: Vec<String>},
     /// A new show was loaded, with this name.
     Loaded(String),
     /// The running show's name changed.
@@ -220,6 +224,12 @@ impl<C> Reactor<C>
                 self.quit = true;
                 Messages::one(Response::Quit)
             },
+            Ok(Command::AvailableSaves) => {
+                debug!("Getting a listing of available saved show states.");
+                let saves = self.show_lib.saves().unwrap_or(Vec::new());
+                let autosaves = self.show_lib.autosaves().unwrap_or(Vec::new());
+                Messages::one(Response::SavesAvailable{saves: saves, autosaves: autosaves})
+            }
             Ok(Command::Save) => {
                 info!("Saving show.");
                 match self.save() {
