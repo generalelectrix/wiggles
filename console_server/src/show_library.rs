@@ -203,14 +203,11 @@ impl ShowLibrary {
     /// Create a new show with the given name.
     /// The expected folder hierarchy will be created, and an initial saved state will be recorded
     /// as well as an autosave.
-    pub fn create_new<C, N>(
+    pub fn create_new<C: Serialize>(
             library_path: &Path,
-            name: N,
+            name: String,
             console: &C)
-            -> Result<Self, LibraryError>
-        where C: Serialize, N: Into<String>
-    {
-        let name = name.into();
+            -> Result<Self, LibraryError> {
         let path = extend_path(library_path, &name);
         if let Err(e) = fs::create_dir(&path) {
             // Exists already or some weird error.
@@ -244,10 +241,8 @@ impl ShowLibrary {
 
     /// Open the library for an existing show.
     /// Nothing is checked about the show folder at this point except that it exists.
-    pub fn open_existing<N>(library_path: &Path, name: N) -> Result<Self, LibraryError>
-        where N: Into<String>
+    pub fn open_existing(library_path: &Path, name: String) -> Result<Self, LibraryError>
     {
-        let name = name.into();
         let path = extend_path(library_path, &name);
         if ! path.is_dir() {
             Err(LibraryError::ShowDoesNotExist(name))
@@ -257,6 +252,27 @@ impl ShowLibrary {
                 name: name,
                 base_folder: path,
             })
+        }
+    }
+
+    /// Rename this library.
+    /// The files will be moved on disk.
+    pub fn rename(&mut self, name: String) -> Result<(), LibraryError> {
+        let mut new_path = self.base_folder.clone();
+        new_path.pop();
+        new_path.push(&name);
+        if new_path.exists() {
+            Err(LibraryError::DuplicateName(name))
+        }
+        else {
+            if let Err(e) = fs::rename(&self.base_folder, &new_path) {
+                // if our rename failed, return the error
+                return Err(e.into());
+            }
+            // renamed successfully, mutate this library
+            self.name = name;
+            self.base_folder = new_path;
+            Ok(())
         }
     }
 

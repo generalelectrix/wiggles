@@ -36,6 +36,12 @@ pub enum Command<C> {
     Load(LoadShow),
     /// Save the current state of the show.
     Save,
+    /// Save the current show as a new show with a different name.  This show will become the one
+    /// running in the reactor.
+    SaveAs(String),
+    /// Change the name of the currently-running show.  This will move all of the files in the
+    /// saved show library.
+    Rename(String),
     /// Quit the console, cleanly closing down every running thread.
     Quit,
     /// A message to be passed into the console logic running in the reactor.
@@ -54,6 +60,8 @@ impl<C> From<C> for Command<C> {
 pub enum Response<R> {
     /// A new show was loaded, with this name.
     Loaded(String),
+    /// The running show's name changed.
+    Renamed(String),
     /// The show was saved successfully.
     Saved,
     /// A show library error occurred.
@@ -218,6 +226,24 @@ impl<C> Reactor<C>
                     Err(e) => Messages::one(Response::ShowLibErr(e)),
                 }
             }
+            Ok(Command::SaveAs(name)) => {
+                match ShowLibrary::create_new(&self.library_path, name.clone(), &self.console) {
+                    Err(e) => Messages::one(Response::ShowLibErr(e)),
+                    Ok(show_lib) => {
+                        // make an autosave in our current name to be thorough
+                        self.autosave();
+                        // swap just our show lib, since save as doesn't change the state of the show
+                        self.show_lib = show_lib;
+                        Messages::one(Response::Renamed(name))
+                    }
+                }
+            }
+            Ok(Command::Rename(name)) => {
+                match self.show_lib.rename(name.clone()) {
+                    Ok(()) => Messages::one(Response::Renamed(name)),
+                    Err(e) => Messages::one(Response::ShowLibErr(e)),
+                }
+            }
             Ok(Command::NewShow(name)) => {
                 Messages::one(self.new_show(name))
             }
@@ -276,7 +302,7 @@ impl<C> Reactor<C>
 
     fn load_show(&mut self, l: LoadShow) -> Response<C::Response> {
         debug!("Reactor is loading a show: {}", l);
-        match ShowLibrary::open_existing(&self.library_path, l.name.as_str()) {
+        match ShowLibrary::open_existing(&self.library_path, l.name) {
             Err(e) => Response::ShowLibErr(e),
             Ok(show_lib) => {
                 // try to load the save specified by the spec
