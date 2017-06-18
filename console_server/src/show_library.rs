@@ -177,7 +177,6 @@ impl ShowLibrary {
     /// The expected folder hierarchy will be created, and an initial saved state will be recorded
     /// as well as an autosave.
     pub fn create_new<C, N>(
-            &self,
             library_path: &Path,
             name: N,
             console: &C)
@@ -190,7 +189,7 @@ impl ShowLibrary {
             // Exists already or some weird error.
             // For UI purposes we'll just run with duplicate show but log the full error so we can
             // debug weirdness later.
-            error!("Could not create a show due to an error: {}", e);
+            error!("Could not create a new show due to an error: {}", e);
             return Err(LibraryError::DuplicateName(name));
         }
         let show = ShowLibrary {
@@ -216,43 +215,65 @@ impl ShowLibrary {
         Ok(show)
     }
 
+    /// Open the library for an existing show.
+    /// Nothing is checked about the show folder at this point except that it exists.
+    pub fn open_existing<C, N>(library_path: &Path, name: N) -> Result<Self, LibraryError>
+        where N: Into<String>
+    {
+        let name = name.into();
+        let path = extend_path(library_path, &name);
+        if ! path.is_dir() {
+            Err(LibraryError::ShowDoesNotExist(name))
+        }
+        else {
+            Ok(ShowLibrary {
+                name: name,
+                base_folder: path,
+            })
+        }
+    }
+
     /// Save a snapshot of the current state of this show, probably as the result of someone
     /// deciding to hit a save button somewhere.
-    fn save<C: Serialize>(&self, console: &C) -> Result<(), LibraryError> {
+    pub fn save<C: Serialize>(&self, console: &C) -> Result<(), LibraryError> {
         let now = Local::now();
         let filename = format!("{}{}", now.format(DATE_FORMAT), SAVE_EXTENSION);
         let path = extend_path(&self.base_folder, &filename);
+        debug!("Saving show '{}' to {:?}.", self.name, path);
         let file = fs::File::create(path)?;
         serde_json::to_writer_pretty(file, &console).map_err(Into::into)
     }
 
     /// Autosave a snapshot of the current state of this show.
-    fn autosave<C: Serialize>(&self, console: &C) -> Result<(), LibraryError> {
+    pub fn autosave<C: Serialize>(&self, console: &C) -> Result<(), LibraryError> {
         let now = Local::now();
         let filename = format!("{}{}", now.format(DATE_FORMAT), AUTOSAVE_EXTENSION);
         let path = extend_path(&self.autosave_dir(), &filename);
+        debug!("Autosaving show '{}' to {:?}.", self.name, path);
         let mut file = fs::File::create(path)?;
         bincode::serialize_into(&mut file, console, bincode::Infinite).map_err(Into::into)
-    }
-
-    /// Delete the show directory and all of its contents.
-    /// Errors here are logged but this function returns unconditionally.
-    fn delete(self) {
-        // Delete all autosave files.
-        remove_directory_and_files(&self.autosave_dir(), &[AUTOSAVE_EXTENSION]);
-        // Delete the show directory.
-        remove_directory_and_files(&self.base_folder, &[SAVE_EXTENSION, CLEAN_CLOSE_FILE]);
     }
 
     /// Load a saved version of this show.
     pub fn load<C: DeserializeOwned>(&self, spec: LoadSpec) -> Result<C, LibraryError> {
         use LoadSpec::*;
+        debug!("Loading state for show '{}' using spec {:?}.", self.name, spec);        
         match spec {
             Latest => self.load_latest(),
             Exact(name) => self.load_from_save_file(&name),
             LatestAutosave => self.load_latest_autosave(),
             ExactAutosave(name) => self.load_from_autosave_file(&name),
         }
+    }
+
+    /// Delete the show directory and all of its contents.
+    /// Errors here are logged but this function returns unconditionally.
+    fn delete(self) {
+        debug!("Deleting show '{}'.", self.name);
+        // Delete all autosave files.
+        remove_directory_and_files(&self.autosave_dir(), &[AUTOSAVE_EXTENSION]);
+        // Delete the show directory.
+        remove_directory_and_files(&self.base_folder, &[SAVE_EXTENSION, CLEAN_CLOSE_FILE]);
     }
 
     /// Return the path to the directory in which this show stores autosaves.
@@ -357,7 +378,7 @@ impl fmt::Display for LibraryError {
         match *self {
             DuplicateName(ref name) => write!(f, "Duplicate show name '{}'.", name),
             ShowDoesNotExist(ref name) => write!(f, "The show '{}' does not exist.", name),
-            SaveNotFound{name: ref name, save_name: ref save_name} =>
+            SaveNotFound{ref name, ref save_name} =>
                 write!(f, "Could not load the save file '{}' for show '{}'.", save_name, name),
             JsonError(ref e) => write!(f, "Show load error: {}", e),
             Bincode(ref e) => write!(f, "Autosave load error: {}", e),
@@ -392,8 +413,8 @@ impl Error for LibraryError {
     }
 }
 
+#[cfg(test)]
 mod test {
-    use super::*;
     
     #[test]
     fn test_index_of_latest_date() {
