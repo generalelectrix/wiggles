@@ -108,8 +108,9 @@ fn index_of_latest_date(candidates: &[String]) -> Option<usize> {
     let parser = FixedOffset::west(0);
     candidates.iter()
         .enumerate()
-        .filter_map(|(i, s)| {
-            parser.datetime_from_str(s, DATE_FORMAT)
+        .filter_map(|(i, filename)| {
+            let filename_no_ext = filename.split(".").next().unwrap_or(filename);
+            parser.datetime_from_str(filename_no_ext, DATE_FORMAT)
                 .ok()
                 .map(|t| (i, t))
         })
@@ -124,7 +125,6 @@ pub struct Show {
 }
 
 impl Show {
-
     /// Load a saved version of this show.
     pub fn load<C: Console>(&self, spec: LoadSpec) -> Result<C, LibraryError> {
         use LoadSpec::*;
@@ -134,22 +134,38 @@ impl Show {
         }
     }
 
-    fn 
+    /// Return the path to the directory in which this show stores autosaves.
+    fn autosave_dir(&self) -> PathBuf {
+        let base = self.base_folder.clone();
+        base.push(AUTOSAVE_DIR);
+        base
+    }
 
-    /// Load the latest save file we have for this show.
-    fn load_latest<C: Console>(&self) -> Result<C, LibraryError> {
+    /// Return the most recent save file name in this directory.
+    fn latest_filename(&self, base_folder: &Path) -> Result<String, LibraryError> {
         use LibraryError::*;
         let file_names = 
-            filenames(&self.base_folder)
+            filenames(base_folder)
             .map_err(|e| {
-                error!("Show folder '{:?}' could not be opened.", self.base_folder);
+                error!("Folder '{}' could not be opened.", base_folder.to_str().unwrap_or(""));
                 ShowDoesNotExist(self.name.clone())
             })?;
         let latest_index =
             index_of_latest_date(file_names.as_slice())
             .ok_or(SaveNotFound{name: self.name.clone(), save_name: "any".to_string()})?;
-        let filename = file_names[latest_index];
-        self.load_from_save_file(&file_names[latest_index])
+        Ok(file_names[latest_index])
+    }
+
+    /// Load the latest save file we have for this show.
+    fn load_latest<C: Console>(&self) -> Result<C, LibraryError> {
+        let filename = self.latest_filename(&self.base_folder)?;
+        self.load_from_save_file(&filename)
+    }
+    
+    /// Load the lastest autosave file we have for this show.
+    fn load_latest_autosave<C: Console>(&self) -> Result<C, LibraryError> {
+        let filename = self.latest_filename(&self.autosave_dir())?;
+        self.load_from_autosave_file(&filename)
     }
 
     /// Open a named file in base_dir.
@@ -168,34 +184,13 @@ impl Show {
 
     /// Try to load console state from this file name.
     fn load_from_save_file<C: Console>(&self, filename: &str) -> Result<C, LibraryError> {
-        let filepath = self.base_folder.clone();
-        filepath.set_file_name(filename);
-        let file =
-            fs::File::open(filepath)
-            .map_err(|e| {
-                error!("Could not open saved show file '{}' due to an error:\n{}", filename, e);
-                LibraryError::SaveNotFound {
-                    name: self.name.clone(),
-                    save_name: filename.to_string(),
-                }
-            })?;
+        let file = self.open_file(filename, &self.base_folder)?;
         serde_json::from_reader(file).map_err(Into::into)
     }
 
     /// Try to load console state from this autosave file name.
     fn load_from_autosave_file<C: Console>(&self, filename: &str) -> Result<C, LibraryError> {
-        let filepath = self.base_folder.clone();
-        filepath.push(AUTOSAVE_DIR);
-        filepath.set_file_name(filename);
-        let file =
-            fs::File::open(filepath)
-            .map_err(|e| {
-                error!("Could not open autosave file '{}' due to an error:\n{}", filename, e);
-                LibraryError::SaveNotFound {
-                    name: self.name.clone(),
-                    save_name: filename.to_string(),
-                }
-            })?;
+        let file = self.open_file(filename, &self.autosave_dir())?;
         bincode::deserialize_from(&mut file, bincode::Infinite).map_err(Into::into)
     }
 }
