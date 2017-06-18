@@ -124,7 +124,7 @@ fn extend_path(lib: &Path, name: &str) -> PathBuf {
 fn remove_directory_and_files(path: &Path, extensions: &[&str]) {
     // First make sure that there are no subdirectories or unexpected file types.
     // To be extra paranoid, keep a hand-curated list of files to delete and only delete them.
-    let files_to_remove = Vec::new();
+    let mut files_to_remove = Vec::new();
 
     match fs::read_dir(&path) {
         Err(e) => error!("Could not read the directory '{:?}' because of an error: {}", path, e),
@@ -145,7 +145,7 @@ fn remove_directory_and_files(path: &Path, extensions: &[&str]) {
                 for ext in extensions {
                     if file_name.ends_with(ext) {
                         valid_extension = true;
-                        files_to_remove.push(file_name);
+                        files_to_remove.push(file_name.clone());
                         break;
                     }
                 }
@@ -218,12 +218,21 @@ impl ShowLibrary {
 
     /// Save a snapshot of the current state of this show, probably as the result of someone
     /// deciding to hit a save button somewhere.
-    fn save<C: Serialize>(&self, console: C) -> Result<(), LibraryError> {
+    fn save<C: Serialize>(&self, console: &C) -> Result<(), LibraryError> {
         let now = Local::now();
         let filename = format!("{}{}", now.format(DATE_FORMAT), SAVE_EXTENSION);
         let path = extend_path(&self.base_folder, &filename);
         let file = fs::File::create(path)?;
         serde_json::to_writer_pretty(file, &console).map_err(Into::into)
+    }
+
+    /// Autosave a snapshot of the current state of this show.
+    fn autosave<C: Serialize>(&self, console: &C) -> Result<(), LibraryError> {
+        let now = Local::now();
+        let filename = format!("{}{}", now.format(DATE_FORMAT), AUTOSAVE_EXTENSION);
+        let path = extend_path(&self.autosave_dir(), &filename);
+        let mut file = fs::File::create(path)?;
+        bincode::serialize_into(&mut file, console, bincode::Infinite).map_err(Into::into)
     }
 
     /// Delete the show directory and all of its contents.
