@@ -180,6 +180,10 @@ fn remove_directory_and_files(path: &Path, extensions: &[&str]) {
 }
 
 impl ShowLibrary {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     /// Create a new show with the given name.
     /// The expected folder hierarchy will be created, and an initial saved state will be recorded
     /// as well as an autosave.

@@ -26,6 +26,8 @@ use show_library::{ShowLibrary, LibraryError, LoadShow};
 /// a different show are all considered top-level commands, as they require swapping out the state
 /// of the reactor.
 pub enum Command<C> {
+    /// Create a new, empty show.
+    NewShow(String),
     /// Load a show using this spec.
     Load(LoadShow),
     /// Save the current state of the show.
@@ -125,16 +127,21 @@ pub trait Console: Serialize + DeserializeOwned {
 pub struct Reactor<C>
     where C: Console
         {
+    /// Stored constructor that the reactor can use to create a new, empty show.
+    console_constructor: Box<Fn()->C>,
     /// The path where this console is storing its saved shows.
     library_path: PathBuf,
     /// The on-disk library of saved states for this show.
     show_lib: ShowLibrary,
     /// The actual core show logic.
     console: C,
-    /// 
+    /// The source of show events, polled by the reactor.
     event_source: EventLoop,
+    /// Channel on which the reactor will receive commands.
     cmd_queue: Receiver<Command<C::Command>>,
+    /// Channel on which the reactor will send responses to commands or spontaneously emit messages.
     resp_queue: Sender<Response<C::Response>>,
+    /// If true, the reactor loop will exit at the start of its next iteration.
     quit: bool,
 }
 
@@ -143,40 +150,50 @@ impl<C> Reactor<C>
         {
     /// Run the console reactor.
     pub fn run(&mut self) {
-        'event: loop {
-            if self.quit {
-                info!("Reactor is quitting.");
-                break 'event;
-            }
-            let msgs = match self.event_source.next() {
-                Event::Idle(dt) => {
-                    self.poll_command(dt)
-                },
-                Event::Autosave => {
-                    self.autosave();
-                    Messages::none()
-                },
-                Event::Render => { 
-                    Messages::wrap(self.console.render())
-                },
-                Event::Update(dt) => {
-                    Messages::wrap(self.console.update(dt))
-                },
-            };
-            for msg in msgs.0 {
-                match self.resp_queue.send(msg) {
-                    Ok(_) => (),
-                    Err(_) => {
-                        // The response sink hung up.
-                        // This should only be able to happen if the control server panicked.
-                        // Not much we can do here except autosave and quit.
-                        error!("Console response sink hung up.");
-                        self.abort();
-                        break 'event;
-                    }
+        let mut running = true;
+        info!("Console reactor is starting.");
+        while running {
+            running = self.run_one_iteration();
+        }
+        info!("Console reactor quit.");
+    }
+
+    /// Run one iteration of the event loop.
+    /// Return true if the loop should run another iteration, or false if we should break.
+    fn run_one_iteration(&mut self) -> bool {
+        if self.quit {
+            info!("Reactor is quitting.");
+            return false;
+        }
+        let msgs = match self.event_source.next() {
+            Event::Idle(dt) => {
+                self.poll_command(dt)
+            },
+            Event::Autosave => {
+                self.autosave();
+                Messages::none()
+            },
+            Event::Render => { 
+                Messages::wrap(self.console.render())
+            },
+            Event::Update(dt) => {
+                Messages::wrap(self.console.update(dt))
+            },
+        };
+        for msg in msgs.0 {
+            match self.resp_queue.send(msg) {
+                Ok(_) => (),
+                Err(_) => {
+                    // The response sink hung up.
+                    // This should only be able to happen if the control server panicked.
+                    // Not much we can do here except autosave and quit.
+                    error!("Console response sink hung up.");
+                    self.abort();
+                    return false;
                 }
             }
         }
+        true
     }
 
     fn poll_command(&mut self, dt: Duration) -> Messages<Response<C::Response>> {
@@ -196,6 +213,9 @@ impl<C> Reactor<C>
                     Ok(()) => Messages::one(Response::Saved),
                     Err(e) => Messages::one(Response::ShowLibErr(e)),
                 }
+            }
+            Ok(Command::NewShow(name)) => {
+                Messages::one(self.new_show(name))
             }
             Ok(Command::Load(l)) => {
                 Messages::one(self.load_show(l))
@@ -235,14 +255,23 @@ impl<C> Reactor<C>
     /// Save the current state of the show to a slow but human-readable format.
     fn save(&self) -> Result<(), LibraryError> {
         self.show_lib.save(&self.console)
-            .map_err(|e| {
-                error!("Show save failed: {}", e);
-                e
-            })
+    }
+
+    /// Create a fresh, empty show, saved with this name.
+    fn new_show(&mut self, name: String) -> Response<C::Response> {
+        debug!("Reactor is creating a new show: {}.", name);
+        let new_console = (self.console_constructor)();
+        match ShowLibrary::create_new(&self.library_path, name, &new_console) {
+            Err(e) => Response::ShowLibErr(e),
+            Ok(show_lib) => {
+                // swap the fresh show in
+                self.swap_show(show_lib, new_console)
+            }
+        }
     }
 
     fn load_show(&mut self, l: LoadShow) -> Response<C::Response> {
-        debug!("Reactor is loading a new show: {}", l);
+        debug!("Reactor is loading a show: {}", l);
         match ShowLibrary::open_existing(&self.library_path, l.name.as_str()) {
             Err(e) => Response::ShowLibErr(e),
             Ok(show_lib) => {
@@ -251,17 +280,23 @@ impl<C> Reactor<C>
                     Err(e) => Response::ShowLibErr(e),
                     Ok(console) => {
                         // we successfully loaded the new show
-                        // save our existing show, swap the console state out, and reset the state
-                        // of the event loop
-                        self.autosave();
-                        self.save();
-                        self.console = console;
-                        self.event_source.reset();
-                        Response::Loaded(l.name)
+                        // swap out the running show
+                        self.swap_show(show_lib, console)
                     }
                 }
             }
         }
+    }
 
+    /// Swap the show running in the reactor.  Save the running show before doing so.
+    fn swap_show(&mut self, show_lib: ShowLibrary, console: C) -> Response<C::Response> {
+        self.autosave();
+        if let Err(e) = self.save() {
+            error!("The running show failed to save before loading a new show.  Error: {}", e);
+        }
+        self.show_lib = show_lib;
+        self.console = console;
+        self.event_source.reset();
+        Response::Loaded(self.show_lib.name().to_string())
     }
 }
