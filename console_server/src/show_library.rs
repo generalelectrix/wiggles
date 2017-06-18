@@ -25,30 +25,20 @@ const AUTOSAVE_DIR: &'static str = "autosave";
 
 /// Top-level object owning a path to the directory that this console saves and loads shows from.
 pub struct Shows {
-    base_folder: PathBuf,
+    library_folder: PathBuf,
 }
 
 impl Shows {
-    pub fn new(base_folder: PathBuf) -> Self {
+    pub fn new(library_folder: PathBuf) -> Self {
         Shows {
-            base_folder: base_folder,
+            library_folder: library_folder,
         }
     }
 
-    /// Open a show by name.
-    fn open<N: Into<String>>(&self, name: N) -> Result<Show, LibraryError> {
-        let name = name.into();
-        let mut show_path = self.base_folder.clone();
-        show_path.push(&name);
-        if ! show_path.is_dir() {
-            Err(LibraryError::ShowDoesNotExist(name))
-        }
-        else {
-            Ok(Show {
-                base_folder: show_path,
-                name: name,
-            })
-        }
+    fn path_for_show(&self, name: &str) -> PathBuf {
+        let mut show_path = self.library_folder.clone();
+        show_path.push(name);
+        show_path
     }
 }
 
@@ -119,12 +109,120 @@ fn index_of_latest_date(candidates: &[String]) -> Option<usize> {
 }
 
 /// Helper object for interacting with a single show.
-pub struct Show {
+pub struct ShowLibrary {
     name: String,
     base_folder: PathBuf,
 }
 
-impl Show {
+/// Clone this path and push a new element onto the end.
+fn extend_path(lib: &Path, name: &str) -> PathBuf {
+    let mut path = lib.to_path_buf();
+    path.push(name);
+    path
+}
+
+/// Delete every file in this directory with the specified extension(s) and the enclosing directory.
+/// Does nothing if the directory contains subdirectories or any file with an extension beside
+/// those provided.  Extensions should be provided with a leading period.
+/// Returns nothing, but logs anything unexpected that happens.
+fn remove_directory_and_files(path: &Path, extensions: &[&str]) {
+    // First make sure that there are no subdirectories or unexpected file types.
+    // To be extra paranoid, keep a hand-curated list of files to delete and only delete them.
+    let files_to_remove = Vec::new();
+
+    match fs::read_dir(&path) {
+        Err(e) => error!("Could not read the directory '{:?}' because of an error: {}", path, e),
+        Ok(items) => {
+
+            for item in items.filter_map(Result::ok) {
+                // If this is a directory (or if we can't determine if it is or not), do not proceed.
+                if item.file_type().map(|f| f.is_dir()).unwrap_or(true) {
+                    error!(
+                        "Not removing directory '{:?}' as it contains a subdirectory '{:?}'.",
+                        path,
+                        item.file_name());
+                    return
+                }
+                // The item is definitely a file, see if it ends with a valid extension.
+                let file_name = item.file_name().into_string().unwrap_or("".to_string());
+                let mut valid_extension = false;
+                for ext in extensions {
+                    if file_name.ends_with(ext) {
+                        valid_extension = true;
+                        files_to_remove.push(file_name);
+                        break;
+                    }
+                }
+                // This file didn't have a valid extension abort removal.
+                if ! valid_extension {
+                    error!(
+                        "Not removing directory '{:?}' as file '{}' has an unrecognized extension.",
+                        path,
+                        file_name);
+                    return
+                }
+            }
+            // We're good to go to delete this directory.
+        }
+    }
+    for filename in files_to_remove {
+        if let Err(e) = fs::remove_file(extend_path(path, &filename)) {
+            error!("Error when removing file {}: {}", filename, e);
+        }
+    }
+    // Try to delete the directory.
+    if let Err(e) = fs::remove_dir(path) {
+        error!("Error when removing directory {:?}: {}", path, e);
+    }
+}
+
+impl ShowLibrary {
+    /// Create a new show with the given name.
+    /// The expected folder hierarchy will be created, and an initial saved state will be recorded
+    /// as well as an autosave.
+    pub fn create_new<C, N>(
+            &self,
+            library_path: &Path,
+            name: N,
+            console: &C)
+            -> Result<Self, LibraryError>
+        where C: Console, N: Into<String>
+    {
+        let name = name.into();
+        let path = extend_path(library_path, &name);
+        if let Err(e) = fs::create_dir(&path) {
+            // Exists already or some weird error.
+            // For UI purposes we'll just run with duplicate show but log the full error so we can
+            // debug weirdness later.
+            error!("Could not create a show due to an error: {}", e);
+            return Err(LibraryError::DuplicateName(name));
+        }
+        let show = ShowLibrary {
+            name: name,
+            base_folder: path,
+        };
+        // Try to create the autosave directory.  If this fails, we'll clean up the original to make
+        // sure we don't have rogue stuff in the library folder.
+        if let Err(e) = fs::create_dir(show.autosave_dir()) {
+            error!("Could not create autosave dir due to an error: {}", e);
+            if let Err(remove_dir_err) = fs::remove_dir(&show.base_folder) {
+                error!("Error trying to remove show directory: {}", remove_dir_err);
+            }
+            return Err(LibraryError::DuplicateName(name));
+        }
+        // 
+        Ok(show)
+    }
+
+    /// Delete the show directory and all of its contents.
+    /// Errors here are logged but this function returns unconditionally.
+    fn delete(self) {
+        // Delete all autosave files.
+        for file in fs::read_dir(self.autosave_dir()) {
+
+        }
+    }
+
     /// Load a saved version of this show.
     pub fn load<C: Console>(&self, spec: LoadSpec) -> Result<C, LibraryError> {
         use LoadSpec::*;
@@ -208,6 +306,8 @@ pub enum LibraryError {
     LoadError(serde_json::Error),
     /// An error occurred during autosave deserialization.
     AutosaveLoadError(bincode::Error),
+    /// A show of this name already exists.
+    DuplicateName(String),
 }
 
 impl From<serde_json::Error> for LibraryError {
@@ -226,6 +326,7 @@ impl fmt::Display for LibraryError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use LibraryError::*;
         match *self {
+            DuplicateName(ref name) => write!(f, "Duplicate show name '{}'.", name),
             ShowDoesNotExist(ref name) => write!(f, "The show '{}' does not exist.", name),
             SaveNotFound{name: ref name, save_name: ref save_name} =>
                 write!(f, "Could not load the save file '{}' for show '{}'.", save_name, name),
@@ -239,6 +340,7 @@ impl Error for LibraryError {
     fn description(&self) -> &str {
         use LibraryError::*;
         match *self {
+            DuplicateName(_) => "Duplicate show name.",
             ShowDoesNotExist(_) => "Show does not exist.",
             SaveNotFound{..} => "Save file not found.",
             LoadError(_) => "Show could not be loaded.",
@@ -249,6 +351,7 @@ impl Error for LibraryError {
     fn cause(&self) -> Option<&Error> {
         use LibraryError::*;
         match *self {
+            DuplicateName(_) => None,
             ShowDoesNotExist(_) => None,
             SaveNotFound{..} => None,
             LoadError(ref e) => Some(e),
