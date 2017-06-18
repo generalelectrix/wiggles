@@ -21,7 +21,7 @@ use chrono::prelude::{TimeZone, FixedOffset};
 use serde_json;
 use bincode;
 
-const AUTOSAVE_DIR: &'static Path = Path::new("autosave");
+const AUTOSAVE_DIR: &'static str = "autosave";
 
 /// Top-level object owning a path to the directory that this console saves and loads shows from.
 pub struct Shows {
@@ -131,12 +131,14 @@ impl Show {
         match spec {
             Latest => self.load_latest(),
             Exact(name) => self.load_from_save_file(&name),
+            LatestAutosave => self.load_latest_autosave(),
+            ExactAutosave(name) => self.load_from_autosave_file(&name),
         }
     }
 
     /// Return the path to the directory in which this show stores autosaves.
     fn autosave_dir(&self) -> PathBuf {
-        let base = self.base_folder.clone();
+        let mut base = self.base_folder.clone();
         base.push(AUTOSAVE_DIR);
         base
     }
@@ -144,7 +146,7 @@ impl Show {
     /// Return the most recent save file name in this directory.
     fn latest_filename(&self, base_folder: &Path) -> Result<String, LibraryError> {
         use LibraryError::*;
-        let file_names = 
+        let mut file_names = 
             filenames(base_folder)
             .map_err(|e| {
                 error!("Folder '{}' could not be opened.", base_folder.to_str().unwrap_or(""));
@@ -153,7 +155,7 @@ impl Show {
         let latest_index =
             index_of_latest_date(file_names.as_slice())
             .ok_or(SaveNotFound{name: self.name.clone(), save_name: "any".to_string()})?;
-        Ok(file_names[latest_index])
+        Ok(file_names.swap_remove(latest_index))
     }
 
     /// Load the latest save file we have for this show.
@@ -170,7 +172,7 @@ impl Show {
 
     /// Open a named file in base_dir.
     fn open_file(&self, filename: &str, base_dir: &Path) -> Result<fs::File, LibraryError> {
-        let filepath = PathBuf::from(base_dir);
+        let mut filepath = PathBuf::from(base_dir);
         filepath.set_file_name(filename);
         fs::File::open(filepath)
         .map_err(|e| {
@@ -190,7 +192,7 @@ impl Show {
 
     /// Try to load console state from this autosave file name.
     fn load_from_autosave_file<C: Console>(&self, filename: &str) -> Result<C, LibraryError> {
-        let file = self.open_file(filename, &self.autosave_dir())?;
+        let mut file = self.open_file(filename, &self.autosave_dir())?;
         bincode::deserialize_from(&mut file, bincode::Infinite).map_err(Into::into)
     }
 }
