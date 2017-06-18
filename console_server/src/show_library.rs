@@ -9,7 +9,6 @@
 //! Inside this folder is a folder named "autosave" which stores show snapshots in a more compact
 //! but non-human-readable binary format, probably bincode.  These autosaves are saved with the same
 //! filename as a regular save but with the extension .wiggles
-use super::Console;
 use std::path::{Path, PathBuf};
 use std::ffi::OsString;
 use std::marker::PhantomData;
@@ -17,30 +16,26 @@ use std::error::Error;
 use std::io::Error as IoError;
 use std::fmt;
 use std::fs;
+use serde::{Serialize};
+use serde::de::DeserializeOwned;
 use chrono::prelude::{TimeZone, FixedOffset};
 use serde_json;
 use bincode;
 
+/// 
 const AUTOSAVE_DIR: &'static str = "autosave";
 
-/// Top-level object owning a path to the directory that this console saves and loads shows from.
-pub struct Shows {
-    library_folder: PathBuf,
-}
+/// Format string used for parsing and writing save files.
+/// 2017-06-17_15:44:32_345768000
+/// Note the absence of period characters, so we can naively strip off the file extension when
+/// parsing.
+const DATE_FORMAT: &'static str = "%Y-%m-%d_%H:%M:%S_%f";
 
-impl Shows {
-    pub fn new(library_folder: PathBuf) -> Self {
-        Shows {
-            library_folder: library_folder,
-        }
-    }
-
-    fn path_for_show(&self, name: &str) -> PathBuf {
-        let mut show_path = self.library_folder.clone();
-        show_path.push(name);
-        show_path
-    }
-}
+const AUTOSAVE_EXTENSION: &'static str = ".wiggles_autosave";
+const SAVE_EXTENSION: &'static str = ".wiggles";
+// If we cleanly close a show, we will create this file.
+// Upon load, if it is missing, we will prompt to restore from autosave or use last regular save.
+const CLEAN_CLOSE_FILE: &'static str = ".clean_close";
 
 #[derive(Debug)]
 pub struct Load {
@@ -67,18 +62,6 @@ impl fmt::Display for LoadSpec {
         }
     }
 }
-
-/// Format string used for parsing and writing save files.
-/// 2017-06-17_15:44:32_345768000
-/// Note the absence of period characters, so we can naively strip off the file extension when
-/// parsing.
-const DATE_FORMAT: &'static str = "%Y-%m-%d_%H:%M:%S_%f";
-
-const AUTOSAVE_EXTENSION: &'static str = ".wiggles_autosave";
-const SAVE_EXTENSION: &'static str = ".wiggles";
-// If we cleanly close a show, we will create this file.
-// Upon load, if it is missing, we will prompt to restore from autosave or use last regular save.
-const CLEAN_CLOSE_FILE: &'static str = ".clean_close";
 
 /// Return a vector of the file names in this directory.
 fn filenames(dir: &Path) -> Result<Vec<String>, IoError> {
@@ -192,7 +175,7 @@ impl ShowLibrary {
             name: N,
             console: &C)
             -> Result<Self, LibraryError>
-        where C: Console, N: Into<String>
+        where C: Serialize, N: Into<String>
     {
         let name = name.into();
         let path = extend_path(library_path, &name);
@@ -215,11 +198,11 @@ impl ShowLibrary {
             return Err(LibraryError::DuplicateName(name));
         }
         // Make initial save and autosave of this show.
-        if let Err(e) = show.autosave() {
+        if let Err(e) = show.autosave(console) {
             show.delete();
             return Err(e);
         }
-        if let Err(e) = show.save() {
+        if let Err(e) = show.save(console) {
             show.delete();
             return Err(e);
         }
@@ -236,7 +219,7 @@ impl ShowLibrary {
     }
 
     /// Load a saved version of this show.
-    pub fn load<C: Console>(&self, spec: LoadSpec) -> Result<C, LibraryError> {
+    pub fn load<C: DeserializeOwned>(&self, spec: LoadSpec) -> Result<C, LibraryError> {
         use LoadSpec::*;
         match spec {
             Latest => self.load_latest(),
@@ -269,13 +252,13 @@ impl ShowLibrary {
     }
 
     /// Load the latest save file we have for this show.
-    fn load_latest<C: Console>(&self) -> Result<C, LibraryError> {
+    fn load_latest<C: DeserializeOwned>(&self) -> Result<C, LibraryError> {
         let filename = self.latest_filename(&self.base_folder)?;
         self.load_from_save_file(&filename)
     }
     
     /// Load the lastest autosave file we have for this show.
-    fn load_latest_autosave<C: Console>(&self) -> Result<C, LibraryError> {
+    fn load_latest_autosave<C: DeserializeOwned>(&self) -> Result<C, LibraryError> {
         let filename = self.latest_filename(&self.autosave_dir())?;
         self.load_from_autosave_file(&filename)
     }
@@ -295,13 +278,13 @@ impl ShowLibrary {
     }
 
     /// Try to load console state from this file name.
-    fn load_from_save_file<C: Console>(&self, filename: &str) -> Result<C, LibraryError> {
+    fn load_from_save_file<C: DeserializeOwned>(&self, filename: &str) -> Result<C, LibraryError> {
         let file = self.open_file(filename, &self.base_folder)?;
         serde_json::from_reader(file).map_err(Into::into)
     }
 
     /// Try to load console state from this autosave file name.
-    fn load_from_autosave_file<C: Console>(&self, filename: &str) -> Result<C, LibraryError> {
+    fn load_from_autosave_file<C: DeserializeOwned>(&self, filename: &str) -> Result<C, LibraryError> {
         let mut file = self.open_file(filename, &self.autosave_dir())?;
         bincode::deserialize_from(&mut file, bincode::Infinite).map_err(Into::into)
     }
