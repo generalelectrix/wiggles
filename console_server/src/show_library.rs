@@ -126,7 +126,8 @@ fn index_of_latest_date<T>(candidates: &[T]) -> Option<usize>
         .map(|(i, _)| i)
 }
 
-/// Helper object for interacting with a single show.
+/// Helper object for interacting with a the save library for a show.
+#[derive(Debug, Eq, PartialEq)]
 pub struct ShowLibrary {
     name: String,
     base_folder: PathBuf,
@@ -596,5 +597,9 @@ mod test {
         // We should have two autosaves and two saves now.
         assert_eq!(2, show_lib.autosaves().unwrap().len());
         assert_eq!(2, show_lib.saves().unwrap().len());
+
+        // Test opening another view into the library.
+        let show_lib_1 = ShowLibrary::open_existing(&lib.lib_path, "test show").unwrap();
+        assert_eq!(show_lib, show_lib_1);
     }
 }
