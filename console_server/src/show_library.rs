@@ -203,11 +203,12 @@ impl ShowLibrary {
     /// Create a new show with the given name.
     /// The expected folder hierarchy will be created, and an initial saved state will be recorded
     /// as well as an autosave.
-    pub fn create_new<C: Serialize>(
+    pub fn create_new<C: Serialize, N: Into<String>>(
             library_path: &Path,
-            name: String,
+            name: N,
             console: &C)
             -> Result<Self, LibraryError> {
+        let name = name.into();
         let path = extend_path(library_path, &name);
         if let Err(e) = fs::create_dir(&path) {
             // Exists already or some weird error.
@@ -241,8 +242,10 @@ impl ShowLibrary {
 
     /// Open the library for an existing show.
     /// Nothing is checked about the show folder at this point except that it exists.
-    pub fn open_existing(library_path: &Path, name: String) -> Result<Self, LibraryError>
+    pub fn open_existing<N>(library_path: &Path, name: N) -> Result<Self, LibraryError>
+        where N: Into<String>
     {
+        let name = name.into();
         let path = extend_path(library_path, &name);
         if ! path.is_dir() {
             Err(LibraryError::ShowDoesNotExist(name))
@@ -257,7 +260,8 @@ impl ShowLibrary {
 
     /// Rename this library.
     /// The files will be moved on disk.
-    pub fn rename(&mut self, name: String) -> Result<(), LibraryError> {
+    pub fn rename<N: Into<String>>(&mut self, name: N) -> Result<(), LibraryError> {
+        let name = name.into();
         let mut new_path = self.base_folder.clone();
         new_path.pop();
         new_path.push(&name);
@@ -641,5 +645,18 @@ mod test {
         assert!(show_lib_path.exists());
         show_lib.delete();
         assert!(!show_lib_path.exists());
+    }
+
+    #[test]
+    fn test_rename() {
+        let lib = TestLibrary::new("test_rename");
+        let mut d = MockConsole::new();
+        let mut show_lib = ShowLibrary::create_new(&lib.lib_path, "test show", &d).unwrap();
+        let original_path = show_lib.base_folder.clone();
+        let new_name = "a different name";
+        show_lib.rename(new_name).unwrap();
+        assert!(!original_path.exists());
+        assert!(show_lib.base_folder.exists());
+        assert_eq!(new_name, show_lib.base_folder.file_name().unwrap());
     }
 }

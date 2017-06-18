@@ -221,6 +221,7 @@ impl<C> Reactor<C>
                 Messages::one(Response::Quit)
             },
             Ok(Command::Save) => {
+                info!("Saving show.");
                 match self.save() {
                     Ok(()) => Messages::one(Response::Saved),
                     Err(e) => Messages::one(Response::ShowLibErr(e)),
@@ -230,6 +231,7 @@ impl<C> Reactor<C>
                 match ShowLibrary::create_new(&self.library_path, name.clone(), &self.console) {
                     Err(e) => Messages::one(Response::ShowLibErr(e)),
                     Ok(show_lib) => {
+                        debug!("Saving show as '{}'.", name);
                         // make an autosave in our current name to be thorough
                         self.autosave();
                         // swap just our show lib, since save as doesn't change the state of the show
@@ -239,12 +241,14 @@ impl<C> Reactor<C>
                 }
             }
             Ok(Command::Rename(name)) => {
+                debug!("Renaming show as '{}'.", name);
                 match self.show_lib.rename(name.clone()) {
                     Ok(()) => Messages::one(Response::Renamed(name)),
                     Err(e) => Messages::one(Response::ShowLibErr(e)),
                 }
             }
             Ok(Command::NewShow(name)) => {
+                debug!("Creating a new show.");
                 Messages::one(self.new_show(name))
             }
             Ok(Command::Load(l)) => {
