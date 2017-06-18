@@ -98,6 +98,12 @@ impl EventLoop {
         }
     }
 
+    /// Reset the state of the event loop to a state where every event happened right now.
+    pub fn reset(&mut self) {
+        self.last = LastEvents::new(Instant::now());
+    }
+
+    /// Generate the next event.
     pub fn next(&mut self) -> Event {
         let now = Instant::now();
         next_event(now, &self.settings, &mut self.last)

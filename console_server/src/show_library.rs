@@ -45,9 +45,15 @@ const SAVE_EXTENSION: &'static str = ".wiggles";
 const CLEAN_CLOSE_FILE: &'static str = ".clean_close";
 
 #[derive(Debug)]
-pub struct Load {
-    show_name: String,
-    spec: LoadSpec,
+pub struct LoadShow {
+    pub name: String,
+    pub spec: LoadSpec,
+}
+
+impl fmt::Display for LoadShow {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Load show '{}' from {}.", self.name, self.spec)
+    } 
 }
 
 #[derive(Debug)]
@@ -60,12 +66,11 @@ pub enum LoadSpec {
 
 impl fmt::Display for LoadSpec {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use LoadSpec::*;
         match *self {
-            Latest => write!(f, "latest save"),
-            LatestAutosave => write!(f, "latest autosave"),
-            Exact(ref s) => write!(f, "the saved file '{}'", s),
-            ExactAutosave(ref s) => write!(f, "the autosaved file '{}'", s),
+            LoadSpec::Latest => write!(f, "the latest save"),
+            LoadSpec::LatestAutosave => write!(f, "the latest autosave"),
+            LoadSpec::Exact(ref s) => write!(f, "the saved file '{}'", s),
+            LoadSpec::ExactAutosave(ref s) => write!(f, "the autosaved file '{}'", s),
         }
     }
 }
@@ -89,19 +94,21 @@ fn filenames(dir: &Path) -> Result<Vec<String>, IoError> {
 /// Parse a slice of strings as dates and return the index of the latest one, or None if none were
 /// valid dates.  It is assumed these strings represent filenames, so their extension will be
 /// stripped before date parsing.
-fn index_of_latest_date(candidates: &[String]) -> Option<usize> {
+fn index_of_latest_date<T>(candidates: &[T]) -> Option<usize>
+    where T: AsRef<str>
+        {
     // We just care about local times, ignore offset from UTC.
     let parser = FixedOffset::west(0);
     candidates.iter()
         .enumerate()
         .filter_map(|(i, filename)| {
-            let filename_no_ext = filename.split(".").next().unwrap_or(filename);
+            let filename_no_ext = filename.as_ref().split(".").next().unwrap_or(filename.as_ref());
             parser.datetime_from_str(filename_no_ext, DATE_FORMAT)
                 .ok()
                 .map(|t| (i, t))
         })
-        .max_by_key(|&(i, t)| t)
-        .map(|(i, t)| i)
+        .max_by_key(|&(_, t)| t)
+        .map(|(i, _)| i)
 }
 
 /// Helper object for interacting with a single show.
@@ -217,7 +224,7 @@ impl ShowLibrary {
 
     /// Open the library for an existing show.
     /// Nothing is checked about the show folder at this point except that it exists.
-    pub fn open_existing<C, N>(library_path: &Path, name: N) -> Result<Self, LibraryError>
+    pub fn open_existing<N>(library_path: &Path, name: N) -> Result<Self, LibraryError>
         where N: Into<String>
     {
         let name = name.into();
@@ -255,14 +262,13 @@ impl ShowLibrary {
     }
 
     /// Load a saved version of this show.
-    pub fn load<C: DeserializeOwned>(&self, spec: LoadSpec) -> Result<C, LibraryError> {
-        use LoadSpec::*;
+    pub fn load<C: DeserializeOwned>(&self, spec: &LoadSpec) -> Result<C, LibraryError> {
         debug!("Loading state for show '{}' using spec {:?}.", self.name, spec);        
-        match spec {
-            Latest => self.load_latest(),
-            Exact(name) => self.load_from_save_file(&name),
-            LatestAutosave => self.load_latest_autosave(),
-            ExactAutosave(name) => self.load_from_autosave_file(&name),
+        match *spec {
+            LoadSpec::Latest => self.load_latest(),
+            LoadSpec::Exact(ref name) => self.load_from_save_file(name),
+            LoadSpec::LatestAutosave => self.load_latest_autosave(),
+            LoadSpec::ExactAutosave(ref name) => self.load_from_autosave_file(name),
         }
     }
 
@@ -415,12 +421,13 @@ impl Error for LibraryError {
 
 #[cfg(test)]
 mod test {
+    use super::*;
     
     #[test]
     fn test_index_of_latest_date() {
-        let d0 = "2017-10-01_09:07:32.678945000";
-        let d1 = "2017-10-01_09:09:32.456213000";
-        let d2 = "2017-10-01_09:09:37.345679785";
+        let d0 = "2017-10-01_09:07:32_678945000";
+        let d1 = "2017-10-01_09:09:32_456213000";
+        let d2 = "2017-10-01_09:09:37_345679785";
         let baddate = "baddate";
         
         assert_eq!(index_of_latest_date(&[baddate]), None);

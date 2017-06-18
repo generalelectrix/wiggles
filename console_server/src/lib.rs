@@ -10,6 +10,7 @@ extern crate bincode;
 extern crate chrono;
 #[macro_use] extern crate log;
 
+use std::path::PathBuf;
 use event_loop::{EventLoop, Event};
 use std::error::Error;
 use std::sync::mpsc::{channel, Sender, Receiver, RecvTimeoutError};
@@ -18,7 +19,7 @@ use smallvec::SmallVec;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use show_library::{ShowLibrary, LibraryError, LoadSpec};
+use show_library::{ShowLibrary, LibraryError, LoadShow};
 
 /// Outer command wrapper for the reactor, exposing administrative commands on top of the internal
 /// commands that the console itself provides.  Quitting the console, saving the show, and loading
@@ -26,7 +27,9 @@ use show_library::{ShowLibrary, LibraryError, LoadSpec};
 /// of the reactor.
 pub enum Command<C> {
     /// Load a show using this spec.
-    Load(LoadSpec),
+    Load(LoadShow),
+    /// Save the current state of the show.
+    Save,
     /// Quit the console, cleanly closing down every running thread.
     Quit,
     /// A message to be passed into the console logic running in the reactor.
@@ -42,18 +45,20 @@ impl<C> From<C> for Command<C> {
 /// Outer command wrapper for a response from the reactor, exposing messages indicating
 /// that administrative actions have occurred, as well as passing on messages from the console
 /// logic running in the reactor.
-pub enum Response<R, LE: Error> {
+pub enum Response<R> {
     /// A new show was loaded, with this name.
     Loaded(String),
-    /// Show load failed.
-    LoadFailed(LE),
+    /// The show was saved successfully.
+    Saved,
+    /// A show library error occurred.
+    ShowLibErr(LibraryError),
     /// The console is going to quit.
     Quit,
     /// A response emanting from the console itself.
     Console(R),
 }
 
-impl<R, LE: Error> From<R> for Response<R, LE> {
+impl<R> From<R> for Response<R> {
     fn from(msg: R) -> Self {
         Response::Console(msg)
     }
@@ -117,9 +122,11 @@ pub trait Console: Serialize + DeserializeOwned {
 /// renders the state of the show, and potentially keeps a store of autosaved data to ensure the
 /// console can recover from a crash without total disaster (even if you never remembered to hit
 /// save).
-pub struct Reactor<C, LE>
-    where C: Console, LE: Error
+pub struct Reactor<C>
+    where C: Console
         {
+    /// The path where this console is storing its saved shows.
+    library_path: PathBuf,
     /// The on-disk library of saved states for this show.
     show_lib: ShowLibrary,
     /// The actual core show logic.
@@ -127,12 +134,12 @@ pub struct Reactor<C, LE>
     /// 
     event_source: EventLoop,
     cmd_queue: Receiver<Command<C::Command>>,
-    resp_queue: Sender<Response<C::Response, LE>>,
+    resp_queue: Sender<Response<C::Response>>,
     quit: bool,
 }
 
-impl<'de, C, LE> Reactor<C, LE>
-    where C: Console, LE: Error
+impl<C> Reactor<C>
+    where C: Console
         {
     /// Run the console reactor.
     pub fn run(&mut self) {
@@ -172,7 +179,7 @@ impl<'de, C, LE> Reactor<C, LE>
         }
     }
 
-    fn poll_command(&mut self, dt: Duration) -> Messages<Response<C::Response, LE>> {
+    fn poll_command(&mut self, dt: Duration) -> Messages<Response<C::Response>> {
         // we have dt until the next scheduled event.
         // block until we get a command or we time out.
         match self.cmd_queue.recv_timeout(dt) {
@@ -184,6 +191,12 @@ impl<'de, C, LE> Reactor<C, LE>
                 self.quit = true;
                 Messages::one(Response::Quit)
             },
+            Ok(Command::Save) => {
+                match self.save() {
+                    Ok(()) => Messages::one(Response::Saved),
+                    Err(e) => Messages::one(Response::ShowLibErr(e)),
+                }
+            }
             Ok(Command::Load(l)) => {
                 Messages::one(self.load_show(l))
             },
@@ -205,7 +218,7 @@ impl<'de, C, LE> Reactor<C, LE>
     /// Autosave, persist the state that the console has crashed, and then quit.
     /// Return a message we can send to the other parts of the application to instruct them to
     /// quit, though we may not be able to do anything with it.
-    fn abort(&mut self) -> Messages<Response<C::Response, LE>> {
+    fn abort(&mut self) -> Messages<Response<C::Response>> {
         error!("Console is aborting!");
         self.autosave();
         self.quit = true;
@@ -214,19 +227,41 @@ impl<'de, C, LE> Reactor<C, LE>
 
     /// Save the current state of the show to a fast binary format.
     fn autosave(&self) {
-        // TODO: implement autosave using bincode
-        match bincode::serialize(&self.console, bincode::Infinite) {
-            Ok(serialized) => {
-                info!("Autosave successful.");
-                // TODO: actually do something with this data
-            },
-            Err(e) => info!("Autosave error: {}", e),
+        if let Err(e) = self.show_lib.autosave(&self.console) {
+            error!("Autosave failed: {}", e);
         }
     }
 
-    fn load_show(&mut self, l: LoadSpec) -> Response<C::Response, LE> {
+    /// Save the current state of the show to a slow but human-readable format.
+    fn save(&self) -> Result<(), LibraryError> {
+        self.show_lib.save(&self.console)
+            .map_err(|e| {
+                error!("Show save failed: {}", e);
+                e
+            })
+    }
+
+    fn load_show(&mut self, l: LoadShow) -> Response<C::Response> {
         debug!("Reactor is loading a new show: {}", l);
-        // TODO: show load semantics
-        Response::Loaded("TODO".to_string())
+        match ShowLibrary::open_existing(&self.library_path, l.name.as_str()) {
+            Err(e) => Response::ShowLibErr(e),
+            Ok(show_lib) => {
+                // try to load the save specified by the spec
+                match show_lib.load(&l.spec) {
+                    Err(e) => Response::ShowLibErr(e),
+                    Ok(console) => {
+                        // we successfully loaded the new show
+                        // save our existing show, swap the console state out, and reset the state
+                        // of the event loop
+                        self.autosave();
+                        self.save();
+                        self.console = console;
+                        self.event_source.reset();
+                        Response::Loaded(l.name)
+                    }
+                }
+            }
+        }
+
     }
 }
