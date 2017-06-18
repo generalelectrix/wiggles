@@ -72,8 +72,8 @@ impl fmt::Display for LoadSpec {
         match *self {
             LoadSpec::Latest => write!(f, "the latest save"),
             LoadSpec::LatestAutosave => write!(f, "the latest autosave"),
-            LoadSpec::Exact(ref s) => write!(f, "the saved file '{}'", s),
-            LoadSpec::ExactAutosave(ref s) => write!(f, "the autosaved file '{}'", s),
+            LoadSpec::Exact(ref s) => write!(f, "the save '{}'", s),
+            LoadSpec::ExactAutosave(ref s) => write!(f, "the autosave '{}'", s),
         }
     }
 }
@@ -280,22 +280,27 @@ impl ShowLibrary {
         bincode::serialize_into(&mut file, console, bincode::Infinite).map_err(Into::into)
     }
 
-    /// Return a listing of the names of the available autosaves.
-    pub fn autosaves(&self) -> Result<Vec<String>, LibraryError> {
-        filenames(&self.autosave_dir())
-            .map_err(Into::into)
+    /// Return a listing of the names of available saves in this dir, trimming off extension.
+    fn name_listing(&self, dir: &Path, ext: &str) -> Result<Vec<String>, LibraryError> {
+        filenames(dir)
             .map(|mut filenames| {
-                for name in filenames.iter_mut() {
-                    let new_len = name.len() - AUTOSAVE_EXTENSION.len();
-                    name.truncate(new_len);
-                }
+                trim_extensions(&mut filenames, ext);
                 filenames
             })
+            .map_err(Into::into)
+    }
+
+    pub fn autosaves(&self) -> Result<Vec<String>, LibraryError> {
+        self.name_listing(&self.autosave_dir(), AUTOSAVE_EXTENSION)
+    }
+
+    pub fn saves(&self) -> Result<Vec<String>, LibraryError> {
+        self.name_listing(&self.base_folder, SAVE_EXTENSION)
     }
 
     /// Load a saved version of this show.
     pub fn load<C: DeserializeOwned>(&self, spec: LoadSpec) -> Result<C, LibraryError> {
-        debug!("Loading state for show '{}' using spec {:?}.", self.name, spec);        
+        debug!("Loading state for show '{}' from {}.", self.name, spec);        
         match spec {
             LoadSpec::Latest => self.load_latest(),
             LoadSpec::Exact(mut name) => {
@@ -548,12 +553,34 @@ mod test {
     }
 
     #[test]
-    fn test_create() {
+    fn test_create_save_load() {
         let lib = TestLibrary::new("test_create");
         let mut d = MockConsole::new();
         let show_lib = ShowLibrary::create_new(&lib.lib_path, "test show", &d).unwrap();
+        // Should have saved and autosaved.
         assert_eq!(d, show_lib.load(LoadSpec::Latest).unwrap());
         assert_eq!(d, show_lib.load(LoadSpec::LatestAutosave).unwrap());
+
+        // We should be able to explicitly load them by name as well.
+        {
+            let mut autosaves = show_lib.autosaves().unwrap();
+            assert_eq!(1, autosaves.len());
+            assert_eq!(
+                d,
+                show_lib.load(LoadSpec::ExactAutosave(autosaves.pop().unwrap()))
+                    .unwrap()
+            );
+        }
+        {
+            let mut saves = show_lib.saves().unwrap();
+            assert_eq!(1, saves.len());
+            assert_eq!(
+                d,
+                show_lib.load(LoadSpec::Exact(saves.pop().unwrap()))
+                    .unwrap()
+            );
+        }
+
         d.data[0] += 1;
         assert!(d != show_lib.load(LoadSpec::Latest).unwrap());
         assert!(d != show_lib.load(LoadSpec::LatestAutosave).unwrap());
@@ -565,5 +592,9 @@ mod test {
         // Save and it should match.
         show_lib.save(&d).unwrap();
         assert_eq!(d, show_lib.load(LoadSpec::Latest).unwrap());
+
+        // We should have two autosaves and two saves now.
+        assert_eq!(2, show_lib.autosaves().unwrap().len());
+        assert_eq!(2, show_lib.saves().unwrap().len());
     }
 }
