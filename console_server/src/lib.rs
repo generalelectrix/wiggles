@@ -1,7 +1,11 @@
-//! The core structure of the console server, with the explicit message types and application
-//! logic abstracted away behind traits and type parameters.
+//! The core structure of a Wiggles console.
+//! Agnostic about the actual logical console that is running inside it, as well as the types of
+//! control clients that are connected to it.
+//! Provides a core show reactor running a lightweight event loop which can save and load shows and
+//! drives the console logic itself which is hidden behind the Console trait.
 mod show_library;
 mod reactor;
+mod clients;
 
 extern crate event_loop;
 extern crate smallvec;

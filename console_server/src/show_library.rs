@@ -22,7 +22,13 @@ use chrono::prelude::*;
 use serde_json;
 use bincode;
 
-/// 
+/// A listing of the shows available in this library.
+/// Return an empty vector if something went wrong.
+pub fn shows(library_path: &Path) -> Vec<String> {
+    dir_items(library_path, false).unwrap_or(Vec::new())
+}
+
+/// The subdirectory used to store autosaves.
 const AUTOSAVE_DIR: &'static str = "autosave";
 
 /// Format string used for parsing and writing save files.
@@ -69,20 +75,29 @@ impl fmt::Display for LoadSpec {
     }
 }
 
-/// Return a vector of the file names in this directory.
-fn filenames(dir: &Path) -> Result<Vec<String>, IoError> {
+/// Return a vector of the file or subdirectory names in this directory.
+fn dir_items(dir: &Path, files: bool) -> Result<Vec<String>, IoError> {
     let entry_iter = fs::read_dir(dir)?;
     // get just the entries that are files
-    let filenames = 
+    let names =
         entry_iter
         .filter_map(|r| r.ok())
         // filter out just files
-        .filter(|f| f.file_type().map(|t| t.is_file()).unwrap_or(false))
+        .filter(|f|
+            f.file_type().map(|t|
+                if files {t.is_file()} else {t.is_dir()})
+            .unwrap_or(false)
+        )
         .map(|f| f.file_name())
         // Convert from OsString to valid utf-8.
-        .filter_map(|filename| filename.into_string().ok())
+        .filter_map(|name| name.into_string().ok())
         .collect();
-    Ok(filenames)
+    Ok(names)
+}
+
+/// Return a vector of the file names in this directory.
+fn filenames(dir: &Path) -> Result<Vec<String>, IoError> {
+    dir_items(dir, true)
 }
 
 /// Trim these strings by shortening them by the same length as the provided extension.
