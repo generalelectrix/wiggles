@@ -11,6 +11,7 @@ log = "*"
 bincode = "*"
 serde_json = "*"
 chrono = "*"
+ordermap = "*"
 
 [dev-dependencies]
 simple_logger = "*"

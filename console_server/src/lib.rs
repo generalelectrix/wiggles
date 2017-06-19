@@ -13,6 +13,7 @@ extern crate serde;
 extern crate serde_json;
 extern crate bincode;
 extern crate chrono;
+extern crate ordermap;
 #[macro_use] extern crate log;
 
 #[cfg(test)] extern crate simple_logger;
