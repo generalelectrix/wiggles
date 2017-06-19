@@ -91,7 +91,7 @@ let private modalActionButton dispatch (id: string option) action =
 
     R.button buttonAttrs [ R.str action.label ]
 
-///// Display a float-on-top Bootstrap modal dialog.
+/// Display a float-on-top Bootstrap modal dialog.
 let view (model: Model) dispatch =
     if model |> Array.isEmpty then
         R.div [] []
@@ -111,7 +111,7 @@ let view (model: Model) dispatch =
         Focus |> dispatch
            
         R.div [
-            ClassName "modal fade in"
+            ClassName "modal in"
             Role "dialog"
             Style [Display "block"]
         ] [
@@ -121,3 +121,19 @@ let view (model: Model) dispatch =
                 ]
             ]
         ]
+
+
+/// Helper function that just renders a modal-style splash with no options, such as if the
+/// application is waiting for a server connection.
+let viewSplash message =
+    R.div [
+        ClassName "modal in"
+        Role "dialog"
+        Style [Display "block"]
+    ] [
+        R.div [ClassName "modal-dialog"] [
+            R.div [ClassName "modal-content"] [
+                R.div [ClassName "modal-body"] [R.p [] [R.str message]]
+            ]
+        ]
+    ]

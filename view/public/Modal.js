@@ -152,7 +152,7 @@ export function view(model, dispatch) {
 
     dispatch(new Message("Focus", []));
     return createElement("div", {
-      className: "modal fade in",
+      className: "modal in",
       role: "dialog",
       style: {
         display: "block"
@@ -165,4 +165,19 @@ export function view(model, dispatch) {
       className: "modal-body"
     }].concat(_toConsumableArray(bodyContents))))));
   }
+}
+export function viewSplash(message) {
+  return createElement("div", {
+    className: "modal in",
+    role: "dialog",
+    style: {
+      display: "block"
+    }
+  }, createElement("div", {
+    className: "modal-dialog"
+  }, createElement("div", {
+    className: "modal-content"
+  }, createElement("div", {
+    className: "modal-body"
+  }, createElement("p", {}, message)))));
 }

@@ -17,28 +17,25 @@ type SocketMessage =
     | Disconnected
 
 /// Print an exception to the console with extra leading text.
-let logException msg (e: System.Exception) = Browser.console.error(msg, e)
+let private logException msg (e: System.Exception) = Browser.console.error(msg, e)
 
-type Socket<'msg, 'model> = {
-    subscription: 'model -> Cmd<'msg>
-    send: 'msg -> unit
-}
-
+[<PassGenerics>]
 /// Open a websocket connection to the current host on the same port used to serve this application.
 /// Returns a subscription that will produce a stream of messages received, as well as a function
 /// that will send a message on the socket.
 /// Pass a function that lists a socket message into the overall message type for this application.
 let openSocket wrapSocketMessage =
 
-    let host = sprintf "ws://%s/" Browser.window.location.host
+    // let host = sprintf "ws://%s/" Browser.window.location.host
+    let host = "ws://127.0.0.1/"
 
     let ws: Browser.WebSocket = Browser.WebSocket.Create(host)
 
-    let createSubscription _ =
+    let subscription _ =
         /// This function will be called during application init and passed the dispatch function,
         /// which is attached to the socket and used on receipt of a message to pass that message
         /// into the message queue.
-        Cmd.ofSub (fun dispatch ->
+        Cmd.ofSub (fun (dispatch: 'msg -> unit) ->
             ws.addEventListener_message(
                 fun (event: Browser.MessageEvent) ->
                     try
@@ -60,11 +57,11 @@ let openSocket wrapSocketMessage =
         )
        
     /// Send a message using the socket, catching an exception and printing it to the console.
-    let sendMessage msg =
+    let send msg =
         let jsonMessage = msg |> toJson
         try
             ws.send jsonMessage
         with e ->
             logException (sprintf "Websocket error while sending message:\n%s\n\n" jsonMessage) e
 
-    {subscription = createSubscription; send = sendMessage}
+    (subscription, send)

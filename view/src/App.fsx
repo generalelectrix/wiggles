@@ -20,7 +20,16 @@ open Types
 open Bootstrap
 open Socket
 
+// If true, use a mock server rather than a real websocket.
+let mock = true
+
+type ConnectionState =
+    | Waiting
+    | Open
+    | Closed
+
 type Model = {
+    connection: ConnectionState
     patches: PatchItem array
     // Current fixture ID we have selected, if any.
     selected: FixtureId option
@@ -42,6 +51,7 @@ type UiAction =
     | Deselect
 
 type Message =
+    | Socket of SocketMessage
     | Request of ServerRequest
     | Response of ServerResponse
     | Action of UiAction
@@ -49,9 +59,20 @@ type Message =
     | Create of NewPatch.Message
     | ModalDialog of Modal.Message
 
+// Launch the websocket we'll use to talk to the server.
+let (subscription, send) = openSocket Socket
+
+// We don't emit these along with the initial model as we need to wait for the socket to connect
+// to the server before sending messages.
+let initCommands =
+    [ServerRequest.PatchState; ServerRequest.GetKinds]
+    |> List.map Cmd.ofMsg
+    |> Cmd.batch
+    |> Cmd.map Request
 
 let initialModel () =
     let m = {
+        connection = Waiting
         patches = Array.empty
         selected = None
         editorModel = PatchEdit.initialModel()
@@ -59,13 +80,7 @@ let initialModel () =
         modalDialog = Modal.initialModel()
         consoleText = Array.empty
     }
-    let initCommands =
-        [ServerRequest.PatchState; ServerRequest.GetKinds]
-        |> List.map Cmd.ofMsg
-        |> Cmd.batch
-        |> Cmd.map Request
-
-    (m, initCommands)
+    (m, Cmd.none)
 
 let mutable counter = testPatches.Length
 
@@ -124,8 +139,19 @@ let updateEditorState patches selectedFixtureId =
 let update message model =
 
     match message with
+    | Socket Connected ->
+        // The socket connected, issue the initial commands.
+        ({model with connection = Open}, initCommands)
+    | Socket Disconnected ->
+        // The server closed the connection, hopefully not because it crashed.
+        ({model with connection = Closed}, Cmd.none)
     | Request r ->
-        (model, mockServer model r |> Response |> Cmd.ofMsg)
+        // Dispatch a request to the websocket.
+        if mock then
+            (model, mockServer model r |> Response |> Cmd.ofMsg)
+        else
+            send r
+            (model, Cmd.none)
     | Response r ->
         match r with
         | ServerResponse.Error msg ->
@@ -242,7 +268,16 @@ let view model dispatch =
         Modal.view model.modalDialog (ModalDialog >> dispatch)
     ]
 
-Program.mkProgram initialModel updateAndLog view
+/// Outer view wrapper to show splashes if we're waiting on a server connection or if the connection
+/// has gone away.
+let viewWithConnection model dispatch =
+    match model.connection with
+    | Waiting -> Modal.viewSplash "Waiting for console server connection to be established."
+    | Open -> view model dispatch
+    | Closed -> Modal.viewSplash "The console server disconnected."
+
+Program.mkProgram initialModel updateAndLog viewWithConnection
+|> Program.withSubscription subscription
 |> Program.withReact "app"
 |> Program.withConsoleTrace
 |> Program.run
