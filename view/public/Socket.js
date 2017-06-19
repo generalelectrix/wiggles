@@ -49,8 +49,8 @@ function logException(msg, e) {
 }
 
 export function openSocket(wrapSocketMessage, _genArgs) {
-  var host = "ws://127.0.0.1/";
-  var ws = new WebSocket(host);
+  var host = "ws://127.0.0.1:2794";
+  var ws = new WebSocket(host, "wiggles");
 
   var subscription = function subscription(_arg1) {
     return CmdModule.ofSub(function (dispatch) {

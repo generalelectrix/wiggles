@@ -27,9 +27,9 @@ let private logException msg (e: System.Exception) = Browser.console.error(msg, 
 let openSocket wrapSocketMessage =
 
     // let host = sprintf "ws://%s/" Browser.window.location.host
-    let host = "ws://127.0.0.1/"
+    let host = "ws://127.0.0.1:2794"
 
-    let ws: Browser.WebSocket = Browser.WebSocket.Create(host)
+    let ws: Browser.WebSocket = Browser.WebSocket.Create(host, Case1("wiggles"))
 
     let subscription _ =
         /// This function will be called during application init and passed the dispatch function,

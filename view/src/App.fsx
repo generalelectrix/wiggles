@@ -21,7 +21,9 @@ open Bootstrap
 open Socket
 
 // If true, use a mock server rather than a real websocket.
-let mock = true
+let mock = false
+// If true, enable interactive console logging of model updates.
+let withConsoleTrace = false
 
 type ConnectionState =
     | Waiting
@@ -279,5 +281,5 @@ let viewWithConnection model dispatch =
 Program.mkProgram initialModel updateAndLog viewWithConnection
 |> Program.withSubscription subscription
 |> Program.withReact "app"
-|> Program.withConsoleTrace
+|> (if withConsoleTrace then Program.withConsoleTrace else id)
 |> Program.run
