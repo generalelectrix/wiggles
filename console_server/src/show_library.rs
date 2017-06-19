@@ -39,7 +39,7 @@ const DATE_FORMAT: &'static str = "%Y-%m-%d_%H:%M:%S_%f";
 const AUTOSAVE_EXTENSION: &'static str = ".wiggles_autosave";
 const SAVE_EXTENSION: &'static str = ".wiggles";
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct LoadShow {
     pub name: String,
     pub spec: LoadSpec,
@@ -51,7 +51,7 @@ impl fmt::Display for LoadShow {
     } 
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum LoadSpec {
     /// Load the latest saved state.
     Latest,
