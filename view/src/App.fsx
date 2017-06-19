@@ -7,6 +7,7 @@
 #load "Modal.fsx"
 #load "PatchEdit.fsx"
 #load "NewPatch.fsx"
+#load "Socket.fsx"
 
 open Fable.Core
 open Fable.Import
@@ -17,6 +18,7 @@ module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Types
 open Bootstrap
+open Socket
 
 type Model = {
     patches: PatchItem array
