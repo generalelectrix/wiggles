@@ -22,3 +22,4 @@ extern crate ordermap;
 
 pub use reactor::*;
 pub use show_library::*;
+pub use clients::*;
