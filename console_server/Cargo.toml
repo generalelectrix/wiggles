@@ -12,6 +12,7 @@ bincode = "*"
 serde_json = "*"
 chrono = "*"
 ordermap = "*"
+websocket = "*"
 
 [dev-dependencies]
 simple_logger = "*"

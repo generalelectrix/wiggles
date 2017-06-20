@@ -15,7 +15,7 @@ pub type ClientCollection<R> = OrderMap<ClientId, Sender<Response<R>>>;
 /// TODO: consider techniques for only serializing each message once using a pre-registered hook,
 /// and handing out pre-serialized messages to the clients rather than the in-memory representation.
 /// Since we only have a few clients at a time, this is probably overkill.
-struct ResponseServer<R: Clone> {
+struct ResponseRouter<R: Clone> {
     message_source: Receiver<ResponseMessage<R>>,
     /// The collection of clients, indexed by their numeric ID.
     /// Options are allowed so we can re-use client IDs from clients that have disconnected,
@@ -24,14 +24,14 @@ struct ResponseServer<R: Clone> {
     /// An external service that creates new client connections holds onto a clone of this arc, so
     /// it can infrequently inject new clients.
     clients: Arc<Mutex<ClientCollection<R>>>,
-    /// The response server will run as long as this is true.
+    /// The response router will run as long as this is true.
     running: bool,
 }
 
-impl<R: Clone + fmt::Debug> ResponseServer<R> {
-    /// Create a new response server which will drain the provided message queue.
+impl<R: Clone + fmt::Debug> ResponseRouter<R> {
+    /// Create a new response router which will drain the provided message queue.
     pub fn new(message_source: Receiver<ResponseMessage<R>>) -> Self {
-        ResponseServer {
+        ResponseRouter {
             message_source: message_source,
             clients: Arc::new(Mutex::new(OrderMap::new())),
             running: false,
@@ -49,34 +49,34 @@ impl<R: Clone + fmt::Debug> ResponseServer<R> {
         if let Ok(guard) = self.clients.lock() {
             return Ok(guard);
         }
-        // Someone else panicked while they were holding the mutex.  Gracefully terminate this server.
-        error!("Response server client collection mutex is poisoned.  Aborting.");
+        // Someone else panicked while they were holding the mutex.  Gracefully terminate this router.
+        error!("Response router client collection mutex is poisoned.  Aborting.");
         self.running = false;
         Err(())
     }
 
-    /// Run the response server.
+    /// Run the response router.
     pub fn run(&mut self) {
-        info!("Response server is starting.");
+        info!("Response router is starting.");
         self.running = true;
         while self.running {
             self.run_once();
         }
-        info!("Response server quit.")
+        info!("Response router quit.")
     }
 
-    /// Run one iteration of the response server's action loop.
-    /// Return true if the server should continue or false if it should quit.
+    /// Run one iteration of the response router's action loop.
+    /// Return true if the router should continue or false if it should quit.
     fn run_once(&mut self) {
         // block on an incoming message
         match self.message_source.recv() {
             Err(_) => {
                 // The event source hung up.  Abort.
-                error!("Response server message source hung up.  Aborting.");
+                error!("Response router message source hung up.  Aborting.");
                 self.running = false;
             }
             Ok(msg) => {
-                debug!("Response server is handling a message: {:?}", msg);
+                debug!("Response router is handling a message: {:?}", msg);
                 self.handle_message(msg);
             }
         }
@@ -86,7 +86,7 @@ impl<R: Clone + fmt::Debug> ResponseServer<R> {
     /// Responds to the Quit message before passing it on.
     fn handle_message(&mut self, msg: ResponseMessage<R>) {
         if let Response::Quit = msg.payload  {
-            info!("Response server received the Quit message.");
+            info!("Response router received the Quit message.");
             self.running = false;
             self.send_to(Filter::All, Response::Quit);
         }
