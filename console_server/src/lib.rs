@@ -3,10 +3,10 @@
 //! control clients that are connected to it.
 //! Provides a core show reactor running a lightweight event loop which can save and load shows and
 //! drives the console logic itself which is hidden behind the Console trait.
-mod show_library;
-mod reactor;
-mod clients;
-mod socket_server;
+pub mod show_library;
+pub mod reactor;
+pub mod clients;
+pub mod socket_server;
 
 extern crate event_loop;
 extern crate smallvec;
@@ -25,15 +25,17 @@ extern crate websocket;
 use std::path::PathBuf;
 use event_loop::Settings;
 use std::thread;
-use std::net::SocketAddr;
+use std::net::{SocketAddr, SocketAddrV4, Ipv4Addr};
 use std::io::Error as IoError;
 use std::fmt;
 use std::error::Error;
+use chrono::prelude::Local;
+use serde::Serialize;
 
-pub use reactor::*;
-pub use show_library::*;
-pub use clients::*;
-pub use socket_server::*;
+use reactor::{Console, Reactor};
+use show_library::{ShowLibrary, LoadSpec, LibraryError};
+use clients::ResponseRouter;
+use socket_server::SocketServer;
 
 /// All of the initial state and parameters needed to run a Wiggles console.
 pub struct InitialState<C> {
@@ -44,6 +46,28 @@ pub struct InitialState<C> {
     event_settings: Option<Settings>,
     websocket_addr: SocketAddr,
     websocket_protocol: String,
+}
+
+impl<C: Default + Serialize> Default for InitialState<C> {
+    /// Create a new show with entirely default parameters.
+    /// Panics if the show library cannot be found or some other disk-related error occurs.
+    /// Probably best to use the builder which can unpack a library error.
+    fn default() -> Self {
+        let show_name = format!("New Show {}", Local::now().format("%b %e, %Y %H:%M:%S"));
+        let library_path = PathBuf::from("./show_library");
+        let console_constructor = Box::new(|| C::default());
+        let console = (*console_constructor)();
+        let show_lib = ShowLibrary::create_new(&library_path, show_name, &console).unwrap();
+        InitialState {
+            library_path: library_path,
+            console_constructor: console_constructor,
+            show_library: show_lib,
+            load_spec: LoadSpec::Latest,
+            event_settings: None,
+            websocket_addr: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 80)),
+            websocket_protocol: "wiggles".to_string(),
+        }
+    }
 }
 
 // TODO: provide a useful builder for InitialState.
@@ -81,7 +105,7 @@ impl Error for RunError {
 }
 
 /// Given an initial console state, set up everything and run.
-fn run<C: Console>(state: InitialState<C>) -> Result<(), RunError> {
+pub fn run<C: Console>(state: InitialState<C>) -> Result<(), RunError> {
     let (mut reactor, cmd_send, resp_recv) = Reactor::create(
         state.console_constructor,
         state.library_path,
@@ -111,3 +135,5 @@ fn run<C: Console>(state: InitialState<C>) -> Result<(), RunError> {
 
     Ok(())
 }
+
+pub use reactor::*;

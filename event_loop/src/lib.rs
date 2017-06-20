@@ -18,6 +18,8 @@ pub struct Settings {
     /// Command the application to autosave at this interval.
     /// If None, do not use autosave.
     pub autosave_interval: Option<Duration>,
+    /// If true, report instantaneous rendered frames per second.
+    pub report_fps: bool,
 }
 
 impl Default for Settings {
@@ -28,7 +30,9 @@ impl Default for Settings {
             // DMX is limited to 50 fps max
             render_interval: Duration::from_millis(20),
             // By default autosave once a minute.
-            autosave_interval: None,
+            autosave_interval: Some(Duration::from_secs(60)),
+            // By default don't report fps.
+            report_fps: false,
         }
     }
 }
@@ -151,6 +155,11 @@ fn next_event(now: Instant, settings: &Settings, last: &mut LastEvents) -> Event
             }
         }
         else if ns_until_next == ns_until_render {
+            if settings.report_fps {
+                let dt = nanoseconds(now - last.render);
+                let fps = if dt == 0 { 0.0 } else {1_000_000_000. / dt as f64};
+                debug!("{} fps", fps);
+            }
             // ideally we should always update if our state is stale;
             last.render = now;
             Event::Render
