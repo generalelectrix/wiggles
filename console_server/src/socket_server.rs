@@ -146,3 +146,30 @@ fn run_client_receiver<C: DeserializeOwned + fmt::Debug>(
         }
     }
 }
+
+// TODO: consider locally batching messages over a short period of time to avoid thrashing the
+// TCP connection with lots of tiny messages.
+/// Serialize and send messages to this client.
+fn run_client_sender<R: Serialize + fmt::Debug + Clone>(
+    sender: Writer<<TcpStream as Splittable>::Writer>,
+    message_queue: Receiver<Response<R>>,
+    id: ClientId)
+{
+    for msg in message_queue.iter() {
+        match serde_json::to_string(&msg) {
+            Err(e) => {
+                error!(
+                    "Message serialization error, client {}, trying to serialize {:?}: {}",
+                    id,
+                    msg,
+                    e)
+            }
+            Ok(json) => {
+                if let Err(e) = sender.send_message(OwnedMessage::Text(json)) {
+                    error!("Error sending message to client {}: {}\nMessage: {:?}", id, e, msg);
+                }
+            }
+        }
+    }
+    info!("Client {} websocket sender terminated.", id);
+}
