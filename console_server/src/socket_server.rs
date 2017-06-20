@@ -12,9 +12,10 @@ use serde::de::DeserializeOwned;
 use std::fmt;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{Sender, Receiver};
+use std::sync::mpsc::{Sender, Receiver, channel};
 use std::net::ToSocketAddrs;
 use std::io::Error as IoError;
+use std::iter::Iterator;
 use super::reactor::{Command, Response, CommandMessage, CommandWrapper};
 use super::clients::{ClientData, ClientCollection, ClientId, ResponseFilter};
 use serde_json;
@@ -23,9 +24,7 @@ use serde_json;
 /// Owns a websocket server and the requisite information to spin off new clients with unique ids.
 /// New clients are added to the collection of clients handled by the response message router.
 /// These clients then serialize and deserialize the associated message types.
-struct SocketServer<C, R>
-    where R: Clone + Serialize + fmt::Debug, C: DeserializeOwned + fmt::Debug
-{
+struct SocketServer<C: Send, R: Send> {
     /// The server accepting websocket requests.
     server: Server<NoTlsAcceptor>,
     /// The command queue used to send messages into the reactor.
@@ -38,8 +37,8 @@ struct SocketServer<C, R>
     next_client_id: ClientId,
 }
 
-impl<C, R> SocketServer<C, R>
-    where R: Clone + Serialize + fmt::Debug, C: DeserializeOwned + fmt::Debug
+impl<C: Send, R: Send> SocketServer<C, R>
+    where R: 'static + Clone + Serialize + fmt::Debug, C: 'static + DeserializeOwned + fmt::Debug
 {
     /// Initiate a new socket server.
     /// Requires an existing client registry and reactor command queue, ensuring the rest of the
@@ -66,27 +65,39 @@ impl<C, R> SocketServer<C, R>
     fn run(&mut self) {
         info!("Socket server is starting.");
         loop {
-            for req in self.server {
-                match req {
-                    // Log socket errors.
-                    Err(e) => error!("Socket request error: {}", e.error),
-                    Ok(request) => {
-                        debug!("Client is requesting procotols {:?}.", request.protocols());
-                        // make sure the client is running the right protocol.
-                        if !request.protocols().contains(&self.protocol) {
-                            request.reject();
-                            continue;
-                        }
+            match self.server.next().unwrap() {
+                // Log socket errors.
+                Err(e) => error!("Socket request error: {}", e.error),
+                Ok(request) => {
+                    debug!("Client is requesting procotols {:?}.", request.protocols());
+                    // make sure the client is running the right protocol.
+                    if !request.protocols().contains(&self.protocol) {
+                        request.reject();
+                        continue;
+                    }
 
-                        // Accept the request and create a new websocket client.
-                        match request.use_protocol(self.protocol.clone()).accept() {
-                            Err(e) => error!("Error on websocket accept: {:?}", e),
-                            Ok(client) => {
-                                self.new_client(client);
-                            }
+                    // Accept the request and create a new websocket client.
+                    match request.use_protocol(self.protocol.clone()).accept() {
+                        Err(e) => error!("Error on websocket accept: {:?}", e),
+                        Ok(client) => {
+                            self.new_client(client);
                         }
                     }
                 }
+            }
+        }
+    }
+
+    fn register_client_with_router(&self, id: ClientId, resp_sender: Sender<Response<R>>) {
+        match self.client_registry.lock() {
+            Ok(mut cr) => {
+                cr.insert(id, resp_sender);
+            }
+            Err(_) => {
+                // the response router panicked while holding the lock.
+                // this should never happen.  We'll log and panic ourselves.
+                error!("Client registry lock is poisoned!  Socket server will panic.");
+                panic!("Client registry lock is poisoned!");
             }
         }
     }
@@ -101,16 +112,24 @@ impl<C, R> SocketServer<C, R>
         // Split the client into constituent sender and receiver.
         match client.split() {
             Err(e) => error!("Could not split new websocket client: {}", e),
-            Ok((mut receiver, mut sender)) => {
-
+            Ok((receiver, sender)) => {
+                // Create a new channel for the response messages.
+                let (resp_send, resp_recv) = channel();
+                // Register this new client with the response router.
+                self.register_client_with_router(id, resp_send);
+                // Get a copy of the reactor command sender.
+                let cmd_queue = self.command_queue.clone();
+                // Start the sender and receiver in new threads.
+                thread::spawn(move || run_client_receiver(receiver, cmd_queue, id));
+                thread::spawn(move || run_client_sender(sender, resp_recv, id));
             }
         }
     }
 }
 
 /// Deserialize messages from this client and forward them to the reactor.
-fn run_client_receiver<C: DeserializeOwned + fmt::Debug>(
-    receiver: Reader<<TcpStream as Splittable>::Reader>,
+fn run_client_receiver<C: DeserializeOwned + fmt::Debug + Send>(
+    mut receiver: Reader<<TcpStream as Splittable>::Reader>,
     command_queue: Sender<CommandMessage<C>>,
     id: ClientId)
 {
@@ -150,8 +169,8 @@ fn run_client_receiver<C: DeserializeOwned + fmt::Debug>(
 // TODO: consider locally batching messages over a short period of time to avoid thrashing the
 // TCP connection with lots of tiny messages.
 /// Serialize and send messages to this client.
-fn run_client_sender<R: Serialize + fmt::Debug + Clone>(
-    sender: Writer<<TcpStream as Splittable>::Writer>,
+fn run_client_sender<R: Serialize + fmt::Debug + Clone + Send>(
+    mut sender: Writer<<TcpStream as Splittable>::Writer>,
     message_queue: Receiver<Response<R>>,
     id: ClientId)
 {
@@ -165,7 +184,7 @@ fn run_client_sender<R: Serialize + fmt::Debug + Clone>(
                     e)
             }
             Ok(json) => {
-                if let Err(e) = sender.send_message(OwnedMessage::Text(json)) {
+                if let Err(e) = sender.send_message(&OwnedMessage::Text(json)) {
                     error!("Error sending message to client {}: {}\nMessage: {:?}", id, e, msg);
                 }
             }

@@ -15,7 +15,7 @@ pub type ClientCollection<R> = OrderMap<ClientId, Sender<Response<R>>>;
 /// TODO: consider techniques for only serializing each message once using a pre-registered hook,
 /// and handing out pre-serialized messages to the clients rather than the in-memory representation.
 /// Since we only have a few clients at a time, this is probably overkill.
-struct ResponseRouter<R: Clone> {
+struct ResponseRouter<R: Send> {
     message_source: Receiver<ResponseMessage<R>>,
     /// The collection of clients, indexed by their numeric ID.
     /// Options are allowed so we can re-use client IDs from clients that have disconnected,
@@ -28,7 +28,7 @@ struct ResponseRouter<R: Clone> {
     running: bool,
 }
 
-impl<R: Clone + fmt::Debug> ResponseRouter<R> {
+impl<R: Clone + fmt::Debug + Send> ResponseRouter<R> {
     /// Create a new response router which will drain the provided message queue.
     pub fn new(message_source: Receiver<ResponseMessage<R>>) -> Self {
         ResponseRouter {

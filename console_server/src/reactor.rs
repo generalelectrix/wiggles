@@ -7,7 +7,7 @@ use std::fmt;
 use std::sync::mpsc::{channel, Sender, Receiver, RecvTimeoutError};
 use std::time::Duration;
 use smallvec::SmallVec;
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use serde::de::DeserializeOwned;
 
 use super::show_library::{ShowLibrary, LibraryError, LoadShow, LoadSpec, shows};
@@ -19,7 +19,7 @@ use super::clients::ClientData;
 /// commands that the console itself provides.  Quitting the console, saving the show, and loading
 /// a different show are all considered top-level commands, as they require swapping out the state
 /// of the reactor.
-pub enum Command<T: fmt::Debug + DeserializeOwned> {
+pub enum Command<T: Send> {
     /// Create a new, empty show.
     NewShow(String),
     /// List all available shows.
@@ -42,7 +42,7 @@ pub enum Command<T: fmt::Debug + DeserializeOwned> {
     Console(T),
 }
 
-impl<T: fmt::Debug + DeserializeOwned> From<T> for Command<T> {
+impl<T: Send> From<T> for Command<T> {
     fn from(msg: T) -> Self {
         Command::Console(msg)
     }
@@ -62,7 +62,7 @@ pub type CommandMessage<T> = CommandWrapper<Command<T>>;
 /// Outer command wrapper for a response from the reactor, exposing messages indicating
 /// that administrative actions have occurred, as well as passing on messages from the console
 /// logic running in the reactor.
-pub enum Response<T: Clone> {
+pub enum Response<T: Send> {
     /// A listing of all available save and autosave files for the running show.
     SavesAvailable{saves: Vec<String>, autosaves: Vec<String>},
     /// Listing of all saved shows for this console.
@@ -82,7 +82,7 @@ pub enum Response<T: Clone> {
     Console(T),
 }
 
-impl<T: Clone> Response<T> {
+impl<T: Send> Response<T> {
     /// Wrap this response with client data.
     pub fn with_client(self, client_data: ClientData) -> ResponseWrapper<Response<T>> {
         ResponseWrapper::with_client(self, client_data)
@@ -99,7 +99,7 @@ impl<T: Clone> Response<T> {
     }
 }
 
-impl<T: Clone> From<T> for Response<T> {
+impl<T: Send> From<T> for Response<T> {
     fn from(msg: T) -> Self {
         Response::Console(msg)
     }
@@ -169,9 +169,9 @@ impl<T> Messages<T> {
 /// should be done in-band as part of the Response type.
 pub trait Console: Serialize + DeserializeOwned {
     /// The native command message type used by this console.
-    type Command: fmt::Debug + DeserializeOwned;
+    type Command: Send;
     /// The native response message type used by this console.
-    type Response: fmt::Debug + Serialize + Clone;
+    type Response: Send;
     /// Render a show frame, potentially emitting messages.
     fn render(&mut self) -> Messages<ResponseWrapper<Self::Response>>;
 
