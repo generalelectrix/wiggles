@@ -7,7 +7,7 @@ use std::fmt;
 use std::ops::DerefMut;
 use ordermap::OrderMap;
 
-type ClientId = u32;
+pub type ClientId = u32;
 
 pub type ClientCollection<R> = OrderMap<ClientId, Sender<Response<R>>>;
 
@@ -151,11 +151,11 @@ impl<R: Clone + fmt::Debug> ResponseRouter<R> {
 /// Used for filtering response messages as they are send out to clients.
 pub struct ClientData {
     /// The id of the client.
-    pub id: u32,
+    pub id: ClientId,
     pub filter: ResponseFilter,
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize)]
 /// Message metadata indicating the intended response filter for the result of processing this
 /// message.
 pub enum ResponseFilter {

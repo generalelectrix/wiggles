@@ -10,11 +10,11 @@ serde = "*"
 log = "*"
 bincode = "*"
 serde_json = "*"
+serde_derive = "*"
 chrono = "*"
 ordermap = "*"
 websocket = "*"
 
 [dev-dependencies]
 simple_logger = "*"
-serde_derive = "*"
 rand = "*"

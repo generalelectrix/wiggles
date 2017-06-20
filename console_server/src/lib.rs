@@ -6,6 +6,7 @@
 mod show_library;
 mod reactor;
 mod clients;
+mod socket_server;
 
 extern crate event_loop;
 extern crate smallvec;
@@ -14,11 +15,12 @@ extern crate serde_json;
 extern crate bincode;
 extern crate chrono;
 extern crate ordermap;
+extern crate websocket;
 #[macro_use] extern crate log;
 
 #[cfg(test)] extern crate simple_logger;
 #[cfg(test)] extern crate rand;
-#[cfg(test)] #[macro_use] extern crate serde_derive;
+#[macro_use] extern crate serde_derive;
 
 pub use reactor::*;
 pub use show_library::*;

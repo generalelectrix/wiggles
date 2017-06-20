@@ -3,6 +3,7 @@
 
 use std::path::PathBuf;
 use event_loop::{EventLoop, Event, Settings};
+use std::fmt;
 use std::sync::mpsc::{channel, Sender, Receiver, RecvTimeoutError};
 use std::time::Duration;
 use smallvec::SmallVec;
@@ -13,12 +14,12 @@ use super::show_library::{ShowLibrary, LibraryError, LoadShow, LoadSpec, shows};
 use super::clients::ClientData;
 
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize)]
 /// Outer command wrapper for the reactor, exposing administrative commands on top of the internal
 /// commands that the console itself provides.  Quitting the console, saving the show, and loading
 /// a different show are all considered top-level commands, as they require swapping out the state
 /// of the reactor.
-pub enum Command<T> {
+pub enum Command<T: fmt::Debug + DeserializeOwned> {
     /// Create a new, empty show.
     NewShow(String),
     /// List all available shows.
@@ -41,7 +42,7 @@ pub enum Command<T> {
     Console(T),
 }
 
-impl<T> From<T> for Command<T> {
+impl<T: fmt::Debug + DeserializeOwned> From<T> for Command<T> {
     fn from(msg: T) -> Self {
         Command::Console(msg)
     }
@@ -57,7 +58,7 @@ pub struct CommandWrapper<T> {
 /// The message type received by the reactor.
 pub type CommandMessage<T> = CommandWrapper<Command<T>>;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 /// Outer command wrapper for a response from the reactor, exposing messages indicating
 /// that administrative actions have occurred, as well as passing on messages from the console
 /// logic running in the reactor.
@@ -168,9 +169,9 @@ impl<T> Messages<T> {
 /// should be done in-band as part of the Response type.
 pub trait Console: Serialize + DeserializeOwned {
     /// The native command message type used by this console.
-    type Command;
+    type Command: fmt::Debug + DeserializeOwned;
     /// The native response message type used by this console.
-    type Response: Clone;
+    type Response: fmt::Debug + Serialize + Clone;
     /// Render a show frame, potentially emitting messages.
     fn render(&mut self) -> Messages<ResponseWrapper<Self::Response>>;
 
