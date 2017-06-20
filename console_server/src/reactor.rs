@@ -82,17 +82,9 @@ pub enum Response<T: Send> {
     Console(T),
 }
 
+impl<T: Send> WrapResponse for Response<T> {}
+
 impl<T: Send> Response<T> {
-    /// Wrap this response with client data.
-    pub fn with_client(self, client_data: ClientData) -> ResponseWrapper<Response<T>> {
-        ResponseWrapper::with_client(self, client_data)
-    }
-
-    /// Wrap this response without client data.
-    pub fn no_client(self) -> ResponseWrapper<Response<T>> {
-        ResponseWrapper::no_client(self)
-    }
-
     /// Stringify a LibraryError into a response.
     fn from_lib_err(e: LibraryError) -> Self {
         Response::ShowLibErr(format!("{}", e))
@@ -127,6 +119,20 @@ impl<T> ResponseWrapper<T> {
             payload: payload,
             client_data: Some(client_data),
         }
+    }
+}
+
+/// A trait that can be added to message types to provide methods that wrap the message up with
+/// client data.
+pub trait WrapResponse: Sized {
+    /// Wrap this response with client data.
+    fn with_client(self, client_data: ClientData) -> ResponseWrapper<Self> {
+        ResponseWrapper::with_client(self, client_data)
+    }
+
+    /// Wrap this response without client data.
+    fn no_client(self) -> ResponseWrapper<Self> {
+        ResponseWrapper::no_client(self)
     }
 }
 
