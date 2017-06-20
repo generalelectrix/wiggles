@@ -24,7 +24,7 @@ use serde_json;
 /// Owns a websocket server and the requisite information to spin off new clients with unique ids.
 /// New clients are added to the collection of clients handled by the response message router.
 /// These clients then serialize and deserialize the associated message types.
-struct SocketServer<C: Send, R: Send> {
+pub struct SocketServer<C: Send, R: Send> {
     /// The server accepting websocket requests.
     server: Server<NoTlsAcceptor>,
     /// The command queue used to send messages into the reactor.
@@ -62,7 +62,7 @@ impl<C: Send, R: Send> SocketServer<C, R>
 
     /// Run this server, accepting requests and spinning off new client threads to handle them.
     /// Runs forever unless something goes wrong with the underlying socket.
-    fn run(&mut self) {
+    pub fn run(&mut self) {
         info!("Socket server is starting.");
         loop {
             match self.server.next().unwrap() {

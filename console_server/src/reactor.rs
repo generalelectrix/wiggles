@@ -169,9 +169,9 @@ impl<T> Messages<T> {
 /// should be done in-band as part of the Response type.
 pub trait Console: Serialize + DeserializeOwned {
     /// The native command message type used by this console.
-    type Command: Send;
+    type Command: 'static + Send + fmt::Debug + DeserializeOwned;
     /// The native response message type used by this console.
-    type Response: Send;
+    type Response: 'static + Send + fmt::Debug + Serialize + Clone ;
     /// Render a show frame, potentially emitting messages.
     fn render(&mut self) -> Messages<ResponseWrapper<Self::Response>>;
 
@@ -224,7 +224,7 @@ impl<C> Reactor<C>
         {
     /// Create a new reactor running the specified show.
     /// Optionally provide overridden settings for the event loop.
-    pub fn new(
+    pub fn create(
         console_constructor: Box<Fn()->C>,
         library_path: PathBuf,
         show_library: ShowLibrary,

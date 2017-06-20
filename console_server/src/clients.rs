@@ -15,7 +15,7 @@ pub type ClientCollection<R> = OrderMap<ClientId, Sender<Response<R>>>;
 /// TODO: consider techniques for only serializing each message once using a pre-registered hook,
 /// and handing out pre-serialized messages to the clients rather than the in-memory representation.
 /// Since we only have a few clients at a time, this is probably overkill.
-struct ResponseRouter<R: Send> {
+pub struct ResponseRouter<R: Send> {
     message_source: Receiver<ResponseMessage<R>>,
     /// The collection of clients, indexed by their numeric ID.
     /// Options are allowed so we can re-use client IDs from clients that have disconnected,
@@ -23,7 +23,7 @@ struct ResponseRouter<R: Send> {
     /// paying any costs associated with storing this data as a map.
     /// An external service that creates new client connections holds onto a clone of this arc, so
     /// it can infrequently inject new clients.
-    clients: Arc<Mutex<ClientCollection<R>>>,
+    client_registry: Arc<Mutex<ClientCollection<R>>>,
     /// The response router will run as long as this is true.
     running: bool,
 }
@@ -33,20 +33,20 @@ impl<R: Clone + fmt::Debug + Send> ResponseRouter<R> {
     pub fn new(message_source: Receiver<ResponseMessage<R>>) -> Self {
         ResponseRouter {
             message_source: message_source,
-            clients: Arc::new(Mutex::new(OrderMap::new())),
+            client_registry: Arc::new(Mutex::new(OrderMap::new())),
             running: false,
         }
     }
 
     /// Get a clone of the handle to the client collection.
-    pub fn clients_handle(&self) -> Arc<Mutex<ClientCollection<R>>> {
-        self.clients.clone()
+    pub fn client_registry(&self) -> Arc<Mutex<ClientCollection<R>>> {
+        self.client_registry.clone()
     }
 
     /// Block until we acquire the lock on the clients collection.
     /// Return the guard.  If the lock is poisoned, abort and return an error.
     fn clients(&mut self) -> Result<MutexGuard<ClientCollection<R>>, ()> {
-        if let Ok(guard) = self.clients.lock() {
+        if let Ok(guard) = self.client_registry.lock() {
             return Ok(guard);
         }
         // Someone else panicked while they were holding the mutex.  Gracefully terminate this router.
