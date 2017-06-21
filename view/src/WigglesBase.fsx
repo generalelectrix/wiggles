@@ -1,4 +1,3 @@
-/// Base view component for a Wiggles console, providing access to top-level 
 #r "../node_modules/fable-core/Fable.Core.dll"
 #r "../node_modules/fable-react/Fable.React.dll"
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
@@ -9,7 +8,6 @@
 #load "PatchEdit.fsx"
 #load "NewPatch.fsx"
 #load "Socket.fsx"
-#load "Navbar.fsx"
 
 open Fable.Core
 open Fable.Import
