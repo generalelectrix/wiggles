@@ -19,90 +19,137 @@ open Util
 open Types
 open Bootstrap
 
-/// Is this item on the left or right side?
-type Position =
-    | Left
-    | Right
-
-type ItemId =
-    /// Single item.
-    | Single of int
-    /// A particular item in a dropdown.
-    | Dropdown of int * int
-
-/// Address that allows us to route messages to nav items.
-type ItemAddress = {position: Position; id: ItemId}
-
-type ItemState =
-    | Active
-    | Inactive
-    /// A nav item that just triggers an action but doesn't represent a persistent state such as
-    /// being on a particular page.
-    | AlwaysInactive
-
-/// Single navbar item, can be styled as a main option or a dropdown item.
+/// Single navbar item that has an action when clicked; can be styled as a single nav item or as an
+/// entry in a drop-down.
 type Item<'msg> = {
     /// The text that will be displayed for the menu option.
     text: string
     /// Action to take when this item is clicked.  Passed the dispatch function as sole argument.
     onClick: Dispatch<'msg> -> unit
-    state: ItemState}
-    with
-    member this.active = this.state = Active
+}
 
+/// Dropdowns can have regular items as well as spacers.
 type DropdownItem<'msg> =
     /// Separator line.
     | Separator
     /// Single selection in the drop-down.
     | Selection of Item<'msg>
 
+/// Model for a dropdown menu.
 type DropdownModel<'msg> = {
-    items: DropdownItem<'msg> array
-    dropped: bool
+    text: string 
+    items: DropdownItem<'msg> list
+    isOpen: bool
 }
 
+/// Nav items can be single buttons or dropdown menus.
 type NavItem<'msg> =
     | Single of Item<'msg>
     | Dropdown of DropdownModel<'msg>
 
+/// Position and index to refer to a nav item.
+type Position =
+    | Left of int
+    | Right of int
+
 /// The full model for a navbar.
 type Model<'msg> = {
-    leftItems: NavItem<'msg> array
-    rightItems: NavItem<'msg> array
+    leftItems: NavItem<'msg> list
+    rightItems: NavItem<'msg> list
+    /// At least one item is selected at all times in this model.
+    /// Nothing is drawn as active if this position and index doesn't correspond to an item we have.
+    activeItem: Position
 }
 
 type Message =
-    /// Set the active state of a particular nav item by address. Ignored if the item is always
-    /// inactive.
-    | SetActive of ItemAddress * bool
-    /// Open or close a drop-down.  Ignored if the item at address is not a drop-down.
-    | SetDropped of ItemAddress * bool
-
-/// Call this model's action function and also potentially issue a message setting it to active.
-let sendMessageSetState address (model: Item<'msg>) dispatch dispatchLocal =
-    model.onClick dispatch
-    match model.state with
-    | Active | Inactive -> dispatchLocal (SetActive(address, true))
-    | _ -> ()
-
+    /// Set a particular nav item as active by position.
+    | SetActive of Position
+    /// Open a drop-down.  Ignored if the item at position is not a drop-down.
+    | OpenDropdown of Position
+    /// Close a drop-down.  Ignored if the item at position is not a drop-down.
+    | CloseDropdown of Position
+    /// Toggle a drop-down's open state.  Ignored if the item at position is not a drop-down.
+    | ToggleDropdown of Position
 
 /// Render a single navbar item.
-let viewSingle address (model: Item<'msg>) dispatch dispatchLocal =
-    let onClick e = sendMessageSetState address model dispatch dispatchLocal
+let private viewSingle active position (model: Item<'msg>) dispatch dispatchLocal =
+    let onClick e =
+        // dispatch this item's action
+        model.onClick dispatch
+        // set this item as active
+        position |> SetActive |> dispatchLocal
+
     R.li 
-        (if model.active then [ClassName "active"] else [])
+        (if active then [ClassName "active"] else [])
         [R.a [Href "#"; OnClick onClick] [R.str model.text]]
 
-/// Render a dropdown item.
-let viewDropItem (model: Item<'msg>) dispatch dispatchLocal =
+/// Render an item as a dropdown entry.
+let private viewItemAsDropdownEntry position dispatch dispatchLocal (model: Item<'msg>) =
     let onClick e =
-        // Send messages and update item state.
-        sendMessageSetState address model dispatch dispatchLocal
+        // dispatch this item's action
+        model.onClick dispatch
         // Emit a message to close this drop-down.
-    ()
+        CloseDropdown position |> dispatchLocal
 
-/// Generate a navbar li that acts as a dropdown submenu.
-let viewDropdown (model: DropdownModel<'msg>) = ()
+    R.li [] [R.a [Href "#"; OnClick onClick] [R.str model.text]]
 
+/// Render a dropdown item.
+let viewDropdownItem position dispatch dispatchLocal (model: DropdownItem<'msg>) =
+    match model with
+    | Selection(item) -> viewItemAsDropdownEntry position dispatch dispatchLocal item
+    | Separator -> R.li [Role "separator"; ClassName "divider"] []
+ 
+/// Render a whole dropdown.
+let private viewDropdown position (model: DropdownModel<'msg>) dispatch dispatchLocal =
+    // The link that forms the button that opens the dropdown.
+    let dropdownItem =
+        R.a [
+            Href "#"
+            ClassName "dropdown-toggle"
+            Role "button"
+            AriaHasPopup true
+            AriaExpanded model.isOpen
+            OnClick (fun _ -> ToggleDropdown position |> dispatchLocal)
+        ] [
+            R.str model.text
+            R.span [ClassName "caret"] []
+    ]
+    let subitems = model.items |> List.map (viewDropdownItem position dispatch dispatchLocal)
 
-let view (model: Model<'msg>) dispatch = ()
+    R.li [
+        ClassName (if model.isOpen then "dropdown open" else "dropdown")
+    ] [
+        R.ul
+            [ClassName "dropdown-menu"; OnBlur (fun _ -> CloseDropdown position |> dispatchLocal)]
+            subitems
+    ]
+
+let private viewNavSection
+        leftSide (active: int option) (items: NavItem<'msg> list) dispatch dispatchLocal =
+    let viewItem index item =
+        let position = if leftSide then Left(index) else Right(index)
+        match item with
+        | Single(item) ->
+            let isActive = Some(index) = active
+            viewSingle isActive position item dispatch dispatchLocal
+        | Dropdown(dropModel) ->
+            viewDropdown position dropModel dispatch dispatchLocal
+
+    R.ul
+        [ClassName (if leftSide then "nav navbar-nav" else "nav navbar-nav navbar-right")]
+        (items |> List.mapi viewItem)
+
+let view (model: Model<'msg>) dispatch dispatchLocal =
+    let (leftActive, rightActive) =
+        match model.activeItem with
+        | Left(i) -> (Some(i), None)
+        | Right(i) -> (None, Some(i))
+    let divLeftRight =
+        R.div [] [
+            viewNavSection true leftActive model.leftItems dispatch dispatchLocal
+            viewNavSection false rightActive model.rightItems dispatch dispatchLocal
+        ]
+
+    R.nav
+        [ClassName "navbar navbar-default navbar-fixed-top"]
+        [R.div [ClassName "container"] [divLeftRight]]

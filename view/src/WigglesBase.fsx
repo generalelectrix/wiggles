@@ -1,3 +1,4 @@
+/// Re-usable pieces for consoles built around the Wiggles console server.
 #r "../node_modules/fable-core/Fable.Core.dll"
 #r "../node_modules/fable-react/Fable.React.dll"
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
@@ -5,9 +6,8 @@
 #load "Types.fsx"
 #load "Bootstrap.fsx"
 #load "Modal.fsx"
-#load "PatchEdit.fsx"
-#load "NewPatch.fsx"
 #load "Socket.fsx"
+#load "Navbar.fsx"
 
 open Fable.Core
 open Fable.Import
@@ -20,255 +20,129 @@ open Types
 open Bootstrap
 open Socket
 
-// If true, use a mock server rather than a real websocket.
-let mock = false
-// If true, enable interactive console logging of model updates.
-let withConsoleTrace = false
-
 type ConnectionState =
     | Waiting
     | Open
     | Closed
 
-type Model = {
-    connection: ConnectionState
-    patches: PatchItem array
-    // Current fixture ID we have selected, if any.
-    selected: FixtureId option
-    // Model for the patch editor.
-    editorModel: PatchEdit.Model
-    newPatchModel: NewPatch.Model
-    // Pop-over modal dialog.
+type SavesAvailable = {saves: string list; autosaves: string list}
+
+type BaseModel<'m, 'msg> = {
+    /// The name of the currently-running show.
+    name: string
+    /// Saved states available for this show.
+    savesAvailable: SavesAvailable
+    /// Saved shows available for this console.
+    showsAvailable: string list
+    /// Pop-over modal dialog.  Shared among everything that needs it.
     modalDialog: Modal.Model
-    // For now show errors in a console of infinite length.
-    consoleText: string array
+    /// App navigation bar.
+    navbar: Navbar.Model
+    /// The function we can call to get a fresh, empty version of this console.
+    showModelInit: unit -> 'm
+    /// The collection of messages to emit to initialize the show.
+    showInitMessages: Cmd<'msg>
 }
 
-let withConsoleMessage msg model =
-    {model with consoleText = Array.append model.consoleText [|msg|]}
+let initBaseModel showModelInit showInitMessages = {
+    name = ""
+    savesAvailable = {saves = []; autosaves = []}
 
-type UiAction =
-    | ClearConsole
-    | SetSelected of FixtureId
-    | Deselect
+type Model<'m, 'msg> = {
+    /// State of the connection to the console server.
+    connection: ConnectionState
+    /// The basic model pieces that every console uses.
+    baseModel: BaseModel<'m, 'msg>
+    /// The specific model used by this console.
+    showModel: 'm
+}
 
-type Message =
-    | Socket of SocketMessage
-    | Request of ServerRequest
-    | Response of ServerResponse
-    | Action of UiAction
-    | Edit of PatchEdit.Message
-    | Create of NewPatch.Message
-    | ModalDialog of Modal.Message
+[<RequireQualifiedAccess>]
+/// Outer wrapper for console command. Generic over the top-level command type used by an
+/// implementation.
+type ServerCommand<'msg> =
+    /// Get the name of the running show.
+    | ShowName
+    /// Create a new, empty show.
+    | NewShow of string
+    /// List all available shows.
+    | SavedShows
+    /// List all available saves and autosaves.
+    | AvailableSaves
+    /// Load a show using this spec.
+    | Load of LoadShow
+    /// Save the current state of the show.
+    | Save
+    /// Save the current show as a new show with a different name.  This show will become the one
+    /// running in the reactor.
+    | SaveAs of string
+    /// Change the name of the currently-running show.  This will move all of the files in the
+    /// saved show library.
+    | Rename of string
+    /// Quit the console, cleanly closing down every running thread.
+    | Quit
+    /// A message to be passed into the console logic running in the reactor.
+    | Console of 'msg
+
+[<RequireQualifiedAccess>]
+/// Outer wrapper for console response.  Generic over the top-level response type used by an
+/// implementation.
+type ServerResponse<'msg> =
+    /// The name of the running show.
+    | ShowName of string
+    /// A listing of all available save and autosave files for the running show.
+    | SavesAvailable of SavesAvailable
+    /// Listing of all saved shows for this console.
+    | ShowsAvailable of string list
+    /// A new show was loaded, with this name.
+    | Loaded of string
+    /// The running show's name changed.
+    | Renamed of string
+    /// The show was saved successfully.
+    | Saved
+    /// A show library error occurred.
+    | ShowLibErr of string
+    /// The console is going to quit.
+    | Quit
+    /// A response emanting from the console itself.
+    | Console of 'msg
+
+
+[<RequireQualifiedAccess>]
+type Message<'cmd, 'rsp, 'msg> =
+    /// Message to the server, sent over the socket connection.
+    | Command of ServerCommand<'cmd>
+    /// Message from the server.
+    | Response of ServerResponse<'rsp>
+    /// Navbar actions
+    | Navbar of Navbar.Message
+    /// Modal dialog actions
+    | Modal of Modal.Message
+    /// Message for the internal operation of this console view.
+    | Console of 'msg
 
 // Launch the websocket we'll use to talk to the server.
-let (subscription, send) = openSocket Socket
+let (subscription, send) = openSocket Message.Response
 
-// We don't emit these along with the initial model as we need to wait for the socket to connect
-// to the server before sending messages.
-let initCommands =
-    [ServerRequest.PatchState; ServerRequest.GetKinds]
-    |> List.map Cmd.ofMsg
-    |> Cmd.batch
-    |> Cmd.map Request
-
-let initialModel () =
-    let m = {
-        connection = Waiting
-        patches = Array.empty
-        selected = None
-        editorModel = PatchEdit.initialModel()
-        newPatchModel = NewPatch.initialModel()
-        modalDialog = Modal.initialModel()
-        consoleText = Array.empty
-    }
-    (m, Cmd.none)
-
-let mutable counter = testPatches.Length
-
-let mockMakePatch (patchReq: PatchRequest) =
-    let id = counter
-    counter <- counter + 1
-    {id = id;
-     name = patchReq.name;
-     kind = patchReq.kind;
-     channelCount = if patchReq.name = "dimmer" then 1 else 2;
-     address = patchReq.address;}
-
-/// A fake server to emit messages as if we were talking to a real server.
-let mockServer model req =
-    let maybeUpdatePatch msgType op patchId =
-        model.patches
-        |> Array.tryFind (fun p -> p.id = patchId)
-        |> Option.map (op >> msgType)
-        |> (function
-            | Some p -> p
-            | None -> ServerResponse.Error (sprintf "Unknown fixture id %d" patchId))
-
-    match req with
-    | ServerRequest.PatchState ->
-        if model.patches |> Array.isEmpty then testPatches else model.patches
-        |> ServerResponse.PatchState
-    | ServerRequest.GetKinds -> ServerResponse.Kinds testKinds
-    | ServerRequest.NewPatches patches ->
-        patches |> Array.map mockMakePatch |> ServerResponse.NewPatches
-    | ServerRequest.Rename (id, name) ->
-        maybeUpdatePatch
-            ServerResponse.Update
-            (fun p -> {p with name = name})
-            id
-    | ServerRequest.Repatch (id, addr) ->
-        maybeUpdatePatch
-            ServerResponse.Update
-            (fun p -> {p with address = addr})
-            id
-    | ServerRequest.Remove id ->
-        maybeUpdatePatch
-            ServerResponse.Remove
-            (fun _ -> id)
-            id
-
-/// Return a command to update the editor's state if fixture id is among those in patches.
-let updateEditorState patches selectedFixtureId =
-    selectedFixtureId
-    |> Option.map (fun fixtureId ->
-        patches |> Array.tryFind (fun p -> p.id = fixtureId))
-    |> function | None -> None | Some x -> x // Option.flatten not supported by Fable, apparently.
-    |> PatchEdit.SetState
-    |> Edit
-    |> Cmd.ofMsg
+/// Update the state of this application based on an incoming server message.
+let updateFromResponse message model =
+    match message with
+    | ServerResponse.ShowName(name) ->
+        {model with baseModel = {model.baseModel with name = name}}, Cmd.none
+    | ServerResponse.SavesAvailable(s) ->
+        {model withbaseModel = {model.baseModel with savesAvailable = s}}, Cmd.none
+    | ServerResponse.Loaded(name) ->
+        // we loaded a new show; we need to issue whatever commands are necessary to completely
+        // refresh the state of this application
+        // We do this by refreshing to the initial model state and issuing the messages it requires
+        // to initialize itself.
 
 let update message model =
-
     match message with
-    | Socket Connected ->
-        // The socket connected, issue the initial commands.
-        ({model with connection = Open}, initCommands)
-    | Socket Disconnected ->
-        // The server closed the connection, hopefully not because it crashed.
-        ({model with connection = Closed}, Cmd.none)
-    | Request r ->
-        // Dispatch a request to the websocket.
-        if mock then
-            (model, mockServer model r |> Response |> Cmd.ofMsg)
-        else
-            send r
-            (model, Cmd.none)
-    | Response r ->
-        match r with
-        | ServerResponse.Error msg ->
-            model |> withConsoleMessage msg, Cmd.none
-        | ServerResponse.PatchState s ->
-            {model with patches = s}, updateEditorState s model.selected
-        | ServerResponse.NewPatches patches ->
-            {model with patches = patches |> Array.append model.patches}, Cmd.none
-        | ServerResponse.Update p ->
-            let newPatches =
-                model.patches
-                |> Array.map (fun existing -> if existing.id = p.id then p else existing)
-            {model with patches = newPatches}, updateEditorState newPatches model.selected
-        | ServerResponse.Remove id ->
-            let newPatches = model.patches |> Array.filter (fun p -> p.id <> id)
-            {model with patches = newPatches}, updateEditorState newPatches model.selected
-        | ServerResponse.Kinds kinds ->
-            model, kinds |> NewPatch.UpdateKinds |> Create |> Cmd.ofMsg
-    | Action a ->
-        match a with
-        | ClearConsole -> {model with consoleText = Array.empty}, Cmd.none
-        | SetSelected id ->
-            {model with selected = Some id}, updateEditorState model.patches (Some(id))
-        | Deselect -> {model with selected = None}, updateEditorState model.patches None
-    | Edit m ->
-        let editorModel, editorCmds = PatchEdit.update m model.editorModel
-        {model with editorModel = editorModel}, editorCmds |> Cmd.map Edit
-    | Create m ->
-        let newPatchModel, newPatchCmds = NewPatch.update m model.newPatchModel
-        {model with newPatchModel = newPatchModel}, newPatchCmds |> Cmd.map Create
-    | ModalDialog m ->
-        {model with modalDialog = Modal.update m model.modalDialog}, Cmd.none
-    
-
-let updateAndLog message model =
-    let model, cmds = update message model
-    (model |> withConsoleMessage (sprintf "%+A" message), cmds)
-
-/// Render a patch item as a basic table row.
-let viewPatchTableRow dispatch selectedId item =
-    let td x = R.td [] [R.str (x.ToString())]
-    let universe, address =
-        match item.address with
-        | Some(u, a) -> string u, string a
-        | None -> "", ""
-    let rowAttrs: IHTMLProp list =
-        let onClick = OnClick (fun _ -> SetSelected item.id |> Action |> dispatch)
-        if Some(item.id) = selectedId
-        then [onClick; Table.Row.Active]
-        else [onClick]
-    R.tr rowAttrs [
-        td item.id;
-        td item.name;
-        td item.kind;
-        td universe;
-        td address;
-        td item.channelCount;
-    ]
-
-let patchTableHeader =
-    ["id"; "name"; "kind"; "universe"; "address"; "channel count"]
-    |> List.map (fun x -> R.th [] [R.str x])
-    |> R.tr []
-
-let viewPatchTable dispatch patches selectedId =
-    R.table [Table.Condensed] [
-        R.tbody [] [
-            yield patchTableHeader
-            for patch in patches -> viewPatchTableRow dispatch selectedId patch
-        ]
-    ]
+    | Message.Command(cmd) = send cmd
+    | Message.Response(rsp) = updateFromResponse rsp model
 
 
-let viewConsole dispatch lines =
-    R.div [Form.Group] [
-        R.span [] [
-            R.str "Console";
-            R.button [
-                Button.Warning
-                OnClick (fun _ -> ClearConsole |> Action |> dispatch)
-            ] [ R.str "clear" ];
-        ];
-        R.div [] [
-            R.textarea [
-                Form.Control
-                Style [Overflow "scroll"];
-                Value (String.concat "\n" lines |> Case1);
-                Rows 20.
-                Cols 80.
-            ] [];
-        ]
-    ]
-
-
-let view model dispatch =
-    let dispatchServer = Request >> dispatch
-
-    /// Helper function passed to views that want to be able to open modal dialogs to confirm actions.
-    let openModal req = req |> Modal.Open |> ModalDialog |> dispatch
-
-    R.div [Container.Fluid] [
-        Grid.layout [
-            (8, [ viewPatchTable dispatch model.patches model.selected ])
-            (4, [
-                Grid.fullRow [
-                    PatchEdit.view model.editorModel (Edit >> dispatch) dispatchServer openModal]
-                Grid.fullRow [
-                    NewPatch.view model.newPatchModel (Create >> dispatch) dispatchServer]
-            ])
-        ]
-        Grid.fullRow [
-            viewConsole dispatch model.consoleText
-        ]
-        Modal.view model.modalDialog (ModalDialog >> dispatch)
-    ]
 
 /// Outer view wrapper to show splashes if we're waiting on a server connection or if the connection
 /// has gone away.
@@ -277,9 +151,3 @@ let viewWithConnection model dispatch =
     | Waiting -> Modal.viewSplash "Waiting for console server connection to be established."
     | Open -> view model dispatch
     | Closed -> Modal.viewSplash "The console server disconnected."
-
-Program.mkProgram initialModel updateAndLog viewWithConnection
-|> Program.withSubscription subscription
-|> Program.withReact "app"
-|> (if withConsoleTrace then Program.withConsoleTrace else id)
-|> Program.run

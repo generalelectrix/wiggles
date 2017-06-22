@@ -20,6 +20,8 @@ use super::clients::ClientData;
 /// a different show are all considered top-level commands, as they require swapping out the state
 /// of the reactor.
 pub enum Command<T: Send> {
+    /// Get the name of the show that's running.
+    ShowName,
     /// Create a new, empty show.
     NewShow(String),
     /// List all available shows.
@@ -63,6 +65,8 @@ pub type CommandMessage<T> = CommandWrapper<Command<T>>;
 /// that administrative actions have occurred, as well as passing on messages from the console
 /// logic running in the reactor.
 pub enum Response<T: Send> {
+    /// The name of the show that's running.
+    ShowName(String),
     /// A listing of all available save and autosave files for the running show.
     SavesAvailable{saves: Vec<String>, autosaves: Vec<String>},
     /// Listing of all saved shows for this console.
@@ -355,6 +359,9 @@ impl<C> Reactor<C>
                 self.running = false;
                 Messages::one(ResponseWrapper::no_client(Response::Quit))
             },
+            Command::ShowName => {
+                Messages::one(Response::ShowName(self.show_lib.name().to_string()).with_client(client_data))
+            }
             Command::AvailableSaves => {
                 debug!("Getting a listing of available saved show states.");
                 let saves = self.show_lib.saves().unwrap_or(Vec::new());
