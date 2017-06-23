@@ -1,6 +1,6 @@
 module PatchTypes
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
-#load "Util.fsx"
+#load "../core/Util.fsx"
 
 open Elmish
 open Util

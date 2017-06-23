@@ -3,8 +3,8 @@
 #r "../node_modules/fable-react/Fable.React.dll"
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
+#load "../core/Bootstrap.fsx"
 #load "PatchTypes.fsx"
-#load "Bootstrap.fsx"
 #load "PatchEdit.fsx"
 #load "NewPatch.fsx"
 

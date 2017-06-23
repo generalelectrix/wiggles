@@ -8,7 +8,6 @@
 #load "Navbar.fsx"
 #load "Socket.fsx"
 #load "WigglesBase.fsx"
-#load "Patcher.fsx"
 
 open Fable.Core
 open Fable.Import
@@ -24,15 +23,15 @@ open Socket
 let withConsoleTrace = true
 
 type Page =
-    | PatchPage
+    | TestPage
 
 type ShowModel = {
     page: Page
-    patcher: Patcher.Model
+    model: string
 }
 
 type ShowServerCommand =
-    | PatchCommand of PatchServerRequest
+    | C
 
 type ShowServerResponse =
     | PatchResponse of PatchServerResponse

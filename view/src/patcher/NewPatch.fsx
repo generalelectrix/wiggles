@@ -3,10 +3,11 @@ module NewPatch
 #r "../node_modules/fable-react/Fable.React.dll"
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
-#load "Util.fsx"
+#load "../core/Types.fsx"
+#load "../core/Util.fsx"
+#load "../core/Bootstrap.fsx"
+#load "../core/EditBox.fsx"
 #load "PatchTypes.fsx"
-#load "Bootstrap.fsx"
-#load "EditBox.fsx"
 
 open Fable.Core
 open Fable.Import
@@ -15,6 +16,7 @@ open Elmish.React
 open Fable.Core.JsInterop
 module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
+open Types
 open Util
 open PatchTypes
 open Bootstrap
@@ -146,7 +148,7 @@ let private patchButton model dispatchLocal dispatchServer =
                         newPatchesSequential name kind quant globalAddress
                     match newPatchResult with
                     | Ok(patches) ->
-                        patches |> PatchServerRequest.NewPatches |> dispatchServer
+                        (ResponseFilter.All, patches |> PatchServerRequest.NewPatches) |> dispatchServer
                         AdvanceAddress |> dispatchLocal
                     | _ -> ()
             | x ->

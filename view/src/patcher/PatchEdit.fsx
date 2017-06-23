@@ -3,12 +3,13 @@ module PatchEdit
 #r "../node_modules/fable-react/Fable.React.dll"
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
-#load "Util.fsx"
+#load "../core/Util.fsx"
 #load "PatchTypes.fsx"
-#load "Bootstrap.fsx"
-#load "EditBox.fsx"
-#load "WigglesBase.fsx"
-#load "Modal.fsx"
+#load "../core/Bootstrap.fsx"
+#load "../core/EditBox.fsx"
+#load "../core/Modal.fsx"
+#load "../core/Types.fsx"
+#load "../core/Base.fsx"
 
 open Fable.Core
 open Fable.Import
@@ -17,6 +18,7 @@ open Elmish.React
 open Fable.Core.JsInterop
 module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
+open Types
 open Util
 open PatchTypes
 open Bootstrap
@@ -82,7 +84,7 @@ let private nameEditOnKeyDown
             match nameEditModel.value with
             | Some(Ok(name)) ->
                 clear()
-                PatchServerRequest.Rename(fixtureId, name) |> dispatchServer
+                (ResponseFilter.All, PatchServerRequest.Rename(fixtureId, name)) |> dispatchServer
             | _ -> ()
         | EscapeKey ->
             clear()
@@ -129,7 +131,7 @@ let private addressEditor (selected: PatchItem) model dispatchLocal dispatchServ
             // We can only do something if both are some or both are none.
             match globalAddressFromOptionals univ addr with
             | Ok a ->
-                PatchServerRequest.Repatch(selected.id, a) |> dispatchServer
+                (ResponseFilter.All, PatchServerRequest.Repatch(selected.id, a)) |> dispatchServer
                 clearAll()
             | _ -> ()
 
@@ -150,7 +152,8 @@ let private addressEditor (selected: PatchItem) model dispatchLocal dispatchServ
                         selected.id
                         selected.name
                 let removeAction _ =
-                    let req = PatchServerRequest.Remove selected.id |> dispatchServer
+                    (ResponseFilter.All, PatchServerRequest.Remove selected.id)
+                    |> dispatchServer
                 Modal.confirm confirmMessage removeAction
                 |> openModal
             )
