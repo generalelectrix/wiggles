@@ -15,6 +15,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		src\Socket.fsx = src\Socket.fsx
 		src\WigglesBase.fsx = src\WigglesBase.fsx
 		src\Navbar.fsx = src\Navbar.fsx
+		src\Patcher.fsx = src\Patcher.fsx
 	EndProjectSection
 EndProject
 Global

@@ -99,6 +99,12 @@ export function confirm(message, action) {
   });
   return new ModalRequest(message, okAction, cancelAction);
 }
+export function prompt(message) {
+  var okAction = new ModalAction("OK", Button.Basic, function (value) {
+    value;
+  });
+  return new ModalRequest(message, okAction, null);
+}
 export function initialModel() {
   return new Array(0);
 }

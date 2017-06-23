@@ -60,6 +60,14 @@ let confirm message action =
         action = ignore}
     {message = message; action0 = okAction; action1 = Some cancelAction}
 
+/// Create a request to open a dialog that provides a message and prompts the user to dismiss it.
+let prompt message =
+    let okAction = {
+        label = "OK"
+        buttonType = Button.Basic
+        action = ignore}
+    {message = message; action0 = okAction; action1 = None}
+
 let initialModel() = Array.empty
 
 let modalOkButtonId = "modal-ok-button"

@@ -9,7 +9,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
 import { equals, compareUnions, equalsUnions, makeGeneric, GenericParam } from "fable-core/Util";
-import { mapIndexed, map } from "fable-core/List";
+import { map, mapIndexed } from "fable-core/List";
 import List from "fable-core/List";
 import { createElement } from "react";
 export var Item = function () {
@@ -231,6 +231,42 @@ export var Message = function () {
   return Message;
 }();
 setType("Navbar.Message", Message);
+
+function mapDropdown(index, f, collection) {
+  return mapIndexed(function (i, item) {
+    return i === index ? item.Case === "Dropdown" ? new NavItem("Dropdown", [f(item.Fields[0])]) : item : item;
+  }, collection);
+}
+
+function updateDropdown(f, pos, model) {
+  if (pos.Case === "Right") {
+    var rightItems = mapDropdown(pos.Fields[0], f, model.rightItems);
+    return new Model(model.leftItems, rightItems, model.activeItem);
+  } else {
+    return new Model(mapDropdown(pos.Fields[0], f, model.leftItems), model.rightItems, model.activeItem);
+  }
+}
+
+export function update(message, model) {
+  if (message.Case === "OpenDropdown") {
+    return updateDropdown(function (d) {
+      var isOpen = true;
+      return new DropdownModel(d.text, d.items, isOpen);
+    }, message.Fields[0], model);
+  } else if (message.Case === "CloseDropdown") {
+    return updateDropdown(function (d_1) {
+      var isOpen_1 = false;
+      return new DropdownModel(d_1.text, d_1.items, isOpen_1);
+    }, message.Fields[0], model);
+  } else if (message.Case === "ToggleDropdown") {
+    return updateDropdown(function (d_2) {
+      var isOpen_2 = !d_2.isOpen;
+      return new DropdownModel(d_2.text, d_2.items, isOpen_2);
+    }, message.Fields[0], model);
+  } else {
+    return new Model(model.leftItems, model.rightItems, message.Fields[0]);
+  }
+}
 
 function viewSingle(active, position, model, dispatch, dispatchLocal) {
   var onClick = function onClick(e) {

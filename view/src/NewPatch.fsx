@@ -146,7 +146,7 @@ let private patchButton model dispatchLocal dispatchServer =
                         newPatchesSequential name kind quant globalAddress
                     match newPatchResult with
                     | Ok(patches) ->
-                        patches |> ServerRequest.NewPatches |> dispatchServer
+                        patches |> PatchServerRequest.NewPatches |> dispatchServer
                         AdvanceAddress |> dispatchLocal
                     | _ -> ()
             | x ->

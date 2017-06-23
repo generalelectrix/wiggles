@@ -71,6 +71,30 @@ type Message =
     /// Toggle a drop-down's open state.  Ignored if the item at position is not a drop-down.
     | ToggleDropdown of Position
 
+/// Apply f to the item at index if it is a dropdown.
+/// Return an updated list of items with the change made.
+let private mapDropdown index f collection =
+    collection
+    |> List.mapi (fun i item ->
+        if i = index then
+            match item with
+            | Single(_) -> item
+            | Dropdown(i) -> Dropdown(f i)
+        else item)
+
+/// Update either the left or right nav item that matches pos with the given update function.
+let private updateDropdown f pos model =
+    match pos with
+    | Left(i) -> {model with leftItems = mapDropdown i f model.leftItems}
+    | Right(i) -> {model with rightItems = mapDropdown i f model.rightItems}
+
+let update message model =
+    match message with
+    | SetActive(pos) -> {model with activeItem = pos}
+    | OpenDropdown(pos) -> updateDropdown (fun d -> {d with isOpen = true}) pos model
+    | CloseDropdown(pos) -> updateDropdown (fun d -> {d with isOpen = false}) pos model
+    | ToggleDropdown(pos) -> updateDropdown (fun d -> {d with isOpen = not d.isOpen}) pos model
+
 /// Render a single navbar item.
 let private viewSingle active position (model: Item<'msg>) dispatch dispatchLocal =
     let onClick e =

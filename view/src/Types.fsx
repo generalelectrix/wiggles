@@ -63,7 +63,7 @@ let testKinds : FixtureKind array = [|
 
 /// All possible requests we can make to the patch server.
 [<RequireQualifiedAccess>]
-type ServerRequest =
+type PatchServerRequest =
     /// Request the full state of the patch to be sent.
     | PatchState
     /// Create one or more new patches; may fail.
@@ -79,9 +79,7 @@ type ServerRequest =
 
 /// All possible responses we can receive from the patch server.
 [<RequireQualifiedAccess>]
-type ServerResponse =
-    /// Generic error message from the server, we may log or display to user.
-    | Error of string
+type PatchServerResponse =
     /// Full current state of the patch.
     | PatchState of PatchItem array
     /// One or more new patches added.
