@@ -36,19 +36,14 @@ type Message =
     | ModalDialog of Modal.Message
 
 // Commands needed to initialize the patcher.
-let initCommands =
-    [ServerRequest.PatchState; ServerRequest.GetKinds]
-    |> List.map Cmd.ofMsg
-    |> Cmd.batch
+let initCommands = [PatchServerRequest.PatchState; PatchServerRequest.GetKinds]
 
-let initialModel () =
-    let m = {
-        patches = Array.empty
-        selected = None
-        editorModel = PatchEdit.initialModel()
-        newPatchModel = NewPatch.initialModel()
-    }
-    (m, Cmd.none)
+let initialModel () = {
+    patches = Array.empty
+    selected = None
+    editorModel = PatchEdit.initialModel()
+    newPatchModel = NewPatch.initialModel()
+}
 
 /// Return a command to update the editor's state if fixture id is among those in patches.
 let updateEditorState patches selectedFixtureId =
@@ -97,7 +92,7 @@ let viewPatchTableRow dispatch selectedId item =
         | Some(u, a) -> string u, string a
         | None -> "", ""
     let rowAttrs: IHTMLProp list =
-        let onClick = OnClick (fun _ -> SetSelected item.id |> Action |> dispatch)
+        let onClick = OnClick (fun _ -> SetSelected item.id |> dispatch)
         if Some(item.id) = selectedId
         then [onClick; Table.Row.Active]
         else [onClick]
@@ -124,8 +119,7 @@ let viewPatchTable dispatch patches selectedId =
     ]
 
 /// View the patcher page.
-let view openModel model dispatch dispatchServer =
-    let dispatchServer = Request >> dispatchServer
+let view openModal model dispatch dispatchServer =
     Grid.layout [
         (8, [ viewPatchTable dispatch model.patches model.selected ])
         (4, [

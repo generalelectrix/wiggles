@@ -23,7 +23,7 @@ let private logException msg (e: System.Exception) = Browser.console.error(msg, 
 /// Open a websocket connection to the current host on the same port used to serve this application.
 /// Returns a subscription that will produce a stream of messages received, as well as a function
 /// that will send a message on the socket.
-/// Pass a function that lists a socket message into the overall message type for this application.
+/// Pass a function that lifts a socket message into the overall message type for this application.
 let openSocket wrapSocketMessage =
 
     // let host = sprintf "ws://%s/" Browser.window.location.host
@@ -31,7 +31,9 @@ let openSocket wrapSocketMessage =
 
     let ws: Browser.WebSocket = Browser.WebSocket.Create(host, Case1("wiggles"))
 
-    let subscription _ =
+    /// Return a subscription.  Curry on the function that converts whatever we expect to receive
+    /// on the wire into the top-level message type for the application.
+    let subscription messageWrapper _ =
         /// This function will be called during application init and passed the dispatch function,
         /// which is attached to the socket and used on receipt of a message to pass that message
         /// into the message queue.
@@ -41,6 +43,7 @@ let openSocket wrapSocketMessage =
                     try
                         unbox event.data
                         |> ofJson
+                        |> messageWrapper
                         |> dispatch
                     with e ->
                         logException "Message deserialization error:" e

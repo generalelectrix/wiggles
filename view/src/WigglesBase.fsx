@@ -18,7 +18,6 @@ module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Types
 open Bootstrap
-open Socket
 
 type ConnectionState =
     | Waiting
@@ -27,7 +26,7 @@ type ConnectionState =
 
 type SavesAvailable = {saves: string list; autosaves: string list}
 
-type BaseModel<'m, 'msg> = {
+type BaseModel<'msg> = {
     /// The name of the currently-running show.
     name: string
     /// Saved states available for this show.
@@ -37,7 +36,7 @@ type BaseModel<'m, 'msg> = {
     /// Pop-over modal dialog.  Shared among everything that needs it.
     modalDialog: Modal.Model
     /// App navigation bar.
-    navbar: Navbar.Model
+    navbar: Navbar.Model<'msg>
 }
 
 let private initBaseModel navbar = {
@@ -48,11 +47,11 @@ let private initBaseModel navbar = {
     navbar = navbar
 }
 
-type Model<'m, 'msg, 'page> = {
+type Model<'m, 'msg> = {
     /// State of the connection to the console server.
     connection: ConnectionState
     /// The basic model pieces that every console uses.
-    baseModel: BaseModel<'m, 'msg>
+    baseModel: BaseModel<'msg>
     /// The specific model used by this console.
     showModel: 'm
 }
@@ -72,7 +71,6 @@ type LoadSpec =
     | LatestAutosave
     /// Load this particular autosave.  Should consist only of a timestamp with no extension.
     | ExactAutosave of string
-}
 
 type LoadShow = {
     name: string
@@ -104,7 +102,7 @@ type ServerCommand<'m> =
     /// Quit the console, cleanly closing down every running thread.
     | Quit
     /// A message to be passed into the console logic running in the reactor.
-    | Show of 'm
+    | Console of 'm
 
 [<RequireQualifiedAccess>]
 /// Outer wrapper for console response.  Generic over the top-level response type used by an
@@ -134,7 +132,7 @@ type ServerResponse<'msg> =
 /// Outer message type.
 type Message<'cmd, 'rsp, 'msg> =
     /// The connection state of the application has changed.
-    | Socket of SocketMessage
+    | Socket of Socket.SocketMessage
     /// Message to the server, sent over the socket connection.
     | Command of ServerCommand<'cmd>
     /// Message from the server.
@@ -147,24 +145,18 @@ type Message<'cmd, 'rsp, 'msg> =
     | Inner of 'msg
    
 /// The initial commands to fire to initialize a base Wiggles console.
-let initCommands = 
-    [ServerCommand.ShowName]
-    |> List.map (Message::Command >> Cmd.ofMsg)
-    |> Cmd.batch
-
-// Launch the websocket we'll use to talk to the server.
-let (subscription, send) = openSocket Message.Response
+let initCommands = [ServerCommand.ShowName]
 
 /// Return a command that opens a modal dialog with a message and a button to dismiss it.
-let private prompt msg = msg |> Modal.prompt |> Message.Modal |> Cmd.ofMsg
+let private prompt msg = msg |> Modal.prompt |> Modal.Open |> Message.Modal |> Cmd.ofMsg
 
 /// Update the state of this application based on an incoming server message.
-let private updateFromResponse updateShow message model =
+let private updateFromResponse wrapShowResponse updateShow message model =
     match message with
     | ServerResponse.ShowName(name) ->
         {model with baseModel = {model.baseModel with name = name}}, Cmd.none
     | ServerResponse.SavesAvailable(s) ->
-        {model withbaseModel = {model.baseModel with savesAvailable = s}}, Cmd.none
+        {model with baseModel = {model.baseModel with savesAvailable = s}}, Cmd.none
     | ServerResponse.Loaded(name) ->
         // For the moment blow up on show load
         failwith "A new show was loaded but view reloading is not implemented yet."
@@ -180,38 +172,45 @@ let private updateFromResponse updateShow message model =
         printf "The server sent the quit message.  The socket connection should close."
         model, Cmd.none
     | ServerResponse.Console(m) ->
-        let showModel, showMessages = updateShow m model.showModel
+        let showModel, showMessages = updateShow (wrapShowResponse m) model.showModel
         {model with showModel = showModel}, showMessages |> Cmd.map Message.Inner
 
-let update updateShow message model =
+/// Update the whole view by processing a message.
+let update initCommands socketSend wrapShowResponse updateShow message model =
     match message with
-    | Message.Socket(Connected) -> {model with connection = Open}, Cmd.none
-    | Message.Socket(Disconnected) -> {model with connection = Closed}, Cmd.none
-    | Message.Command(msg) -> send msg
-    | Message.Response(msg) -> updateFromResponse updateShow msg model
+    | Message.Socket(Connected) ->
+        {model with connection = Open}, initCommands |> Cmd.map Message.Command
+    | Message.Socket(Disconnected) ->
+        {model with connection = Closed}, Cmd.none
+    | Message.Command(msg) ->
+        socketSend msg
+        model, Cmd.none
+    | Message.Response(msg) -> updateFromResponse wrapShowResponse updateShow msg model
     | Message.Navbar(msg) ->
         {model with
-            baseModel = {model.baseModel with navbar = Navbar.update msg model.navbar}}, Cmd.none
+            baseModel = {model.baseModel with
+                navbar = Navbar.update msg model.baseModel.navbar}}, Cmd.none
     | Message.Modal(msg) ->
         {model with
-            baseModel = {model.baseModel with modal = Modal.update msg model.modal}}, Cmd.none
+            baseModel = {model.baseModel with
+                modalDialog = Modal.update msg model.baseModel.modalDialog}}, Cmd.none
     | Message.Inner(msg) ->
         let showModel, showMessages = updateShow msg model.showModel
-        {model with showModel = showModel}, consoleMessages |> Cmd.map Message.Inner
+        {model with showModel = showModel}, showMessages |> Cmd.map Message.Inner
 
 /// View the basic page structure including the navbar and modal if its open.
 /// Delegate the rest of the view to the console.
 let private viewInner viewShow model dispatch =
-    let openModal req = req |> Modal.Message.Open |> Message.Modal
+    let openModal req = req |> Modal.Message.Open |> Message.Modal |> dispatch
     R.div [] [
         Navbar.view model.baseModel.navbar dispatch (Message.Navbar >> dispatch)
         R.div [Container.Fluid] [
             viewShow
                 openModal
                 model.showModel
-                (Message.Show >> dispatch) // show dispatches a message to itself
-                (ServerCommand.Show >> Message.Command >> dispatch) // show dispatches a message to the server
-            Modal.view model.modalDialog (ModalDialog >> dispatch)
+                (Message.Inner >> dispatch) // show dispatches a message to itself
+                (ServerCommand.Console >> Message.Command >> dispatch) // show dispatches a message to the server
+            Modal.view model.baseModel.modalDialog (Message.Modal >> dispatch)
         ]
     ]
 

@@ -5,7 +5,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
 import { compareUnions, equalsUnions, makeGeneric, Option } from "fable-core/Util";
-import { globalAddressFromOptionals, ServerRequest, parseUniverseId, parseDmxAddress, PatchItem } from "./Types";
+import { globalAddressFromOptionals, PatchServerRequest, parseUniverseId, parseDmxAddress, PatchItem } from "./Types";
 import { view as view_1, update as update_1, initialModel as initialModel_1, Message as Message_1, Model as Model_1 } from "./EditBox";
 import { OptionalModule, emptyIfNone, Optional } from "./Util";
 import { Result } from "fable-elmish/result";
@@ -126,11 +126,11 @@ export function update(message, model) {
   }() : function () {
     var clearBuffers = void 0;
     var matchValue = [model.selected, message.Fields[0]];
-    var $var34 = matchValue[0] != null ? matchValue[1] != null ? [0, matchValue[0], matchValue[1]] : [1] : [1];
+    var $var94 = matchValue[0] != null ? matchValue[1] != null ? [0, matchValue[0], matchValue[1]] : [1] : [1];
 
-    switch ($var34[0]) {
+    switch ($var94[0]) {
       case 0:
-        if ($var34[1].id !== $var34[2].id) {
+        if ($var94[1].id !== $var94[2].id) {
           clearBuffers = true;
         } else {
           clearBuffers = false;
@@ -166,12 +166,12 @@ function nameEditOnKeyDown(fixtureId, dispatchLocal, dispatchServer, nameEditMod
 
     switch (matchValue) {
       case 13:
-        var $var35 = nameEditModel.value != null ? nameEditModel.value.Case === "Ok" ? [0, nameEditModel.value.Fields[0]] : [1] : [1];
+        var $var95 = nameEditModel.value != null ? nameEditModel.value.Case === "Ok" ? [0, nameEditModel.value.Fields[0]] : [1] : [1];
 
-        switch ($var35[0]) {
+        switch ($var95[0]) {
           case 0:
             clear(null);
-            dispatchServer(new ServerRequest("Rename", [fixtureId, $var35[1]]));
+            dispatchServer(new PatchServerRequest("Rename", [fixtureId, $var95[1]]));
             break;
 
           case 1:
@@ -193,23 +193,23 @@ function nameEditBox(selected, model, dispatchLocal, dispatchServer) {
     return nameEditOnKeyDown(selected.id, dispatchLocal, dispatchServer, nameEditModel);
   };
 
-  return view_1(onKeyDown, selected.name, model.nameEdit, function ($var36) {
+  return view_1(onKeyDown, selected.name, model.nameEdit, function ($var96) {
     return dispatchLocal(function (arg0) {
       return new Message("NameEdit", [arg0]);
-    }($var36));
+    }($var96));
   });
 }
 
 function addressEditor(selected, model, dispatchLocal, dispatchServer, openModal) {
-  var universeBox = view_1(null, emptyIfNone(selected.universe), model.universeEdit, function ($var37) {
+  var universeBox = view_1(null, emptyIfNone(selected.universe), model.universeEdit, function ($var97) {
     return dispatchLocal(function (arg0) {
       return new Message("UniverseEdit", [arg0]);
-    }($var37));
+    }($var97));
   });
-  var addressBox = view_1(null, emptyIfNone(selected.dmxAddress), model.addressEdit, function ($var38) {
+  var addressBox = view_1(null, emptyIfNone(selected.dmxAddress), model.addressEdit, function ($var98) {
     return dispatchLocal(function (arg0_1) {
       return new Message("AddressEdit", [arg0_1]);
-    }($var38));
+    }($var98));
   });
 
   var clear = function clear(msg) {
@@ -232,7 +232,7 @@ function addressEditor(selected, model, dispatchLocal, dispatchServer, openModal
       var matchValue = globalAddressFromOptionals(univ, addr);
 
       if (matchValue.Case === "Ok") {
-        dispatchServer(new ServerRequest("Repatch", [selected.id, matchValue.Fields[0]]));
+        dispatchServer(new PatchServerRequest("Repatch", [selected.id, matchValue.Fields[0]]));
         clearAll(null);
       }
     }
@@ -252,7 +252,7 @@ function addressEditor(selected, model, dispatchLocal, dispatchServer, openModal
     })(selected.id)(selected.name);
 
     var removeAction_1 = function removeAction_1(_arg2_1) {
-      dispatchServer(new ServerRequest("Remove", [selected.id]));
+      dispatchServer(new PatchServerRequest("Remove", [selected.id]));
     };
 
     openModal(confirm(confirmMessage_1, removeAction_1));

@@ -7,7 +7,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
 import { defaultArg, compare, compareUnions, equalsUnions, makeGeneric, Option, Array as _Array } from "fable-core/Util";
-import { ServerRequest, globalAddressFromOptionals, PatchRequest, parseDmxAddress, parseUniverseId, FixtureKind } from "./Types";
+import { PatchServerRequest, globalAddressFromOptionals, PatchRequest, parseDmxAddress, parseUniverseId, FixtureKind } from "./Types";
 import { view as view_1, $7C$Parsed$7C$_$7C$ as _Parsed___, update as update_1, setParsed, initialModel as initialModel_1, setFailed, Message as Message_1, Model as Model_1 } from "./EditBox";
 import { errorIfEmpty, parseInt, Result as Result_1, Optional } from "./Util";
 import { range, map, fold, sortWith, tryFind } from "fable-core/Seq";
@@ -122,7 +122,7 @@ export var Message = function () {
 }();
 setType("NewPatch.Message", Message);
 
-var parsePositiveInt = function parsePositiveInt($var58) {
+var parsePositiveInt = function parsePositiveInt($var118) {
   return function () {
     var f = function f(number) {
       if (number < 1) {
@@ -135,9 +135,9 @@ var parsePositiveInt = function parsePositiveInt($var58) {
     return function (r) {
       return ResultModule.bind(f, r);
     };
-  }()(function ($var57) {
-    return Result_1.ofOption(parseInt($var57));
-  }($var58));
+  }()(function ($var117) {
+    return Result_1.ofOption(parseInt($var117));
+  }($var118));
 };
 
 export function initialModel() {
@@ -169,33 +169,33 @@ export function update(message, model) {
     return new Model(model.kinds, model.selectedKind, model.name, model.universe, model.address, quantity);
   }() : message.Case === "AdvanceAddress" ? function () {
     var matchValue_1 = [model.address, model.quantity, model.selectedKind];
-    var $var59 = void 0;
+    var $var119 = void 0;
 
-    var activePatternResult360 = _Parsed___(matchValue_1[0]);
+    var activePatternResult640 = _Parsed___(matchValue_1[0]);
 
-    if (activePatternResult360 != null) {
-      if (activePatternResult360.Case === "Present") {
-        var activePatternResult361 = _Parsed___(matchValue_1[1]);
+    if (activePatternResult640 != null) {
+      if (activePatternResult640.Case === "Present") {
+        var activePatternResult641 = _Parsed___(matchValue_1[1]);
 
-        if (activePatternResult361 != null) {
+        if (activePatternResult641 != null) {
           if (matchValue_1[2] != null) {
-            $var59 = [0, activePatternResult360.Fields[0], matchValue_1[2], activePatternResult361];
+            $var119 = [0, activePatternResult640.Fields[0], matchValue_1[2], activePatternResult641];
           } else {
-            $var59 = [1];
+            $var119 = [1];
           }
         } else {
-          $var59 = [1];
+          $var119 = [1];
         }
       } else {
-        $var59 = [1];
+        $var119 = [1];
       }
     } else {
-      $var59 = [1];
+      $var119 = [1];
     }
 
-    switch ($var59[0]) {
+    switch ($var119[0]) {
       case 0:
-        var newStartAddress = 512 < $var59[1] + $var59[3] * $var59[2].channelCount ? 512 : $var59[1] + $var59[3] * $var59[2].channelCount;
+        var newStartAddress = 512 < $var119[1] + $var119[3] * $var119[2].channelCount ? 512 : $var119[1] + $var119[3] * $var119[2].channelCount;
         var address_1 = setParsed(new Optional("Present", [newStartAddress]), model.address);
         return new Model(model.kinds, model.selectedKind, model.name, model.universe, address_1, model.quantity);
 
@@ -270,50 +270,50 @@ function patchButton(model, dispatchLocal, dispatchServer) {
       console.log(x);
     })(model);
     var matchValue_2 = [model.selectedKind, model.name, model.universe, model.address, model.quantity];
-    var $var61 = void 0;
+    var $var121 = void 0;
 
     if (matchValue_2[0] != null) {
-      var activePatternResult379_1 = _Parsed___(matchValue_2[1]);
+      var activePatternResult659_1 = _Parsed___(matchValue_2[1]);
 
-      if (activePatternResult379_1 != null) {
-        var activePatternResult380_1 = _Parsed___(matchValue_2[2]);
+      if (activePatternResult659_1 != null) {
+        var activePatternResult660_1 = _Parsed___(matchValue_2[2]);
 
-        if (activePatternResult380_1 != null) {
-          var activePatternResult381_1 = _Parsed___(matchValue_2[3]);
+        if (activePatternResult660_1 != null) {
+          var activePatternResult661_1 = _Parsed___(matchValue_2[3]);
 
-          if (activePatternResult381_1 != null) {
-            var activePatternResult382_1 = _Parsed___(matchValue_2[4]);
+          if (activePatternResult661_1 != null) {
+            var activePatternResult662_1 = _Parsed___(matchValue_2[4]);
 
-            if (activePatternResult382_1 != null) {
-              $var61 = [0, activePatternResult381_1, matchValue_2[0], activePatternResult379_1, activePatternResult382_1, activePatternResult380_1];
+            if (activePatternResult662_1 != null) {
+              $var121 = [0, activePatternResult661_1, matchValue_2[0], activePatternResult659_1, activePatternResult662_1, activePatternResult660_1];
             } else {
-              $var61 = [1];
+              $var121 = [1];
             }
           } else {
-            $var61 = [1];
+            $var121 = [1];
           }
         } else {
-          $var61 = [1];
+          $var121 = [1];
         }
       } else {
-        $var61 = [1];
+        $var121 = [1];
       }
     } else {
-      $var61 = [1];
+      $var121 = [1];
     }
 
-    switch ($var61[0]) {
+    switch ($var121[0]) {
       case 0:
-        var matchValue_3 = globalAddressFromOptionals($var61[5], $var61[1]);
+        var matchValue_3 = globalAddressFromOptionals($var121[5], $var121[1]);
 
         if (matchValue_3.Case === "Ok") {
           fsFormat("Addr: %+A")(function (x) {
             console.log(x);
           })(matchValue_3.Fields[0]);
-          var newPatchResult_1 = newPatchesSequential($var61[3], $var61[2], $var61[4], matchValue_3.Fields[0]);
+          var newPatchResult_1 = newPatchesSequential($var121[3], $var121[2], $var121[4], matchValue_3.Fields[0]);
 
           if (newPatchResult_1.Case === "Ok") {
-            dispatchServer(new ServerRequest("NewPatches", [newPatchResult_1.Fields[0]]));
+            dispatchServer(new PatchServerRequest("NewPatches", [newPatchResult_1.Fields[0]]));
             dispatchLocal(new Message("AdvanceAddress", []));
           }
         }
@@ -333,25 +333,25 @@ export function view(model, dispatchLocal, dispatchServer) {
   if (model.kinds.length === 0) {
     return createElement("div", {}, "No patch types available.");
   } else {
-    var nameEntry = view_1(null, "", model.name, function ($var62) {
+    var nameEntry = view_1(null, "", model.name, function ($var122) {
       return dispatchLocal(function (arg0) {
         return new Message("NameEdit", [arg0]);
-      }($var62));
+      }($var122));
     });
-    var universeEntry = view_1(null, "", model.universe, function ($var63) {
+    var universeEntry = view_1(null, "", model.universe, function ($var123) {
       return dispatchLocal(function (arg0_1) {
         return new Message("UnivEdit", [arg0_1]);
-      }($var63));
+      }($var123));
     });
-    var addressEntry = view_1(null, "", model.address, function ($var64) {
+    var addressEntry = view_1(null, "", model.address, function ($var124) {
       return dispatchLocal(function (arg0_2) {
         return new Message("AddrEdit", [arg0_2]);
-      }($var64));
+      }($var124));
     });
-    var quantityEntry = view_1(null, "", model.quantity, function ($var65) {
+    var quantityEntry = view_1(null, "", model.quantity, function ($var125) {
       return dispatchLocal(function (arg0_3) {
         return new Message("QuantEdit", [arg0_3]);
-      }($var65));
+      }($var125));
     });
     return createElement("div", fold(function (o, kv) {
       o[kv[0]] = kv[1];

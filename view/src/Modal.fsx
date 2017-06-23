@@ -48,7 +48,7 @@ type Message =
     /// Clicking any model dialog button will always emit this message.
     | Close
 
-/// Create a request to open a dialog to confirm or cancel an action.
+/// Create a message to open a dialog to confirm or cancel an action.
 let confirm message action =
     let okAction = {
         label = "OK"

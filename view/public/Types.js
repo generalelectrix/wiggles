@@ -175,19 +175,19 @@ export var PatchItem = function () {
 setType("Types.PatchItem", PatchItem);
 export var testPatches = [new PatchItem(0, "foo", "dimmer", null, 2), new PatchItem(1, "charlie", "roto", [0, 27], 1)];
 export var testKinds = [new FixtureKind("dimmer", 1), new FixtureKind("roto", 2)];
-export var ServerRequest = function () {
-  function ServerRequest(caseName, fields) {
-    _classCallCheck(this, ServerRequest);
+export var PatchServerRequest = function () {
+  function PatchServerRequest(caseName, fields) {
+    _classCallCheck(this, PatchServerRequest);
 
     this.Case = caseName;
     this.Fields = fields;
   }
 
-  _createClass(ServerRequest, [{
+  _createClass(PatchServerRequest, [{
     key: _Symbol.reflection,
     value: function () {
       return {
-        type: "Types.ServerRequest",
+        type: "Types.PatchServerRequest",
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
           GetKinds: [],
@@ -211,25 +211,24 @@ export var ServerRequest = function () {
     }
   }]);
 
-  return ServerRequest;
+  return PatchServerRequest;
 }();
-setType("Types.ServerRequest", ServerRequest);
-export var ServerResponse = function () {
-  function ServerResponse(caseName, fields) {
-    _classCallCheck(this, ServerResponse);
+setType("Types.PatchServerRequest", PatchServerRequest);
+export var PatchServerResponse = function () {
+  function PatchServerResponse(caseName, fields) {
+    _classCallCheck(this, PatchServerResponse);
 
     this.Case = caseName;
     this.Fields = fields;
   }
 
-  _createClass(ServerResponse, [{
+  _createClass(PatchServerResponse, [{
     key: _Symbol.reflection,
     value: function () {
       return {
-        type: "Types.ServerResponse",
+        type: "Types.PatchServerResponse",
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
-          Error: ["string"],
           Kinds: [_Array(FixtureKind)],
           NewPatches: [_Array(PatchItem)],
           PatchState: [_Array(PatchItem)],
@@ -250,6 +249,6 @@ export var ServerResponse = function () {
     }
   }]);
 
-  return ServerResponse;
+  return PatchServerResponse;
 }();
-setType("Types.ServerResponse", ServerResponse);
+setType("Types.PatchServerResponse", PatchServerResponse);

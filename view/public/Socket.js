@@ -52,28 +52,30 @@ export function openSocket(wrapSocketMessage, _genArgs) {
   var host = "ws://127.0.0.1:2794";
   var ws = new WebSocket(host, "wiggles");
 
-  var subscription = function subscription(_arg1) {
-    return CmdModule.ofSub(function (dispatch) {
-      ws.addEventListener('message', function (event) {
-        try {
-          dispatch(ofJson(event.data, {
-            T: _genArgs.msg
-          }));
-        } catch (e) {
-          logException("Message deserialization error:", e);
-        }
+  var subscription = function subscription(messageWrapper) {
+    return function (_arg1) {
+      return CmdModule.ofSub(function (dispatch) {
+        ws.addEventListener('message', function (event) {
+          try {
+            dispatch(messageWrapper(ofJson(event.data, {
+              T: _genArgs.d
+            })));
+          } catch (e) {
+            logException("Message deserialization error:", e);
+          }
 
-        return null;
+          return null;
+        });
+        ws.addEventListener('open', function (_arg1_1) {
+          dispatch(wrapSocketMessage(new SocketMessage("Connected", [])));
+          return null;
+        });
+        ws.addEventListener('close', function (_arg2) {
+          dispatch(wrapSocketMessage(new SocketMessage("Disconnected", [])));
+          return null;
+        });
       });
-      ws.addEventListener('open', function (_arg1_1) {
-        dispatch(wrapSocketMessage(new SocketMessage("Connected", [])));
-        return null;
-      });
-      ws.addEventListener('close', function (_arg2) {
-        dispatch(wrapSocketMessage(new SocketMessage("Disconnected", [])));
-        return null;
-      });
-    });
+    };
   };
 
   var send = function send(msg) {
