@@ -42,6 +42,12 @@ let patcherNavItem: Navbar.Item<_> = {
     onClick = (fun dispatch -> SetPage PatchPage |> WigglesBase.Message.Show |> dispatch)
 }
 
+let navbar: NavBar.Model<_> = {
+    leftItems = [NavBar.Single patcherNavItem]
+    rightItems = []
+    activeItem = NavBar.Left(0)
+}
+
 let initShowModel () = {
     page = PatchPage
     patcher = Patcher.initialModel()

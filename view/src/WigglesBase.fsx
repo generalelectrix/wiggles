@@ -71,7 +71,7 @@ type LoadSpec =
     /// Load the latest autosave.
     | LatestAutosave
     /// Load this particular autosave.  Should consist only of a timestamp with no extension.
-    | ExactAutosave of string)
+    | ExactAutosave of string
 }
 
 type LoadShow = {
