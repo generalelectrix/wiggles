@@ -4,9 +4,10 @@
 #r "../node_modules/fable-react/Fable.React.dll"
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
+#load "Types.fsx"
 #load "Navbar.fsx"
 #load "Socket.fsx"
-#load "core/Base.fsx"
+#load "WigglesBase.fsx"
 #load "Patcher.fsx"
 
 open Fable.Core
@@ -16,6 +17,7 @@ open Elmish.React
 open Fable.Core.JsInterop
 module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
+open Types
 open Socket
 
 // If true, log verbose and interactive messages to the javascript console on every update.
@@ -62,8 +64,6 @@ let initShowModel () = {
 let initModel () = (WigglesBase.initModel navbar (initShowModel()), Cmd.none)
 
 /// Every command we need to emit when we connect to the server.
-/// We assume that since that these are query-only, the responses are all filtered to just this
-/// client.
 let initCommands =
     let patcherCommands =
         Patcher.initCommands
@@ -71,7 +71,6 @@ let initCommands =
 
     [patcherCommands; WigglesBase.initCommands]
     |> List.concat
-    |> List.map (fun c -> (WigglesBase.Exclusive, c))
     |> List.map Cmd.ofMsg
     |> Cmd.batch
 
@@ -92,15 +91,11 @@ let updateShow message model =
 let viewShow openModal model dispatch dispatchServer =
     match model.page with
     | PatchPage ->
-        Patcher.view
-            openModal
-            model.patcher
-            (Patch >> dispatch)
-            (WigglesBase.liftResponseAndFilter PatchCommand >> dispatchServer)
+        Patcher.view openModal model.patcher (Patch >> dispatch) (PatchCommand >> dispatchServer)
 
 
 // Launch the websocket we'll use to talk to the server.
-let (subscription, send) = //: WigglesBase.ResponseFilter * WigglesBase.ServerCommand<ShowServerCommand> -> unit) =
+let (subscription, send: WigglesBase.ServerCommand<ShowServerCommand> -> unit) =
     openSocket WigglesBase.Message.Socket
 
 /// Type alias to ensure that generic inference gets the right types all the way down.

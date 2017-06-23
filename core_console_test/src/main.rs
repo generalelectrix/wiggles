@@ -19,12 +19,12 @@ impl Default for NoopConsole {
 
 #[derive(Debug, Serialize, Deserialize)]
 enum Cmd {
-    Command,
+    TestCommand,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 enum Rsp {
-    Response,
+    TestResponse,
 }
 
 impl WrapResponse for Rsp {}
@@ -42,7 +42,7 @@ impl Console for NoopConsole {
     }
 
     fn handle_command(&mut self, cmd: CommandWrapper<Cmd>) -> Messages<ResponseWrapper<Rsp>> {
-        Messages::one(Rsp::Response.with_client(cmd.client_data))
+        Messages::one(Rsp::TestResponse.with_client(cmd.client_data))
     }
 }
 

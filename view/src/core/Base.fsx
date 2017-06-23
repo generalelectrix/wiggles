@@ -3,7 +3,6 @@
 #r "../node_modules/fable-react/Fable.React.dll"
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
-#load "Types.fsx"
 #load "Bootstrap.fsx"
 #load "Modal.fsx"
 #load "Socket.fsx"
@@ -16,8 +15,20 @@ open Elmish.React
 open Fable.Core.JsInterop
 module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
-open Types
 open Bootstrap
+
+/// Message metadata indicating the intended response filter for the result of processing this
+/// message.
+type ResponseFilter =
+    /// Response to this message is of general interest to all clients.
+    | All
+    /// Response is only of interest to this client.
+    | Exclusive
+    /// Disable talkback on this request.
+    | AllButSelf
+
+/// Helper function to lift a tuple of filter and message up the message hierarchy.
+let liftResponseAndFilter f (filter, message) = (filter, f message)
 
 type ConnectionState =
     | Waiting
@@ -134,7 +145,7 @@ type Message<'cmd, 'rsp, 'msg> =
     /// The connection state of the application has changed.
     | Socket of Socket.SocketMessage
     /// Message to the server, sent over the socket connection.
-    | Command of ServerCommand<'cmd>
+    | Command of ResponseFilter * ServerCommand<'cmd>
     /// Message from the server.
     | Response of ServerResponse<'rsp>
     /// Navbar actions
@@ -185,8 +196,8 @@ let update initCommands socketSend wrapShowResponse updateShow message model =
         {model with connection = Open}, initCommands |> Cmd.map Message.Command
     | Message.Socket Socket.Disconnected ->
         {model with connection = Closed}, Cmd.none
-    | Message.Command(msg) ->
-        socketSend msg
+    | Message.Command(filter, msg) ->
+        socketSend (filter, msg)
         model, Cmd.none
     | Message.Response(msg) -> updateFromResponse wrapShowResponse updateShow msg model
     | Message.Navbar(msg) ->
@@ -203,6 +214,13 @@ let update initCommands socketSend wrapShowResponse updateShow message model =
 /// Delegate the rest of the view to the console.
 let private viewInner viewShow model dispatch =
     let openModal req = req |> Modal.Message.Open |> Message.Modal |> dispatch
+
+    /// Dispatch a message to the server, lifting the filter up into the message type.
+    let dispatchServer =
+        liftResponseAndFilter ServerCommand.Console
+        >> Message.Command
+        >> dispatch
+
     R.div [] [
         Navbar.view model.baseModel.navbar dispatch (Message.Navbar >> dispatch)
         R.div [Container.Fluid] [
@@ -210,7 +228,7 @@ let private viewInner viewShow model dispatch =
                 openModal
                 model.showModel
                 (Message.Inner >> dispatch) // show dispatches a message to itself
-                (ServerCommand.Console >> Message.Command >> dispatch) // show dispatches a message to the server
+                dispatchServer // show dispatches a message to the server
             Modal.view model.baseModel.modalDialog (Message.Modal >> dispatch)
         ]
     ]

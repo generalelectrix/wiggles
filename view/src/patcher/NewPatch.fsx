@@ -4,7 +4,7 @@ module NewPatch
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
 #load "Util.fsx"
-#load "Types.fsx"
+#load "PatchTypes.fsx"
 #load "Bootstrap.fsx"
 #load "EditBox.fsx"
 
@@ -16,7 +16,7 @@ open Fable.Core.JsInterop
 module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Util
-open Types
+open PatchTypes
 open Bootstrap
 open EditBox
 

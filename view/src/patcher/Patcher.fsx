@@ -3,7 +3,7 @@
 #r "../node_modules/fable-react/Fable.React.dll"
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
-#load "Types.fsx"
+#load "PatchTypes.fsx"
 #load "Bootstrap.fsx"
 #load "PatchEdit.fsx"
 #load "NewPatch.fsx"
@@ -15,7 +15,7 @@ open Elmish.React
 open Fable.Core.JsInterop
 module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
-open Types
+open PatchTypes
 open Bootstrap
 
 type Model = {

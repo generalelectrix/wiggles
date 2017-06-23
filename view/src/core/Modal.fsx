@@ -7,7 +7,6 @@ module Modal
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
 #load "Util.fsx"
-#load "Types.fsx"
 #load "Bootstrap.fsx"
 
 open Fable.Core
@@ -18,7 +17,6 @@ open Fable.Core.JsInterop
 module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Util
-open Types
 open Bootstrap
 
 type ModalAction = {

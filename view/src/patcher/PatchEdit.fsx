@@ -4,9 +4,10 @@ module PatchEdit
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
 #load "Util.fsx"
-#load "Types.fsx"
+#load "PatchTypes.fsx"
 #load "Bootstrap.fsx"
 #load "EditBox.fsx"
+#load "WigglesBase.fsx"
 #load "Modal.fsx"
 
 open Fable.Core
@@ -17,7 +18,7 @@ open Fable.Core.JsInterop
 module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Util
-open Types
+open PatchTypes
 open Bootstrap
 
 type Model = {
@@ -149,7 +150,7 @@ let private addressEditor (selected: PatchItem) model dispatchLocal dispatchServ
                         selected.id
                         selected.name
                 let removeAction _ =
-                    PatchServerRequest.Remove selected.id |> dispatchServer
+                    let req = PatchServerRequest.Remove selected.id |> dispatchServer
                 Modal.confirm confirmMessage removeAction
                 |> openModal
             )
