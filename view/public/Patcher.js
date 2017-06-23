@@ -6,11 +6,10 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { equals, toString, defaultArg, Option, Array as _Array } from "fable-core/Util";
+import { equals, toString, defaultArg, compareUnions, equalsUnions, Option, Array as _Array } from "fable-core/Util";
 import { PatchServerRequest, PatchServerResponse, PatchItem } from "./Types";
 import { view as view_1, update as update_1, initialModel as initialModel_1, Message as Message_2, Model as Model_1 } from "./PatchEdit";
 import { view as view_2, update as update_2, initialModel as initialModel_2, Message as Message_1, Model as Model_2 } from "./NewPatch";
-import { Message as Message_3 } from "./Modal";
 import { map, ofArray } from "fable-core/List";
 import { CmdModule } from "fable-elmish/elmish";
 import { map as map_1, singleton, append, delay, toList, fold, tryFind } from "fable-core/Seq";
@@ -58,16 +57,25 @@ export var Message = function () {
     value: function () {
       return {
         type: "Patcher.Message",
-        interfaces: ["FSharpUnion"],
+        interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
           Create: [Message_1],
           Deselect: [],
           Edit: [Message_2],
-          ModalDialog: [Message_3],
           Response: [PatchServerResponse],
           SetSelected: ["number"]
         }
       };
+    }
+  }, {
+    key: "Equals",
+    value: function (other) {
+      return equalsUnions(this, other);
+    }
+  }, {
+    key: "CompareTo",
+    value: function (other) {
+      return compareUnions(this, other);
     }
   }]);
 
@@ -88,25 +96,7 @@ export function updateEditorState(patches, selectedFixtureId) {
   }))])]));
 }
 export function update(message, model) {
-  if (message.Case === "Response") {
-    if (message.Fields[0].Case === "NewPatches") {
-      return [new Model(model.patches.concat(message.Fields[0].Fields[0]), model.selected, model.editorModel, model.newPatchModel), CmdModule.none()];
-    } else if (message.Fields[0].Case === "Update") {
-      var newPatches = model.patches.map(function (existing) {
-        return existing.id === message.Fields[0].Fields[0].id ? message.Fields[0].Fields[0] : existing;
-      });
-      return [new Model(newPatches, model.selected, model.editorModel, model.newPatchModel), updateEditorState(newPatches, model.selected)];
-    } else if (message.Fields[0].Case === "Remove") {
-      var newPatches_1 = model.patches.filter(function (p) {
-        return p.id !== message.Fields[0].Fields[0];
-      });
-      return [new Model(newPatches_1, model.selected, model.editorModel, model.newPatchModel), updateEditorState(newPatches_1, model.selected)];
-    } else if (message.Fields[0].Case === "Kinds") {
-      return [model, CmdModule.ofMsg(new Message("Create", [new Message_1("UpdateKinds", [message.Fields[0].Fields[0]])]))];
-    } else {
-      return [new Model(message.Fields[0].Fields[0], model.selected, model.editorModel, model.newPatchModel), updateEditorState(message.Fields[0].Fields[0], model.selected)];
-    }
-  } else if (message.Case === "SetSelected") {
+  if (message.Case === "SetSelected") {
     return [function () {
       var selected = message.Fields[0];
       return new Model(model.patches, selected, model.editorModel, model.newPatchModel);
@@ -126,8 +116,22 @@ export function update(message, model) {
     return [new Model(model.patches, model.selected, model.editorModel, patternInput_1[0]), CmdModule.map(function (arg0_1) {
       return new Message("Create", [arg0_1]);
     }, patternInput_1[1])];
+  } else if (message.Fields[0].Case === "NewPatches") {
+    return [new Model(model.patches.concat(message.Fields[0].Fields[0]), model.selected, model.editorModel, model.newPatchModel), CmdModule.none()];
+  } else if (message.Fields[0].Case === "Update") {
+    var newPatches = model.patches.map(function (existing) {
+      return existing.id === message.Fields[0].Fields[0].id ? message.Fields[0].Fields[0] : existing;
+    });
+    return [new Model(newPatches, model.selected, model.editorModel, model.newPatchModel), updateEditorState(newPatches, model.selected)];
+  } else if (message.Fields[0].Case === "Remove") {
+    var newPatches_1 = model.patches.filter(function (p) {
+      return p.id !== message.Fields[0].Fields[0];
+    });
+    return [new Model(newPatches_1, model.selected, model.editorModel, model.newPatchModel), updateEditorState(newPatches_1, model.selected)];
+  } else if (message.Fields[0].Case === "Kinds") {
+    return [model, CmdModule.ofMsg(new Message("Create", [new Message_1("UpdateKinds", [message.Fields[0].Fields[0]])]))];
   } else {
-    throw new Error("/Users/macklin/src/wiggles/view/src/Patcher.fsx", 60, 10);
+    return [new Model(message.Fields[0].Fields[0], model.selected, model.editorModel, model.newPatchModel), updateEditorState(message.Fields[0].Fields[0], model.selected)];
   }
 }
 export function viewPatchTableRow(dispatch, selectedId, item) {
@@ -180,13 +184,13 @@ export function viewPatchTable(dispatch, patches, selectedId) {
   }))))));
 }
 export function view(openModal, model, dispatch, dispatchServer) {
-  return Grid.layout(ofArray([[8, ofArray([viewPatchTable(dispatch, model.patches, model.selected)])], [4, ofArray([Grid.fullRow(ofArray([view_1(model.editorModel, function ($var135) {
+  return Grid.layout(ofArray([[8, ofArray([viewPatchTable(dispatch, model.patches, model.selected)])], [4, ofArray([Grid.fullRow(ofArray([view_1(model.editorModel, function ($var136) {
     return dispatch(function (arg0) {
       return new Message("Edit", [arg0]);
-    }($var135));
-  }, dispatchServer, openModal)])), Grid.fullRow(ofArray([view_2(model.newPatchModel, function ($var136) {
+    }($var136));
+  }, dispatchServer, openModal)])), Grid.fullRow(ofArray([view_2(model.newPatchModel, function ($var137) {
     return dispatch(function (arg0_1) {
       return new Message("Create", [arg0_1]);
-    }($var136));
+    }($var137));
   }, dispatchServer)]))])]]));
 }

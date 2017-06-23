@@ -33,7 +33,6 @@ type Message =
     | Deselect
     | Edit of PatchEdit.Message
     | Create of NewPatch.Message
-    | ModalDialog of Modal.Message
 
 // Commands needed to initialize the patcher.
 let initCommands = [PatchServerRequest.PatchState; PatchServerRequest.GetKinds]

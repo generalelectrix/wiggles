@@ -363,14 +363,14 @@ function prompt(msg) {
 }
 
 function updateFromResponse(wrapShowResponse, updateShow, message, model) {
-  if (message.Case === "ShowName") {
+  if (message.Case === "SavesAvailable") {
     return [function () {
-      var baseModel = new BaseModel(message.Fields[0], model.baseModel.savesAvailable, model.baseModel.showsAvailable, model.baseModel.modalDialog, model.baseModel.navbar);
+      var baseModel = new BaseModel(model.baseModel.name, message.Fields[0], model.baseModel.showsAvailable, model.baseModel.modalDialog, model.baseModel.navbar);
       return new Model(model.connection, baseModel, model.showModel);
     }(), CmdModule.none()];
-  } else if (message.Case === "SavesAvailable") {
+  } else if (message.Case === "ShowsAvailable") {
     return [function () {
-      var baseModel_1 = new BaseModel(model.baseModel.name, message.Fields[0], model.baseModel.showsAvailable, model.baseModel.modalDialog, model.baseModel.navbar);
+      var baseModel_1 = new BaseModel(model.baseModel.name, model.baseModel.savesAvailable, message.Fields[0], model.baseModel.modalDialog, model.baseModel.navbar);
       return new Model(model.connection, baseModel_1, model.showModel);
     }(), CmdModule.none()];
   } else if (message.Case === "Loaded") {
@@ -397,35 +397,43 @@ function updateFromResponse(wrapShowResponse, updateShow, message, model) {
       return new Message("Inner", [arg0]);
     }, patternInput[1])];
   } else {
-    throw new Error("/Users/macklin/src/wiggles/view/src/WigglesBase.fsx", 155, 10);
+    return [function () {
+      var baseModel_3 = new BaseModel(message.Fields[0], model.baseModel.savesAvailable, model.baseModel.showsAvailable, model.baseModel.modalDialog, model.baseModel.navbar);
+      return new Model(model.connection, baseModel_3, model.showModel);
+    }(), CmdModule.none()];
   }
 }
 
 export function update(initCommands_1, socketSend, wrapShowResponse, updateShow, message, model) {
+  var updateBaseModel = function updateBaseModel(f) {
+    var baseModel = f(model.baseModel);
+    return new Model(model.connection, baseModel, model.showModel);
+  };
+
   if (message.Case === "Command") {
     socketSend(message.Fields[0]);
     return [model, CmdModule.none()];
   } else if (message.Case === "Response") {
     return updateFromResponse(wrapShowResponse, updateShow, message.Fields[0], model);
   } else if (message.Case === "Navbar") {
-    return [function () {
-      var baseModel = void 0;
-      var navbar = update_1(message.Fields[0], model.baseModel.navbar);
-      baseModel = new BaseModel(model.baseModel.name, model.baseModel.savesAvailable, model.baseModel.showsAvailable, model.baseModel.modalDialog, navbar);
-      return new Model(model.connection, baseModel, model.showModel);
-    }(), CmdModule.none()];
+    var newModel = updateBaseModel(function (bm) {
+      var navbar = update_1(message.Fields[0], bm.navbar);
+      return new BaseModel(bm.name, bm.savesAvailable, bm.showsAvailable, bm.modalDialog, navbar);
+    });
+    return [newModel, CmdModule.none()];
   } else if (message.Case === "Modal") {
-    return [function () {
-      var baseModel_1 = void 0;
-      var modalDialog = update_2(message.Fields[0], model.baseModel.modalDialog);
-      baseModel_1 = new BaseModel(model.baseModel.name, model.baseModel.savesAvailable, model.baseModel.showsAvailable, modalDialog, model.baseModel.navbar);
-      return new Model(model.connection, baseModel_1, model.showModel);
-    }(), CmdModule.none()];
+    var newModel_1 = updateBaseModel(function (bm_1) {
+      var modalDialog = update_2(message.Fields[0], bm_1.modalDialog);
+      return new BaseModel(bm_1.name, bm_1.savesAvailable, bm_1.showsAvailable, modalDialog, bm_1.navbar);
+    });
+    return [newModel_1, CmdModule.none()];
   } else if (message.Case === "Inner") {
     var patternInput = updateShow(message.Fields[0])(model.showModel);
     return [new Model(model.connection, model.baseModel, patternInput[0]), CmdModule.map(function (arg0) {
       return new Message("Inner", [arg0]);
     }, patternInput[1])];
+  } else if (message.Fields[0].Case === "Disconnected") {
+    return [new Model(new ConnectionState("Closed", []), model.baseModel, model.showModel), CmdModule.none()];
   } else {
     return [new Model(new ConnectionState("Open", []), model.baseModel, model.showModel), CmdModule.map(function (arg0_1) {
       return new Message("Command", [arg0_1]);

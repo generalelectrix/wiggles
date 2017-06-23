@@ -157,6 +157,8 @@ let private updateFromResponse wrapShowResponse updateShow message model =
         {model with baseModel = {model.baseModel with name = name}}, Cmd.none
     | ServerResponse.SavesAvailable(s) ->
         {model with baseModel = {model.baseModel with savesAvailable = s}}, Cmd.none
+    | ServerResponse.ShowsAvailable(shows) -> 
+        {model with baseModel = {model.baseModel with showsAvailable = shows}}, Cmd.none
     | ServerResponse.Loaded(name) ->
         // For the moment blow up on show load
         failwith "A new show was loaded but view reloading is not implemented yet."
@@ -169,7 +171,7 @@ let private updateFromResponse wrapShowResponse updateShow message model =
     | ServerResponse.Quit ->
         // Don't do anything in response to it, allow the socket connection closure to trigger
         // the next action.
-        printf "The server sent the quit message.  The socket connection should close."
+        printfn "The server sent the quit message.  The socket connection should close."
         model, Cmd.none
     | ServerResponse.Console(m) ->
         let showModel, showMessages = updateShow (wrapShowResponse m) model.showModel
@@ -177,23 +179,22 @@ let private updateFromResponse wrapShowResponse updateShow message model =
 
 /// Update the whole view by processing a message.
 let update initCommands socketSend wrapShowResponse updateShow message model =
+    let updateBaseModel f = {model with baseModel = f model.baseModel}
     match message with
-    | Message.Socket(Connected) ->
+    | Message.Socket Socket.Connected ->
         {model with connection = Open}, initCommands |> Cmd.map Message.Command
-    | Message.Socket(Disconnected) ->
+    | Message.Socket Socket.Disconnected ->
         {model with connection = Closed}, Cmd.none
     | Message.Command(msg) ->
         socketSend msg
         model, Cmd.none
     | Message.Response(msg) -> updateFromResponse wrapShowResponse updateShow msg model
     | Message.Navbar(msg) ->
-        {model with
-            baseModel = {model.baseModel with
-                navbar = Navbar.update msg model.baseModel.navbar}}, Cmd.none
+        let newModel = updateBaseModel (fun bm -> {bm with navbar = Navbar.update msg bm.navbar})
+        newModel, Cmd.none
     | Message.Modal(msg) ->
-        {model with
-            baseModel = {model.baseModel with
-                modalDialog = Modal.update msg model.baseModel.modalDialog}}, Cmd.none
+        let newModel = updateBaseModel (fun bm -> {bm with modalDialog = Modal.update msg bm.modalDialog})
+        newModel, Cmd.none
     | Message.Inner(msg) ->
         let showModel, showMessages = updateShow msg model.showModel
         {model with showModel = showModel}, showMessages |> Cmd.map Message.Inner
