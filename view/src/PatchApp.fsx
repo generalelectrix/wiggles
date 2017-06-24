@@ -4,10 +4,8 @@
 #r "../node_modules/fable-react/Fable.React.dll"
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
-#load "Types.fsx"
-#load "Navbar.fsx"
-#load "Socket.fsx"
-#load "WigglesBase.fsx"
+#load "core/Base.fsx"
+#load "patcher/Patcher.fsx"
 
 open Fable.Core
 open Fable.Import
@@ -18,20 +16,21 @@ module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Types
 open Socket
+open PatchTypes
 
 // If true, log verbose and interactive messages to the javascript console on every update.
 let withConsoleTrace = true
 
 type Page =
-    | TestPage
+    | PatchPage
 
 type ShowModel = {
     page: Page
-    model: string
+    patcher: Patcher.Model
 }
 
 type ShowServerCommand =
-    | C
+    | PatchCommand of PatchServerRequest
 
 type ShowServerResponse =
     | PatchResponse of PatchServerResponse
@@ -43,7 +42,7 @@ type ShowMessage =
 // Configure the patcher and create a nav item for it.
 let patcherNavItem: Navbar.Item<_> = {
     text = "Patch"
-    onClick = (fun dispatch -> SetPage PatchPage |> WigglesBase.Message.Inner |> dispatch)
+    onClick = (fun dispatch -> SetPage PatchPage |> Message.Inner |> dispatch)
 }
 
 let navbar: Navbar.Model<_> = {
@@ -60,16 +59,19 @@ let initShowModel () = {
 /// Master function to initialize the whole interface.
 /// Since we need to wait for websocket connection to send any messages to the server, we initially
 /// emit no commands.
-let initModel () = (WigglesBase.initModel navbar (initShowModel()), Cmd.none)
+let initModel () = (Base.initModel navbar (initShowModel()), Cmd.none)
 
 /// Every command we need to emit when we connect to the server.
+/// We assume that since that these are query-only, the responses are all filtered to just this
+/// client.
 let initCommands =
     let patcherCommands =
         Patcher.initCommands
-        |> List.map (PatchCommand >> WigglesBase.ServerCommand.Console)
+        |> List.map (PatchCommand >> ServerCommand.Console)
 
-    [patcherCommands; WigglesBase.initCommands]
+    [patcherCommands; Base.initCommands]
     |> List.concat
+    |> List.map (fun c -> (Exclusive, c))
     |> List.map Cmd.ofMsg
     |> Cmd.batch
 
@@ -90,31 +92,35 @@ let updateShow message model =
 let viewShow openModal model dispatch dispatchServer =
     match model.page with
     | PatchPage ->
-        Patcher.view openModal model.patcher (Patch >> dispatch) (PatchCommand >> dispatchServer)
+        Patcher.view
+            openModal
+            model.patcher
+            (Patch >> dispatch)
+            (Base.liftResponseAndFilter PatchCommand >> dispatchServer)
 
 
 // Launch the websocket we'll use to talk to the server.
-let (subscription, send: WigglesBase.ServerCommand<ShowServerCommand> -> unit) =
-    openSocket WigglesBase.Message.Socket
+let (subscription, send) = //: Base.ResponseFilter * Base.ServerCommand<ShowServerCommand> -> unit) =
+    openSocket Message.Socket
 
 /// Type alias to ensure that generic inference gets the right types all the way down.
-type ConcreteMessage = WigglesBase.Message<ShowServerCommand, ShowServerResponse, ShowMessage>
+type ConcreteMessage = Message<ShowServerCommand, ShowServerResponse, ShowMessage>
 
-type ConcreteModel = WigglesBase.Model<ShowModel, ConcreteMessage>
+type ConcreteModel = Model<ShowModel, ConcreteMessage>
 
 let update
         (msg: ConcreteMessage)
         (model: ConcreteModel)
         : ConcreteModel * Cmd<ConcreteMessage> =
-    WigglesBase.update initCommands send wrapShowResponse updateShow msg model
+    Base.update initCommands send wrapShowResponse updateShow msg model
 
-let view model dispatch = WigglesBase.view viewShow model dispatch
+let view model dispatch = Base.view viewShow model dispatch
 
 Program.mkProgram
     initModel
     update
     view
-|> Program.withSubscription (subscription WigglesBase.Message.Response)
+|> Program.withSubscription (subscription Message.Response)
 |> Program.withReact "app"
 |> (if withConsoleTrace then Program.withConsoleTrace else id)
 |> Program.run

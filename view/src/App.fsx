@@ -5,7 +5,6 @@
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
 #load "core/Base.fsx"
-#load "patcher/Patcher.fsx"
 
 open Fable.Core
 open Fable.Import
@@ -16,44 +15,43 @@ module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Types
 open Socket
-open PatchTypes
+open Bootstrap
 
 // If true, log verbose and interactive messages to the javascript console on every update.
 let withConsoleTrace = true
 
 type Page =
-    | PatchPage
+    | TestPage
 
 type ShowModel = {
     page: Page
-    patcher: Patcher.Model
+    model: string
 }
 
 type ShowServerCommand =
-    | PatchCommand of PatchServerRequest
-
+    | Command
+  
 type ShowServerResponse =
-    | PatchResponse of PatchServerResponse
+    | Response
 
 type ShowMessage =
     | SetPage of Page
-    | Patch of Patcher.Message
+    | SetModel of string
 
-// Configure the patcher and create a nav item for it.
-let patcherNavItem: Navbar.Item<_> = {
-    text = "Patch"
-    onClick = (fun dispatch -> SetPage PatchPage |> Message.Inner |> dispatch)
+let navItem: Navbar.Item<_> = {
+    text = "Test"
+    onClick = (fun dispatch -> SetPage TestPage |> Message.Inner |> dispatch)
 }
 
 let navbar: Navbar.Model<_> = {
-    leftItems = [Navbar.Single patcherNavItem]
+    leftItems = [Navbar.Single navItem]
     rightItems = []
     activeItem = Navbar.Left(0)
 }
 
 let initShowModel () = {
-    page = PatchPage
-    patcher = Patcher.initialModel()
+    page = TestPage
+    model = "nothing so far"
 }
 
 /// Master function to initialize the whole interface.
@@ -65,11 +63,7 @@ let initModel () = (Base.initModel navbar (initShowModel()), Cmd.none)
 /// We assume that since that these are query-only, the responses are all filtered to just this
 /// client.
 let initCommands =
-    let patcherCommands =
-        Patcher.initCommands
-        |> List.map (PatchCommand >> ServerCommand.Console)
-
-    [patcherCommands; Base.initCommands]
+    [Base.initCommands]
     |> List.concat
     |> List.map (fun c -> (Exclusive, c))
     |> List.map Cmd.ofMsg
@@ -80,23 +74,23 @@ let initCommands =
 /// response messages expected by this show.
 let wrapShowResponse (message: ShowServerResponse) =
     match message with
-    | PatchResponse(rsp) -> rsp |> Patcher.Response |> Patch
+    | Response -> SetModel "received response"
 
 let updateShow message model =
     match message with
     | SetPage(page) -> {model with page = page}, Cmd.none
-    | Patch(msg) ->
-        let patcher, commands = Patcher.update msg model.patcher
-        {model with patcher = patcher}, commands |> Cmd.map Patch
+    | SetModel(msg) -> {model with model = msg}, Cmd.none
 
 let viewShow openModal model dispatch dispatchServer =
     match model.page with
-    | PatchPage ->
-        Patcher.view
-            openModal
-            model.patcher
-            (Patch >> dispatch)
-            (Base.liftResponseAndFilter PatchCommand >> dispatchServer)
+    | TestPage ->
+        R.div [] [
+            R.str (sprintf "Text: %s" model.model)
+            R.button [
+                Button.Basic
+                OnClick (fun _ -> (ResponseFilter.Exclusive, Command) |> dispatchServer)
+            ] [R.str "issue command"]
+        ]
 
 
 // Launch the websocket we'll use to talk to the server.

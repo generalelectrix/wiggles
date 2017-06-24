@@ -59,3 +59,6 @@ target
 Cargo.lock
 *.DS_Store
 *.userprefs
+
+# save show tests
+core_console_test/show_library/*

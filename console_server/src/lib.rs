@@ -64,7 +64,7 @@ impl<C: Default + Serialize> Default for InitialState<C> {
             show_library: show_lib,
             load_spec: LoadSpec::Latest,
             event_settings: None,
-            websocket_addr: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 80)),
+            websocket_addr: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 2794)),
             websocket_protocol: "wiggles".to_string(),
         }
     }

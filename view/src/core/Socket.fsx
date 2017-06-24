@@ -62,6 +62,7 @@ let openSocket wrapSocketMessage =
     /// Send a message using the socket, catching an exception and printing it to the console.
     let send msg =
         let jsonMessage = msg |> toJson
+        printfn "Sending message from socket: %s" jsonMessage
         try
             ws.send jsonMessage
         with e ->

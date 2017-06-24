@@ -133,6 +133,7 @@ fn run_client_receiver<C: DeserializeOwned + fmt::Debug + Send>(
     command_queue: Sender<CommandMessage<C>>,
     id: ClientId)
 {
+    debug!("Client {} receiver is starting.", id);
     for message in receiver.incoming_messages().filter_map(Result::ok) {
         match message {
             OwnedMessage::Close(_) => {
@@ -174,6 +175,7 @@ fn run_client_sender<R: Serialize + fmt::Debug + Clone + Send>(
     message_queue: Receiver<Response<R>>,
     id: ClientId)
 {
+    debug!("Client {} sender is starting.", id);
     for msg in message_queue.iter() {
         match serde_json::to_string(&msg) {
             Err(e) => {
