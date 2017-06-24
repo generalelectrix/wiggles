@@ -88,7 +88,7 @@ let viewShow openModal model dispatch dispatchServer =
             R.str (sprintf "Text: %s" model.model)
             R.button [
                 Button.Basic
-                OnClick (fun _ -> (ResponseFilter.Exclusive, TestCommand) |> dispatchServer)
+                OnClick (fun _ -> (ResponseFilter.All, TestCommand) |> dispatchServer)
             ] [R.str "issue command"]
         ]
 

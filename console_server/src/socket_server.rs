@@ -2,7 +2,7 @@
 use std::thread;
 use websocket::OwnedMessage;
 use websocket::server::NoTlsAcceptor;
-use websocket::server::upgrade::WsUpgrade;
+use websocket::WebSocketError;
 use websocket::sync::{Client, Server};
 use websocket::stream::sync::{TcpStream, Splittable};
 use websocket::receiver::Reader;
@@ -11,10 +11,9 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::fmt;
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Sender, Receiver, channel};
 use std::net::ToSocketAddrs;
-use std::io::Error as IoError;
+use std::io::{Error as IoError, ErrorKind};
 use std::iter::Iterator;
 use super::reactor::{Command, Response, CommandMessage, CommandWrapper};
 use super::clients::{ClientData, ClientCollection, ClientId, ResponseFilter};
@@ -193,7 +192,16 @@ fn run_client_sender<R: Serialize + fmt::Debug + Clone + Send>(
             }
             Ok(json) => {
                 if let Err(e) = sender.send_message(&OwnedMessage::Text(json)) {
-                    error!("Error sending message to client {}: {}\nMessage: {:?}", id, e, msg);
+                    match e {
+                        WebSocketError::IoError(ref e) if e.kind() == ErrorKind::BrokenPipe => {
+                            // Close this client.
+                            break;
+                        }
+                        _ => {
+                            error!("Error sending message to client {}: {}\nMessage: {:?}", id, e, msg);
+                        }
+                    }
+                    
                 }
             }
         }
