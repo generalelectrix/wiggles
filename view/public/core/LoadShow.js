@@ -144,7 +144,8 @@ export function loadModeSelector(selected, dispatch) {
       }, createElement("label", {}, createElement("input", {
         type: "radio",
         onClick: onClick,
-        checked: selected.Equals(spec)
+        checked: selected.Equals(spec),
+        readOnly: true
       }), text));
     };
   };

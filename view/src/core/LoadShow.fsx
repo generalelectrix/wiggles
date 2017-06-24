@@ -52,9 +52,12 @@ let loadModeSelector selected dispatch =
         let onClick _ = spec |> LoadSpec |> dispatch
         R.div [ClassName "radio"] [
             R.label [] [
-                R.input
-                    [Type "radio"; OnClick onClick; Checked (selected = spec)]
-                    []
+                R.input [
+                    Type "radio"
+                    OnClick onClick
+                    Checked (selected = spec)
+                    ReadOnly true // not actually read-only but react complains otherwise
+                ] []
                 R.str text
             ]
         ]

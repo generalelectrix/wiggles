@@ -291,8 +291,16 @@ function showLoaderItem() {
   });
 }
 
+function saveShowItem() {
+  return new Item("Save", function (dispatch) {
+    dispatch(function (tupledArg) {
+      return new Message("Command", [tupledArg[0], tupledArg[1]]);
+    }([new ResponseFilter("Exclusive", []), new ServerCommand("Save", [])]));
+  });
+}
+
 export function utilDropdown() {
-  return new DropdownModel("Wiggles", ofArray([new DropdownItem("Selection", [showLoaderItem()]), new DropdownItem("Separator", [])]), false);
+  return new DropdownModel("Wiggles", ofArray([new DropdownItem("Selection", [showLoaderItem()]), new DropdownItem("Separator", []), new DropdownItem("Selection", [saveShowItem()])]), false);
 }
 
 function viewInner(viewShow, model, dispatch) {

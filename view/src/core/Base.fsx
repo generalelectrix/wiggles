@@ -184,15 +184,24 @@ let private viewUtil utilPage model dispatch dispatchServer =
             (Message.ShowLoader >> dispatch)
             dispatchServer
 
-/// Navbar dropdown for accessing utility pages.
+/// Dropdown item for accessing show loader page.
 let private showLoaderItem: Navbar.Item<_> = {
     text = "Load show..."
     onClick = (fun dispatch -> ShowLoader |> Some |> Message.UtilPage |> dispatch)
 }
 
+/// Dropdown item for saving the current show.
+let private saveShowItem: Navbar.Item<_> = {
+    text = "Save"
+    onClick = (fun dispatch ->
+        (Exclusive, ServerCommand.Save)
+        |> Message.Command
+        |> dispatch)
+}
+
 let utilDropdown: Navbar.DropdownModel<_> = {
     text = "Wiggles"
-    items = [Navbar.Selection(showLoaderItem); Navbar.Separator]
+    items = [Navbar.Selection(showLoaderItem); Navbar.Separator; Navbar.Selection(saveShowItem)]
     isOpen = false
 }
 
