@@ -119,3 +119,9 @@ export function enqueueBrowserAction(action) {
     return action(null);
   }, 0);
 }
+export function logException(msg, e) {
+  console.error(msg, e);
+}
+export function logError(msg) {
+  console.error(msg);
+}

@@ -84,7 +84,14 @@ let ( ++ ) (a:'a list) (b:'a list) : 'a list = jsNative
 /// non-declarative DOM aspects like setting or removing focus upon drawing.
 /// Uses setTimeout of 0 to enqueue.
 let enqueueBrowserAction action =
-        Browser.window.setTimeout(
-            (fun _ -> action()),
-            0
-        ) |> ignore
+    Browser.window.setTimeout(
+        (fun _ -> action()),
+        0
+    ) |> ignore
+
+
+/// Print an exception to the console with extra leading text.
+let logException msg (e: System.Exception) = Browser.console.error(msg, e)
+
+/// Print an error message to the console.
+let logError msg = Browser.console.error(msg)

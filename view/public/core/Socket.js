@@ -6,6 +6,7 @@ import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
 import { compareUnions, equalsUnions } from "fable-core/Util";
 import { CmdModule } from "fable-elmish/elmish";
+import { logException } from "./Util";
 import { fsFormat } from "fable-core/String";
 import { toJson, ofJson } from "fable-core/Serialize";
 export var SocketMessage = function () {
@@ -43,11 +44,6 @@ export var SocketMessage = function () {
   return SocketMessage;
 }();
 setType("Socket.SocketMessage", SocketMessage);
-
-function logException(msg, e) {
-  console.error(msg, e);
-}
-
 export function openSocket(wrapSocketMessage, _genArgs) {
   var host = "ws://127.0.0.1:2794";
   var ws = new WebSocket(host, "wiggles");

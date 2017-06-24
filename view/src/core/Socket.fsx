@@ -2,12 +2,14 @@
 module Socket
 #r "../node_modules/fable-core/Fable.Core.dll"
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
+#load "Util.fsx"
 
 open System
 open Fable.Core
 open Fable.Import
 open Elmish
 open Fable.Core.JsInterop
+open Util
 
 /// Messages to convey state change in the socket communicating with the console server.
 /// The socket connection should not be used to send data until the connected message has been
@@ -15,9 +17,6 @@ open Fable.Core.JsInterop
 type SocketMessage =
     | Connected
     | Disconnected
-
-/// Print an exception to the console with extra leading text.
-let private logException msg (e: System.Exception) = Browser.console.error(msg, e)
 
 [<PassGenerics>]
 /// Open a websocket connection to the current host on the same port used to serve this application.

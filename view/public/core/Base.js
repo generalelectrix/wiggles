@@ -111,8 +111,8 @@ function viewInner(viewShow, model, dispatch) {
     dispatch(new Message("Modal", [new Message_1("Open", [req])]));
   };
 
-  var dispatchServer = function dispatchServer($var61) {
-    return dispatch(function ($var60) {
+  var dispatchServer = function dispatchServer($var78) {
+    return dispatch(function ($var77) {
       return function (tupledArg_1) {
         return new Message("Command", [tupledArg_1[0], tupledArg_1[1]]);
       }(function () {
@@ -123,26 +123,26 @@ function viewInner(viewShow, model, dispatch) {
         return function (tupledArg) {
           return liftResponseAndFilter(f, tupledArg[0], tupledArg[1]);
         };
-      }()($var60));
-    }($var61));
+      }()($var77));
+    }($var78));
   };
 
-  var showView = viewShow(openModal)(model.showModel)(function ($var62) {
+  var showView = viewShow(openModal)(model.showModel)(function ($var79) {
     return dispatch(function (arg0_1) {
       return new Message("Inner", [arg0_1]);
-    }($var62));
+    }($var79));
   })(dispatchServer);
-  return createElement("div", {}, createElement("div", {}, view_1(model.baseModel.navbar, dispatch, function ($var63) {
+  return createElement("div", {}, createElement("div", {}, view_1(model.baseModel.navbar, dispatch, function ($var80) {
     return dispatch(function (arg0_2) {
       return new Message("Navbar", [arg0_2]);
-    }($var63));
+    }($var80));
   })), createElement("div", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
-  }, {}, [Container.Fluid]), showView, view_2(model.baseModel.modalDialog, function ($var64) {
+  }, {}, [Container.Fluid]), showView, view_2(model.baseModel.modalDialog, function ($var81) {
     return dispatch(function (arg0_3) {
       return new Message("Modal", [arg0_3]);
-    }($var64));
+    }($var81));
   })));
 }
 
