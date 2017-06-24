@@ -4,24 +4,65 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { Message, ServerCommand, ConnectionState, SavesAvailable } from "./Types";
-import { GenericParam, Array as _Array, makeGeneric } from "fable-core/Util";
-import { ofArray } from "fable-core/List";
+import { GenericParam, Array as _Array, Option, makeGeneric, compareUnions, equalsUnions } from "fable-core/Util";
+import { map, ofArray } from "fable-core/List";
 import List from "fable-core/List";
-import { viewSplash, view as view_2, update as update_2, prompt as prompt_1, Message as Message_1, initialModel, ModalRequest } from "./Modal";
-import { view as view_1, update as update_1, Model as Model_1 } from "./Navbar";
+import { ServerResponse, ConnectionState, SavesAvailable, ServerCommand, ResponseFilter } from "./Types";
+import { view as view_1, update as update_3, Message as Message_3, initModel as initModel_1, Model as Model_1 } from "./LoadShow";
+import { viewSplash, view as view_3, update as update_2, prompt as prompt_1, Message as Message_1, initialModel, ModalRequest } from "./Modal";
+import { view as view_2, update as update_1, Message as Message_2, Model as Model_2 } from "./Navbar";
+import { SocketMessage } from "./Socket";
 import { CmdModule } from "fable-elmish/elmish";
 import { fsFormat } from "fable-core/String";
 import { createElement } from "react";
 import { fold } from "fable-core/Seq";
 import { Container } from "./Bootstrap";
+export var UtilPage = function () {
+  function UtilPage(caseName, fields) {
+    _classCallCheck(this, UtilPage);
+
+    this.Case = caseName;
+    this.Fields = fields;
+  }
+
+  _createClass(UtilPage, [{
+    key: _Symbol.reflection,
+    value: function () {
+      return {
+        type: "Base.UtilPage",
+        interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
+        cases: {
+          ShowLoader: []
+        }
+      };
+    }
+  }, {
+    key: "Equals",
+    value: function (other) {
+      return equalsUnions(this, other);
+    }
+  }, {
+    key: "CompareTo",
+    value: function (other) {
+      return compareUnions(this, other);
+    }
+  }]);
+
+  return UtilPage;
+}();
+setType("Base.UtilPage", UtilPage);
+export function commandsForUtilPageChange(page) {
+  return ofArray([[new ResponseFilter("Exclusive", []), new ServerCommand("SavedShows", [])]]);
+}
 export var BaseModel = function () {
-  function BaseModel(name, savesAvailable, showsAvailable, modalDialog, navbar) {
+  function BaseModel(name, savesAvailable, showsAvailable, utilPage, showLoader, modalDialog, navbar) {
     _classCallCheck(this, BaseModel);
 
     this.name = name;
     this.savesAvailable = savesAvailable;
     this.showsAvailable = showsAvailable;
+    this.utilPage = utilPage;
+    this.showLoader = showLoader;
     this.modalDialog = modalDialog;
     this.navbar = navbar;
   }
@@ -38,8 +79,10 @@ export var BaseModel = function () {
           showsAvailable: makeGeneric(List, {
             T: "string"
           }),
+          utilPage: Option(UtilPage),
+          showLoader: Model_1,
           modalDialog: _Array(ModalRequest),
-          navbar: makeGeneric(Model_1, {
+          navbar: makeGeneric(Model_2, {
             msg: GenericParam("msg")
           })
         }
@@ -84,12 +127,47 @@ export function liftResponseAndFilter(f, filter, message) {
 }
 
 function initBaseModel(navbar) {
-  return new BaseModel("", new SavesAvailable(new List(), new List()), new List(), initialModel(), navbar);
+  return new BaseModel("", new SavesAvailable(new List(), new List()), new List(), null, initModel_1(), initialModel(), navbar);
 }
 
 export function initModel(navbar, showModel) {
   return new Model(new ConnectionState("Waiting", []), initBaseModel(navbar), showModel);
 }
+export var Message = function () {
+  function Message(caseName, fields) {
+    _classCallCheck(this, Message);
+
+    this.Case = caseName;
+    this.Fields = fields;
+  }
+
+  _createClass(Message, [{
+    key: _Symbol.reflection,
+    value: function () {
+      return {
+        type: "Base.Message",
+        interfaces: ["FSharpUnion"],
+        cases: {
+          Command: [ResponseFilter, makeGeneric(ServerCommand, {
+            m: GenericParam("cmd")
+          })],
+          Inner: [GenericParam("msg")],
+          Modal: [Message_1],
+          Navbar: [Message_2],
+          Response: [makeGeneric(ServerResponse, {
+            msg: GenericParam("rsp")
+          })],
+          ShowLoader: [Message_3],
+          Socket: [SocketMessage],
+          UtilPage: [Option(UtilPage)]
+        }
+      };
+    }
+  }]);
+
+  return Message;
+}();
+setType("Base.Message", Message);
 export function initCommands() {
   return ofArray([new ServerCommand("ShowName", [])]);
 }
@@ -101,19 +179,19 @@ function prompt(msg) {
 function updateFromResponse(wrapShowResponse, updateShow, message, model) {
   if (message.Case === "SavesAvailable") {
     return [function () {
-      var baseModel = new BaseModel(model.baseModel.name, message.Fields[0], model.baseModel.showsAvailable, model.baseModel.modalDialog, model.baseModel.navbar);
+      var baseModel = new BaseModel(model.baseModel.name, message.Fields[0], model.baseModel.showsAvailable, model.baseModel.utilPage, model.baseModel.showLoader, model.baseModel.modalDialog, model.baseModel.navbar);
       return new Model(model.connection, baseModel, model.showModel);
     }(), CmdModule.none()];
   } else if (message.Case === "ShowsAvailable") {
     return [function () {
-      var baseModel_1 = new BaseModel(model.baseModel.name, model.baseModel.savesAvailable, message.Fields[0], model.baseModel.modalDialog, model.baseModel.navbar);
+      var baseModel_1 = new BaseModel(model.baseModel.name, model.baseModel.savesAvailable, message.Fields[0], model.baseModel.utilPage, model.baseModel.showLoader, model.baseModel.modalDialog, model.baseModel.navbar);
       return new Model(model.connection, baseModel_1, model.showModel);
     }(), CmdModule.none()];
   } else if (message.Case === "Loaded") {
     throw new Error("A new show was loaded but view reloading is not implemented yet.");
   } else if (message.Case === "Renamed") {
     return [function () {
-      var baseModel_2 = new BaseModel(message.Fields[0], model.baseModel.savesAvailable, model.baseModel.showsAvailable, model.baseModel.modalDialog, model.baseModel.navbar);
+      var baseModel_2 = new BaseModel(message.Fields[0], model.baseModel.savesAvailable, model.baseModel.showsAvailable, model.baseModel.utilPage, model.baseModel.showLoader, model.baseModel.modalDialog, model.baseModel.navbar);
       return new Model(model.connection, baseModel_2, model.showModel);
     }(), CmdModule.none()];
   } else if (message.Case === "Saved") {
@@ -134,7 +212,7 @@ function updateFromResponse(wrapShowResponse, updateShow, message, model) {
     }, patternInput[1])];
   } else {
     return [function () {
-      var baseModel_3 = new BaseModel(message.Fields[0], model.baseModel.savesAvailable, model.baseModel.showsAvailable, model.baseModel.modalDialog, model.baseModel.navbar);
+      var baseModel_3 = new BaseModel(message.Fields[0], model.baseModel.savesAvailable, model.baseModel.showsAvailable, model.baseModel.utilPage, model.baseModel.showLoader, model.baseModel.modalDialog, model.baseModel.navbar);
       return new Model(model.connection, baseModel_3, model.showModel);
     }(), CmdModule.none()];
   }
@@ -151,18 +229,36 @@ export function update(initCommands_1, socketSend, wrapShowResponse, updateShow,
     return [model, CmdModule.none()];
   } else if (message.Case === "Response") {
     return updateFromResponse(wrapShowResponse, updateShow, message.Fields[0], model);
-  } else if (message.Case === "Navbar") {
+  } else if (message.Case === "UtilPage") {
     var newModel = updateBaseModel(function (bm) {
-      var navbar = update_1(message.Fields[0], bm.navbar);
-      return new BaseModel(bm.name, bm.savesAvailable, bm.showsAvailable, bm.modalDialog, navbar);
+      return new BaseModel(bm.name, bm.savesAvailable, bm.showsAvailable, message.Fields[0], bm.showLoader, bm.modalDialog, bm.navbar);
     });
-    return [newModel, CmdModule.none()];
-  } else if (message.Case === "Modal") {
+    var commands = CmdModule.batch(map(function ($var77) {
+      return function (msg) {
+        return CmdModule.ofMsg(msg);
+      }(function (tupledArg) {
+        return new Message("Command", [tupledArg[0], tupledArg[1]]);
+      }($var77));
+    }, message.Fields[0] == null ? new List() : commandsForUtilPageChange(message.Fields[0])));
+    return [newModel, commands];
+  } else if (message.Case === "Navbar") {
     var newModel_1 = updateBaseModel(function (bm_1) {
-      var modalDialog = update_2(message.Fields[0], bm_1.modalDialog);
-      return new BaseModel(bm_1.name, bm_1.savesAvailable, bm_1.showsAvailable, modalDialog, bm_1.navbar);
+      var navbar = update_1(message.Fields[0], bm_1.navbar);
+      return new BaseModel(bm_1.name, bm_1.savesAvailable, bm_1.showsAvailable, bm_1.utilPage, bm_1.showLoader, bm_1.modalDialog, navbar);
     });
     return [newModel_1, CmdModule.none()];
+  } else if (message.Case === "Modal") {
+    var newModel_2 = updateBaseModel(function (bm_2) {
+      var modalDialog = update_2(message.Fields[0], bm_2.modalDialog);
+      return new BaseModel(bm_2.name, bm_2.savesAvailable, bm_2.showsAvailable, bm_2.utilPage, bm_2.showLoader, modalDialog, bm_2.navbar);
+    });
+    return [newModel_2, CmdModule.none()];
+  } else if (message.Case === "ShowLoader") {
+    var newModel_3 = updateBaseModel(function (bm_3) {
+      var showLoader = update_3(message.Fields[0], bm_3.showLoader);
+      return new BaseModel(bm_3.name, bm_3.savesAvailable, bm_3.showsAvailable, bm_3.utilPage, showLoader, bm_3.modalDialog, bm_3.navbar);
+    });
+    return [newModel_3, CmdModule.none()];
   } else if (message.Case === "Inner") {
     var patternInput = updateShow(message.Fields[0])(model.showModel);
     return [new Model(model.connection, model.baseModel, patternInput[0]), CmdModule.map(function (arg0) {
@@ -171,10 +267,21 @@ export function update(initCommands_1, socketSend, wrapShowResponse, updateShow,
   } else if (message.Fields[0].Case === "Disconnected") {
     return [new Model(new ConnectionState("Closed", []), model.baseModel, model.showModel), CmdModule.none()];
   } else {
-    return [new Model(new ConnectionState("Open", []), model.baseModel, model.showModel), CmdModule.map(function (tupledArg) {
-      return new Message("Command", [tupledArg[0], tupledArg[1]]);
+    return [new Model(new ConnectionState("Open", []), model.baseModel, model.showModel), CmdModule.map(function (tupledArg_1) {
+      return new Message("Command", [tupledArg_1[0], tupledArg_1[1]]);
     }, initCommands_1)];
   }
+}
+export function viewUtil(utilPage, model, dispatch, dispatchServer) {
+  var onComplete = function onComplete() {
+    dispatch(new Message("UtilPage", [null]));
+  };
+
+  return view_1(model.baseModel.showsAvailable, model.baseModel.showLoader, onComplete, function ($var78) {
+    return dispatch(function (arg0) {
+      return new Message("ShowLoader", [arg0]);
+    }($var78));
+  }, dispatchServer);
 }
 
 function viewInner(viewShow, model, dispatch) {
@@ -182,38 +289,50 @@ function viewInner(viewShow, model, dispatch) {
     dispatch(new Message("Modal", [new Message_1("Open", [req])]));
   };
 
-  var dispatchServer = function dispatchServer($var75) {
-    return dispatch(function ($var74) {
-      return function (tupledArg_1) {
-        return new Message("Command", [tupledArg_1[0], tupledArg_1[1]]);
-      }(function () {
-        var f = function f(arg0) {
-          return new ServerCommand("Console", [arg0]);
-        };
+  var page = void 0;
+  var matchValue = model.baseModel.utilPage;
 
-        return function (tupledArg) {
-          return liftResponseAndFilter(f, tupledArg[0], tupledArg[1]);
-        };
-      }()($var74));
-    }($var75));
-  };
+  if (matchValue != null) {
+    page = viewUtil(matchValue, model, dispatch, function ($var79) {
+      return dispatch(function (tupledArg) {
+        return new Message("Command", [tupledArg[0], tupledArg[1]]);
+      }($var79));
+    });
+  } else {
+    var dispatchServer = function dispatchServer($var81) {
+      return dispatch(function ($var80) {
+        return function (tupledArg_2) {
+          return new Message("Command", [tupledArg_2[0], tupledArg_2[1]]);
+        }(function () {
+          var f = function f(arg0) {
+            return new ServerCommand("Console", [arg0]);
+          };
 
-  var showView = viewShow(openModal)(model.showModel)(function ($var76) {
-    return dispatch(function (arg0_1) {
-      return new Message("Inner", [arg0_1]);
-    }($var76));
-  })(dispatchServer);
-  return createElement("div", {}, createElement("div", {}, view_1(model.baseModel.navbar, dispatch, function ($var77) {
+          return function (tupledArg_1) {
+            return liftResponseAndFilter(f, tupledArg_1[0], tupledArg_1[1]);
+          };
+        }()($var80));
+      }($var81));
+    };
+
+    page = viewShow(openModal)(model.showModel)(function ($var82) {
+      return dispatch(function (arg0_1) {
+        return new Message("Inner", [arg0_1]);
+      }($var82));
+    })(dispatchServer);
+  }
+
+  return createElement("div", {}, createElement("div", {}, view_2(model.baseModel.navbar, dispatch, function ($var83) {
     return dispatch(function (arg0_2) {
       return new Message("Navbar", [arg0_2]);
-    }($var77));
+    }($var83));
   })), createElement("div", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
-  }, {}, [Container.Fluid]), showView, view_2(model.baseModel.modalDialog, function ($var78) {
+  }, {}, [Container.Fluid]), page, view_3(model.baseModel.modalDialog, function ($var84) {
     return dispatch(function (arg0_3) {
       return new Message("Modal", [arg0_3]);
-    }($var78));
+    }($var84));
   })));
 }
 

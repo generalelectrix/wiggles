@@ -40,7 +40,7 @@ type ShowMessage =
 
 let navItem: Navbar.Item<_> = {
     text = "Test"
-    onClick = (fun dispatch -> SetPage TestPage |> Message.Inner |> dispatch)
+    onClick = (fun dispatch -> SetPage TestPage |> Base.Message.Inner |> dispatch)
 }
 
 let navbar: Navbar.Model<_> = {
@@ -93,14 +93,14 @@ let viewShow openModal model dispatch dispatchServer =
         ]
 
 /// Type alias to ensure that generic inference gets the right types all the way down.
-type ConcreteMessage = Message<ShowServerCommand, ShowServerResponse, ShowMessage>
+type ConcreteMessage = Base.Message<ShowServerCommand, ShowServerResponse, ShowMessage>
 
 type ConcreteModel = Base.Model<ShowModel, ConcreteMessage>
 
 
 // Launch the websocket we'll use to talk to the server.
 let (subscription, send) =
-    openSocket<ServerResponse<ShowServerResponse>, ConcreteMessage> Message.Socket
+    openSocket<ServerResponse<ShowServerResponse>, ConcreteMessage> Base.Message.Socket
 
 let update
         (msg: ConcreteMessage)
@@ -114,7 +114,7 @@ Program.mkProgram
     initModel
     update
     view
-|> Program.withSubscription (subscription Message.Response)
+|> Program.withSubscription (subscription Base.Message.Response)
 |> Program.withReact "app"
 |> (if withConsoleTrace then Program.withConsoleTrace else id)
 |> Program.run

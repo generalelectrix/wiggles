@@ -21,6 +21,15 @@ open Fable.Helpers.React.Props
 open Bootstrap
 open Types
 
+type UtilPage =
+    | ShowLoader
+
+let commandsForUtilPageChange page =
+    match page with
+    | ShowLoader ->
+        // emit a command to update our collection of available shows
+        [(Exclusive, ServerCommand.SavedShows)]
+
 
 /// Basic model pieces used by a view application.
 type BaseModel<'msg> = {
@@ -30,6 +39,10 @@ type BaseModel<'msg> = {
     savesAvailable: SavesAvailable
     /// Saved shows available for this console.
     showsAvailable: string list
+    /// Which utility page is open, if any.
+    utilPage: UtilPage option
+    /// Tool to load shows.
+    showLoader: LoadShow.Model
     /// Pop-over modal dialog.  Shared among everything that needs it.
     modalDialog: Modal.Model
     /// App navigation bar.
@@ -53,6 +66,8 @@ let private initBaseModel navbar = {
     name = ""
     savesAvailable = {saves = []; autosaves = []}
     showsAvailable = []
+    utilPage = None
+    showLoader = LoadShow.initModel()
     modalDialog = Modal.initialModel()
     navbar = navbar
 }
@@ -61,6 +76,26 @@ let initModel navbar showModel = {
     baseModel = initBaseModel navbar
     showModel = showModel
 }
+
+[<RequireQualifiedAccess>]
+/// Top-level message type.
+type Message<'cmd, 'rsp, 'msg> =
+    /// The connection state of the application has changed.
+    | Socket of Socket.SocketMessage
+    /// Message to the server, sent over the socket connection.
+    | Command of ResponseFilter * ServerCommand<'cmd>
+    /// Message from the server.
+    | Response of ServerResponse<'rsp>
+    /// Action to set which utility page is open, if any.
+    | UtilPage of UtilPage option
+    /// Navbar actions
+    | Navbar of Navbar.Message
+    /// Modal dialog actions
+    | Modal of Modal.Message
+    /// Show loader
+    | ShowLoader of LoadShow.Message
+    /// Message for the internal operation of this console view.
+    | Inner of 'msg
    
 /// The initial commands to fire to initialize a base Wiggles console.
 let initCommands = [ServerCommand.ShowName]
@@ -107,38 +142,74 @@ let update initCommands socketSend wrapShowResponse updateShow message model =
         socketSend (filter, msg)
         model, Cmd.none
     | Message.Response(msg) -> updateFromResponse wrapShowResponse updateShow msg model
+    | Message.UtilPage(page) ->
+        // Update the model with the newly-selected page.
+        let newModel = updateBaseModel (fun bm -> {bm with utilPage = page})
+        // We may optionally emit some server commands to retrieve updated state for the utility
+        // upon opening it.
+        let commands =
+            match page with
+            | Some(p) -> commandsForUtilPageChange p
+            | None -> []
+            |> List.map (Message.Command >> Cmd.ofMsg)
+            |> Cmd.batch
+
+        newModel, commands
     | Message.Navbar(msg) ->
-        let newModel = updateBaseModel (fun bm -> {bm with navbar = Navbar.update msg bm.navbar})
+        let newModel =
+            updateBaseModel (fun bm -> {bm with navbar = Navbar.update msg bm.navbar})
         newModel, Cmd.none
     | Message.Modal(msg) ->
-        let newModel = updateBaseModel (fun bm -> {bm with modalDialog = Modal.update msg bm.modalDialog})
+        let newModel =
+            updateBaseModel (fun bm -> {bm with modalDialog = Modal.update msg bm.modalDialog})
+        newModel, Cmd.none
+    | Message.ShowLoader(msg) ->
+        let newModel =
+            updateBaseModel (fun bm -> {bm with showLoader = LoadShow.update msg bm.showLoader})
         newModel, Cmd.none
     | Message.Inner(msg) ->
         let showModel, showMessages = updateShow msg model.showModel
         {model with showModel = showModel}, showMessages |> Cmd.map Message.Inner
 
-/// View the basic page structure including the navbar and modal if its open.
-/// Delegate the rest of the view to the console.
+/// View function to render a particular core console utility.
+let viewUtil utilPage model dispatch dispatchServer =
+    let bm = model.baseModel
+    let onComplete() = None |> Message.UtilPage |> dispatch
+    match utilPage with
+    | ShowLoader ->
+        LoadShow.view
+            bm.showsAvailable
+            bm.showLoader
+            onComplete
+            (Message.ShowLoader >> dispatch)
+            dispatchServer
+
+/// View the basic page structure including the navbar and the modal dialog if it's open.
+/// Display a utility page if one is selected.  Otherwise, delegate the rest of the view to the console.
 let private viewInner viewShow model dispatch =
     let openModal req = req |> Modal.Message.Open |> Message.Modal |> dispatch
 
-    /// Dispatch a message to the server, lifting the filter up into the message type.
-    let dispatchServer =
-        liftResponseAndFilter ServerCommand.Console
-        >> Message.Command
-        >> dispatch
+    let page =
+        match model.baseModel.utilPage with
+        | None ->
+            /// Dispatch a message to the server, lifting the filter up into the message type.
+            let dispatchServer =
+                liftResponseAndFilter ServerCommand.Console
+                >> Message.Command
+                >> dispatch
 
-    let showView =
-        viewShow
-            openModal
-            model.showModel
-            (Message.Inner >> dispatch) // show dispatches a message to itself
-            dispatchServer // show dispatches a message to the server
+            viewShow
+                openModal
+                model.showModel
+                (Message.Inner >> dispatch) // show dispatches a message to itself
+                dispatchServer // show dispatches a message to the server
+        | Some(util) ->
+            viewUtil util model dispatch (Message.Command >> dispatch)
 
     R.div [] [
         R.div [] [Navbar.view model.baseModel.navbar dispatch (Message.Navbar >> dispatch)]
         R.div [Container.Fluid] [
-            showView
+            page
             Modal.view model.baseModel.modalDialog (Message.Modal >> dispatch)
         ]
     ]
@@ -150,3 +221,4 @@ let view viewShow model dispatch =
     | Waiting -> Modal.viewSplash "Waiting for console server connection to be established."
     | Open -> viewInner viewShow model dispatch
     | Closed -> Modal.viewSplash "The console server disconnected."
+   

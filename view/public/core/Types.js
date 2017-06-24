@@ -6,9 +6,6 @@ import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
 import { GenericParam, compareRecords, equalsRecords, makeGeneric, compareUnions, equalsUnions } from "fable-core/Util";
 import List from "fable-core/List";
-import { Message as Message_1 } from "./Modal";
-import { Message as Message_2 } from "./Navbar";
-import { SocketMessage } from "./Socket";
 export var ResponseFilter = function () {
   function ResponseFilter(caseName, fields) {
     _classCallCheck(this, ResponseFilter);
@@ -279,36 +276,3 @@ export var ServerResponse = function () {
   return ServerResponse;
 }();
 setType("Types.ServerResponse", ServerResponse);
-export var Message = function () {
-  function Message(caseName, fields) {
-    _classCallCheck(this, Message);
-
-    this.Case = caseName;
-    this.Fields = fields;
-  }
-
-  _createClass(Message, [{
-    key: _Symbol.reflection,
-    value: function () {
-      return {
-        type: "Types.Message",
-        interfaces: ["FSharpUnion"],
-        cases: {
-          Command: [ResponseFilter, makeGeneric(ServerCommand, {
-            m: GenericParam("cmd")
-          })],
-          Inner: [GenericParam("msg")],
-          Modal: [Message_1],
-          Navbar: [Message_2],
-          Response: [makeGeneric(ServerResponse, {
-            msg: GenericParam("rsp")
-          })],
-          Socket: [SocketMessage]
-        }
-      };
-    }
-  }]);
-
-  return Message;
-}();
-setType("Types.Message", Message);

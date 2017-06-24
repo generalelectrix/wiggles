@@ -8,11 +8,11 @@ import { compareRecords, equalsRecords, compareUnions, equalsUnions } from "fabl
 import { map, ofArray } from "fable-core/List";
 import { view as view_1, update as update_1, Message as Message_1, Model as Model_1 } from "./Table";
 import { ResponseFilter, LoadShow, ServerCommand, LoadSpec } from "./Types";
+import { createElement } from "react";
+import { Button, Grid } from "./Bootstrap";
 import { fold, tryItem } from "fable-core/Seq";
 import { logError } from "./Util";
 import { fsFormat } from "fable-core/String";
-import { createElement } from "react";
-import { Grid, Button } from "./Bootstrap";
 export var Row = function () {
   function Row(caseName, fields) {
     _classCallCheck(this, Row);
@@ -87,6 +87,9 @@ export var Model = function () {
   return Model;
 }();
 setType("LoadShow.Model", Model);
+export function initModel() {
+  return new Model(new Model_1(70, ofArray(["Show name"]), null), new LoadSpec("Latest", []));
+}
 export var Message = function () {
   function Message(caseName, fields) {
     _classCallCheck(this, Message);
@@ -129,6 +132,29 @@ export function update(message, model) {
     return new Model(update_1(message.Fields[0], model.table), model.loadSpec);
   }
 }
+export function loadModeSelector(selected, dispatch) {
+  var radio = function radio(text) {
+    return function (spec) {
+      var onClick = function onClick(_arg1) {
+        dispatch(new Message("LoadSpec", [spec]));
+      };
+
+      var inputAttrs = selected.Equals(spec) ? {
+        type: "radio",
+        onClick: onClick,
+        checked: true
+      } : {
+        type: "radio",
+        onClick: onClick
+      };
+      return createElement("div", {
+        className: "radio"
+      }, createElement("input", inputAttrs, text));
+    };
+  };
+
+  return createElement("form", {}, Grid.distribute(ofArray([ofArray([radio("Load from save")(new LoadSpec("Latest", []))]), ofArray([radio("Recover from autosave")(new LoadSpec("LatestAutosave", []))])])));
+}
 export function loadButton(shows, model, onComplete, dispatchServer) {
   var onClick = function onClick(_arg1) {
     var matchValue = model.table.selected;
@@ -168,7 +194,11 @@ export function cancelButton(onComplete) {
 export function view(shows, model, onComplete, dispatch, dispatchServer) {
   var showTable = view_1(map(function (arg0) {
     return new Row("Row", [arg0]);
-  }, shows), model.table, dispatch);
+  }, shows), model.table, function ($var64) {
+    return dispatch(function (arg0_1) {
+      return new Message("Table", [arg0_1]);
+    }($var64));
+  });
   var loadButton_1 = loadButton(shows, model, onComplete, dispatchServer);
-  return createElement("div", {}, Grid.fullRow(ofArray([showTable])), Grid.distribute(ofArray([ofArray([loadButton_1]), ofArray([cancelButton(onComplete)])])));
+  return createElement("div", {}, Grid.fullRow(ofArray([showTable])), Grid.fullRow(ofArray([loadModeSelector(model.loadSpec, dispatch)])), Grid.distribute(ofArray([ofArray([loadButton_1]), ofArray([cancelButton(onComplete)])])));
 }

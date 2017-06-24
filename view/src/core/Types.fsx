@@ -98,19 +98,3 @@ type ServerResponse<'msg> =
     /// A response emanting from the console itself.
     | Console of 'msg
 
-
-[<RequireQualifiedAccess>]
-/// Top-level message type.
-type Message<'cmd, 'rsp, 'msg> =
-    /// The connection state of the application has changed.
-    | Socket of Socket.SocketMessage
-    /// Message to the server, sent over the socket connection.
-    | Command of ResponseFilter * ServerCommand<'cmd>
-    /// Message from the server.
-    | Response of ServerResponse<'rsp>
-    /// Navbar actions
-    | Navbar of Navbar.Message
-    /// Modal dialog actions
-    | Modal of Modal.Message
-    /// Message for the internal operation of this console view.
-    | Inner of 'msg
