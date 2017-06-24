@@ -88,7 +88,7 @@ export var Model = function () {
 }();
 setType("LoadShow.Model", Model);
 export function initModel() {
-  return new Model(new Model_1(500, ofArray(["Show name"]), null), new LoadSpec("Latest", []));
+  return new Model(new Model_1(300, ofArray(["Show name"]), null), new LoadSpec("Latest", []));
 }
 export var Message = function () {
   function Message(caseName, fields) {
@@ -150,7 +150,7 @@ export function loadModeSelector(selected, dispatch) {
     };
   };
 
-  return createElement("form", {}, Grid.layout(ofArray([[2, ofArray([radio("Load from save")(new LoadSpec("Latest", []))])], [2, ofArray([radio("Recover from autosave")(new LoadSpec("LatestAutosave", []))])]])));
+  return Grid.layout(ofArray([[3, ofArray([radio("Load from save")(new LoadSpec("Latest", []))])], [3, ofArray([radio("Recover from autosave")(new LoadSpec("LatestAutosave", []))])]]));
 }
 export function loadButton(shows, model, onComplete, dispatchServer) {
   var onClick = function onClick(_arg1) {
@@ -191,11 +191,11 @@ export function cancelButton(onComplete) {
 export function view(shows, model, onComplete, dispatch, dispatchServer) {
   var showTable = view_1(map(function (arg0) {
     return new Row("Row", [arg0]);
-  }, shows), model.table, function ($var64) {
+  }, shows), model.table, function ($var68) {
     return dispatch(function (arg0_1) {
       return new Message("Table", [arg0_1]);
-    }($var64));
+    }($var68));
   });
   var loadButton_1 = loadButton(shows, model, onComplete, dispatchServer);
-  return createElement("div", {}, createElement("h2", {}, "Load a show:"), Grid.fullRow(ofArray([showTable])), Grid.fullRow(ofArray([loadModeSelector(model.loadSpec, dispatch)])), Grid.layout(ofArray([[2, ofArray([loadButton_1])], [2, ofArray([cancelButton(onComplete)])]])));
+  return createElement("div", {}, createElement("h2", {}, "Load a show:"), Grid.fullRow(ofArray([showTable])), Grid.fullRow(ofArray([loadModeSelector(model.loadSpec, dispatch)])), Grid.layout(ofArray([[1, ofArray([loadButton_1])], [1, ofArray([cancelButton(onComplete)])]])));
 }

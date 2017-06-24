@@ -9,6 +9,7 @@ module Base
 #load "Socket.fsx"
 #load "Navbar.fsx"
 #load "Types.fsx"
+#load "Slider.fsx"
 #load "LoadShow.fsx"
 
 open Fable.Core

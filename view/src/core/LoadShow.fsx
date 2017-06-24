@@ -33,7 +33,7 @@ type Model = {
 }
 
 let initModel() = {
-    table = {height = 500; header = ["Show name"]; selected = None}
+    table = {height = 300; header = ["Show name"]; selected = None}
     loadSpec = Latest
 }
 
@@ -62,11 +62,9 @@ let loadModeSelector selected dispatch =
             ]
         ]
 
-    R.form [] [
-        Grid.layout [
-            (2, [radio "Load from save" Latest])
-            (2, [radio "Recover from autosave" LatestAutosave])
-        ]
+    Grid.layout [
+        (3, [radio "Load from save" Latest])
+        (3, [radio "Recover from autosave" LatestAutosave])
     ]
 
 /// A button that, when pressed, will dispatch a message to load the selected show.
@@ -108,8 +106,8 @@ let view shows model onComplete dispatch dispatchServer =
         Grid.fullRow [showTable]
         Grid.fullRow [loadModeSelector model.loadSpec dispatch]
         Grid.layout [
-            (2, [loadButton])
-            (2, [cancelButton onComplete])
+            (1, [loadButton])
+            (1, [cancelButton onComplete])
         ]
     ]
 

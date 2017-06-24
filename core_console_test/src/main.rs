@@ -19,12 +19,12 @@ impl Default for NoopConsole {
 
 #[derive(Debug, Serialize, Deserialize)]
 enum Cmd {
-    TestCommand,
+    TestCommand(f64),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 enum Rsp {
-    TestResponse,
+    TestResponse(f64),
 }
 
 impl WrapResponse for Rsp {}
@@ -42,12 +42,13 @@ impl Console for NoopConsole {
     }
 
     fn handle_command(&mut self, cmd: CommandWrapper<Cmd>) -> Messages<ResponseWrapper<Rsp>> {
-        Messages::one(Rsp::TestResponse.with_client(cmd.client_data))
+        let Cmd::TestCommand(v) = cmd.payload;
+        Messages::one(Rsp::TestResponse(v).with_client(cmd.client_data))
     }
 }
 
 fn main() {
-    simple_logger::init_with_level(log::LogLevel::Debug);
+    simple_logger::init_with_level(log::LogLevel::Warn);
     
     let state: InitialState<NoopConsole> = InitialState::default();
 

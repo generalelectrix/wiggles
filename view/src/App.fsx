@@ -25,18 +25,18 @@ type Page =
 
 type ShowModel = {
     page: Page
-    model: string
+    slider: Slider.Model
 }
 
 type ShowServerCommand =
-    | TestCommand
+    | TestCommand of float
   
 type ShowServerResponse =
-    | TestResponse
+    | TestResponse of float
 
 type ShowMessage =
     | SetPage of Page
-    | SetModel of string
+    | Slider of Slider.Message
 
 let navItem: Navbar.Item<_> = {
     text = "Test"
@@ -51,7 +51,7 @@ let navbar: Navbar.Model<_> = {
 
 let initShowModel () = {
     page = TestPage
-    model = "nothing so far"
+    slider = Slider.initModel 0.0 0.0 1.0 0.001 [0.0]
 }
 
 /// Master function to initialize the whole interface.
@@ -74,22 +74,40 @@ let initCommands =
 /// response messages expected by this show.
 let wrapShowResponse (message: ShowServerResponse) =
     match message with
-    | TestResponse -> SetModel "received response"
+    | TestResponse(v) -> v |> Slider.ValueChange |> Slider
 
 let updateShow message model =
     match message with
     | SetPage(page) -> {model with page = page}, Cmd.none
-    | SetModel(msg) -> {model with model = msg}, Cmd.none
+    | Slider(msg) -> {model with slider = Slider.update msg model.slider}, Cmd.none
 
 let viewShow openModal model dispatch dispatchServer =
     match model.page with
     | TestPage ->
+        let onSliderChange v = (AllButSelf, TestCommand v) |> dispatchServer
         R.div [] [
-            R.str (sprintf "Text: %s" model.model)
-            R.button [
-                Button.Basic
-                OnClick (fun _ -> (ResponseFilter.All, TestCommand) |> dispatchServer)
-            ] [R.str "issue command"]
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
+            Slider.view onSliderChange model.slider (Slider >> dispatch)
         ]
 
 /// Type alias to ensure that generic inference gets the right types all the way down.

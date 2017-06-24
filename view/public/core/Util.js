@@ -46,6 +46,15 @@ export function parseInt(s) {
     return parsed;
   }
 }
+export function parseFloat(s) {
+  var parsed = Number.parseFloat(s);
+
+  if (Number.isNaN(parsed)) {
+    return null;
+  } else {
+    return parsed;
+  }
+}
 export var Optional = function () {
   function Optional(caseName, fields) {
     _classCallCheck(this, Optional);

@@ -46,6 +46,13 @@ let parseInt (s: string) =
     if parsed |> float |> System.Double.IsNaN then None
     else Some parsed
 
+/// Try to parse a string as a float.  Return None if it cannot be parsed.
+/// This uses Javascript's amazing number parsing that will happily parse "32foo" as 32.
+let parseFloat (s: string) =
+    let parsed = float s
+    if parsed |> System.Double.IsNaN then None
+    else Some parsed
+
 /// Roll a basic optional type to avoid the issues with doubly-nested Option represented as a
 /// nullable value.  Use this with edit boxes if your 'T will itself be an option.
 type Optional<'T> =
@@ -94,4 +101,4 @@ let enqueueBrowserAction action =
 let logException msg (e: System.Exception) = Browser.console.error(msg, e)
 
 /// Print an error message to the console.
-let logError msg = Browser.console.error(msg)
+let logError msg = Browser.console.error(msg) |> ignore
