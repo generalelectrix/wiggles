@@ -33,7 +33,7 @@ type Model = {
 }
 
 let initModel() = {
-    table = {height = 70; header = ["Show name"]; selected = None}
+    table = {height = 500; header = ["Show name"]; selected = None}
     loadSpec = Latest
 }
 
@@ -50,19 +50,19 @@ let update message model =
 let loadModeSelector selected dispatch =
     let radio text spec =
         let onClick _ = spec |> LoadSpec |> dispatch
-        let inputAttrs: IHTMLProp list =
-            if selected = spec then
-                [Type "radio"; OnClick onClick; Checked true]
-            else [Type "radio"; OnClick onClick]
-
         R.div [ClassName "radio"] [
-            R.input inputAttrs [R.str text]
+            R.label [] [
+                R.input
+                    [Type "radio"; OnClick onClick; Checked (selected = spec)]
+                    []
+                R.str text
+            ]
         ]
 
     R.form [] [
-        Grid.distribute [
-            [radio "Load from save" Latest]
-            [radio "Recover from autosave" LatestAutosave]
+        Grid.layout [
+            (2, [radio "Load from save" Latest])
+            (2, [radio "Recover from autosave" LatestAutosave])
         ]
     ]
 
@@ -104,7 +104,10 @@ let view shows model onComplete dispatch dispatchServer =
         R.h2 [] [R.str "Load a show:"]
         Grid.fullRow [showTable]
         Grid.fullRow [loadModeSelector model.loadSpec dispatch]
-        Grid.distribute [[loadButton]; [cancelButton onComplete]]
+        Grid.layout [
+            (2, [loadButton])
+            (2, [cancelButton onComplete])
+        ]
     ]
 
  

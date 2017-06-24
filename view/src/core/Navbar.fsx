@@ -141,6 +141,7 @@ let private viewDropdown position (model: DropdownModel<'msg>) dispatch dispatch
     R.li [
         ClassName (if model.isOpen then "dropdown open" else "dropdown")
     ] [
+        dropdownItem
         R.ul
             [ClassName "dropdown-menu"; OnBlur (fun _ -> CloseDropdown position |> dispatchLocal)]
             subitems

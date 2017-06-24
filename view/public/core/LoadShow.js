@@ -88,7 +88,7 @@ export var Model = function () {
 }();
 setType("LoadShow.Model", Model);
 export function initModel() {
-  return new Model(new Model_1(70, ofArray(["Show name"]), null), new LoadSpec("Latest", []));
+  return new Model(new Model_1(500, ofArray(["Show name"]), null), new LoadSpec("Latest", []));
 }
 export var Message = function () {
   function Message(caseName, fields) {
@@ -139,21 +139,17 @@ export function loadModeSelector(selected, dispatch) {
         dispatch(new Message("LoadSpec", [spec]));
       };
 
-      var inputAttrs = selected.Equals(spec) ? {
-        type: "radio",
-        onClick: onClick,
-        checked: true
-      } : {
-        type: "radio",
-        onClick: onClick
-      };
       return createElement("div", {
         className: "radio"
-      }, createElement("input", inputAttrs, text));
+      }, createElement("label", {}, createElement("input", {
+        type: "radio",
+        onClick: onClick,
+        checked: selected.Equals(spec)
+      }), text));
     };
   };
 
-  return createElement("form", {}, Grid.distribute(ofArray([ofArray([radio("Load from save")(new LoadSpec("Latest", []))]), ofArray([radio("Recover from autosave")(new LoadSpec("LatestAutosave", []))])])));
+  return createElement("form", {}, Grid.layout(ofArray([[2, ofArray([radio("Load from save")(new LoadSpec("Latest", []))])], [2, ofArray([radio("Recover from autosave")(new LoadSpec("LatestAutosave", []))])]])));
 }
 export function loadButton(shows, model, onComplete, dispatchServer) {
   var onClick = function onClick(_arg1) {
@@ -200,5 +196,5 @@ export function view(shows, model, onComplete, dispatch, dispatchServer) {
     }($var64));
   });
   var loadButton_1 = loadButton(shows, model, onComplete, dispatchServer);
-  return createElement("div", {}, createElement("h2", {}, "Load a show:"), Grid.fullRow(ofArray([showTable])), Grid.fullRow(ofArray([loadModeSelector(model.loadSpec, dispatch)])), Grid.distribute(ofArray([ofArray([loadButton_1]), ofArray([cancelButton(onComplete)])])));
+  return createElement("div", {}, createElement("h2", {}, "Load a show:"), Grid.fullRow(ofArray([showTable])), Grid.fullRow(ofArray([loadModeSelector(model.loadSpec, dispatch)])), Grid.layout(ofArray([[2, ofArray([loadButton_1])], [2, ofArray([cancelButton(onComplete)])]])));
 }

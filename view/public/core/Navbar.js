@@ -324,7 +324,7 @@ function viewDropdown(position, model, dispatch, dispatchLocal) {
   }, model.items);
   return createElement("li", {
     className: model.isOpen ? "dropdown open" : "dropdown"
-  }, createElement.apply(undefined, ["ul", {
+  }, dropdownItem, createElement.apply(undefined, ["ul", {
     className: "dropdown-menu",
     onBlur: function onBlur(_arg2) {
       dispatchLocal(new Message("CloseDropdown", [position]));
