@@ -6,8 +6,8 @@ import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
 import { compareUnions, equalsUnions } from "fable-core/Util";
 import { CmdModule } from "fable-elmish/elmish";
-import { toJson, ofJson } from "fable-core/Serialize";
 import { fsFormat } from "fable-core/String";
+import { toJson, ofJson } from "fable-core/Serialize";
 export var SocketMessage = function () {
   function SocketMessage(caseName, fields) {
     _classCallCheck(this, SocketMessage);
@@ -57,9 +57,14 @@ export function openSocket(wrapSocketMessage, _genArgs) {
       return CmdModule.ofSub(function (dispatch) {
         ws.addEventListener('message', function (event) {
           try {
-            dispatch(messageWrapper(ofJson(event.data, {
-              T: _genArgs.d
-            })));
+            var message = event.data;
+            fsFormat("Received message: %s")(function (x) {
+              console.log(x);
+            })(message);
+            var deserialized = ofJson(message, {
+              T: _genArgs.rsp
+            });
+            dispatch(messageWrapper(deserialized));
           } catch (e) {
             logException("Message deserialization error:", e);
           }
@@ -80,6 +85,9 @@ export function openSocket(wrapSocketMessage, _genArgs) {
 
   var send = function send(msg) {
     var jsonMessage = toJson(msg);
+    fsFormat("Sending message from socket: %s")(function (x) {
+      console.log(x);
+    })(jsonMessage);
 
     try {
       ws.send(jsonMessage);

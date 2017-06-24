@@ -12,6 +12,8 @@ import { equals, compareUnions, equalsUnions, makeGeneric, GenericParam } from "
 import { map, mapIndexed } from "fable-core/List";
 import List from "fable-core/List";
 import { createElement } from "react";
+import { fold } from "fable-core/Seq";
+import { Container } from "./Bootstrap";
 export var Item = function () {
   function Item(text, onClick) {
     _classCallCheck(this, Item);
@@ -357,8 +359,9 @@ export function view(model, dispatch, dispatchLocal) {
   var patternInput = model.activeItem.Case === "Right" ? [null, model.activeItem.Fields[0]] : [model.activeItem.Fields[0], null];
   var divLeftRight = createElement("div", {}, viewNavSection(true, patternInput[0], model.leftItems, dispatch, dispatchLocal), viewNavSection(false, patternInput[1], model.rightItems, dispatch, dispatchLocal));
   return createElement("nav", {
-    className: "navbar navbar-default navbar-fixed-top"
-  }, createElement("div", {
-    className: "container"
-  }, divLeftRight));
+    className: "navbar navbar-default navbar-static-top"
+  }, createElement("div", fold(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [Container.Fluid]), divLeftRight));
 }

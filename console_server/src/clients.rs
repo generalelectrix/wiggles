@@ -95,7 +95,7 @@ impl<R: Clone + fmt::Debug + Send> ResponseRouter<R> {
             match msg.client_data {
                 Some(client_data) => {
                     // apply fitering criteria
-
+                    self.send_to(client_data.into(), msg.payload);
                 },
                 None => {
                     // forward to every client

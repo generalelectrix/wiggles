@@ -173,5 +173,5 @@ let view (model: Model<'msg>) dispatch dispatchLocal =
         ]
 
     R.nav
-        [ClassName "navbar navbar-default navbar-fixed-top"]
-        [R.div [ClassName "container"] [divLeftRight]]
+        [ClassName "navbar navbar-default navbar-static-top"]
+        [R.div [Container.Fluid] [divLeftRight]]

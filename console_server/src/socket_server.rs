@@ -64,6 +64,11 @@ impl<C: Send, R: Send> SocketServer<C, R>
     /// Runs forever unless something goes wrong with the underlying socket.
     pub fn run(&mut self) {
         info!("Socket server is starting.");
+        // TEMP: work around Rust #42852
+        let mut cmd_send_clones = Vec::new();
+        for _ in 0..10000 {
+            cmd_send_clones.push(self.command_queue.clone());
+        }
         loop {
             match self.server.next().unwrap() {
                 // Log socket errors.
@@ -80,7 +85,7 @@ impl<C: Send, R: Send> SocketServer<C, R>
                     match request.use_protocol(self.protocol.clone()).accept() {
                         Err(e) => error!("Error on websocket accept: {:?}", e),
                         Ok(client) => {
-                            self.new_client(client);
+                            self.new_client(client, &mut cmd_send_clones);
                         }
                     }
                 }
@@ -102,7 +107,7 @@ impl<C: Send, R: Send> SocketServer<C, R>
         }
     }
     
-    fn new_client(&mut self, client: Client<TcpStream>) {
+    fn new_client(&mut self, client: Client<TcpStream>, cmd_clones: &mut Vec<Sender<CommandMessage<C>>>) {
         // Generate a new client ID for this client.
         let id = self.next_client_id;
         self.next_client_id += 1;
@@ -118,7 +123,7 @@ impl<C: Send, R: Send> SocketServer<C, R>
                 // Register this new client with the response router.
                 self.register_client_with_router(id, resp_send);
                 // Get a copy of the reactor command sender.
-                let cmd_queue = self.command_queue.clone();
+                let cmd_queue = cmd_clones.pop().expect("Ran out of command clones.");
                 // Start the sender and receiver in new threads.
                 thread::spawn(move || run_client_receiver(receiver, cmd_queue, id));
                 thread::spawn(move || run_client_sender(sender, resp_recv, id));
@@ -177,6 +182,7 @@ fn run_client_sender<R: Serialize + fmt::Debug + Clone + Send>(
 {
     debug!("Client {} sender is starting.", id);
     for msg in message_queue.iter() {
+        debug!("Client {} is sending a message: {:?}", id, msg);
         match serde_json::to_string(&msg) {
             Err(e) => {
                 error!(

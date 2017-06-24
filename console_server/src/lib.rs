@@ -130,6 +130,9 @@ pub fn run<C: Console>(state: InitialState<C>) -> Result<(), RunError> {
     // Start the client server.
     thread::spawn(move || server.run());
 
+    // TEMP Rust #42852 wait a moment while we clone the sender a zillion times.
+    thread::sleep_ms(5000);
+
     // Now run the reactor in the main thread.
     reactor.run();
 

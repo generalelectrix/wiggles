@@ -102,14 +102,17 @@ let private viewInner viewShow model dispatch =
         >> Message.Command
         >> dispatch
 
+    let showView =
+        viewShow
+            openModal
+            model.showModel
+            (Message.Inner >> dispatch) // show dispatches a message to itself
+            dispatchServer // show dispatches a message to the server
+
     R.div [] [
-        Navbar.view model.baseModel.navbar dispatch (Message.Navbar >> dispatch)
+        R.div [] [Navbar.view model.baseModel.navbar dispatch (Message.Navbar >> dispatch)]
         R.div [Container.Fluid] [
-            viewShow
-                openModal
-                model.showModel
-                (Message.Inner >> dispatch) // show dispatches a message to itself
-                dispatchServer // show dispatches a message to the server
+            showView
             Modal.view model.baseModel.modalDialog (Message.Modal >> dispatch)
         ]
     ]

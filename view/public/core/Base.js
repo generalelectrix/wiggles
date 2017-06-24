@@ -127,18 +127,19 @@ function viewInner(viewShow, model, dispatch) {
     }($var61));
   };
 
-  return createElement("div", {}, view_1(model.baseModel.navbar, dispatch, function ($var62) {
+  var showView = viewShow(openModal)(model.showModel)(function ($var62) {
     return dispatch(function (arg0_1) {
-      return new Message("Navbar", [arg0_1]);
+      return new Message("Inner", [arg0_1]);
     }($var62));
-  }), createElement("div", fold(function (o, kv) {
+  })(dispatchServer);
+  return createElement("div", {}, createElement("div", {}, view_1(model.baseModel.navbar, dispatch, function ($var63) {
+    return dispatch(function (arg0_2) {
+      return new Message("Navbar", [arg0_2]);
+    }($var63));
+  })), createElement("div", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
-  }, {}, [Container.Fluid]), viewShow(openModal)(model.showModel)(function ($var63) {
-    return dispatch(function (arg0_2) {
-      return new Message("Inner", [arg0_2]);
-    }($var63));
-  })(dispatchServer), view_2(model.baseModel.modalDialog, function ($var64) {
+  }, {}, [Container.Fluid]), showView, view_2(model.baseModel.modalDialog, function ($var64) {
     return dispatch(function (arg0_3) {
       return new Message("Modal", [arg0_3]);
     }($var64));

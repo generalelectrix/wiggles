@@ -29,10 +29,10 @@ type ShowModel = {
 }
 
 type ShowServerCommand =
-    | Command
+    | TestCommand
   
 type ShowServerResponse =
-    | Response
+    | TestResponse
 
 type ShowMessage =
     | SetPage of Page
@@ -74,7 +74,7 @@ let initCommands =
 /// response messages expected by this show.
 let wrapShowResponse (message: ShowServerResponse) =
     match message with
-    | Response -> SetModel "received response"
+    | TestResponse -> SetModel "received response"
 
 let updateShow message model =
     match message with
@@ -88,19 +88,19 @@ let viewShow openModal model dispatch dispatchServer =
             R.str (sprintf "Text: %s" model.model)
             R.button [
                 Button.Basic
-                OnClick (fun _ -> (ResponseFilter.Exclusive, Command) |> dispatchServer)
+                OnClick (fun _ -> (ResponseFilter.Exclusive, TestCommand) |> dispatchServer)
             ] [R.str "issue command"]
         ]
-
-
-// Launch the websocket we'll use to talk to the server.
-let (subscription, send) = //: Base.ResponseFilter * Base.ServerCommand<ShowServerCommand> -> unit) =
-    openSocket Message.Socket
 
 /// Type alias to ensure that generic inference gets the right types all the way down.
 type ConcreteMessage = Message<ShowServerCommand, ShowServerResponse, ShowMessage>
 
 type ConcreteModel = Model<ShowModel, ConcreteMessage>
+
+
+// Launch the websocket we'll use to talk to the server.
+let (subscription, send) =
+    openSocket<ServerResponse<ShowServerResponse>, ConcreteMessage> Message.Socket
 
 let update
         (msg: ConcreteMessage)

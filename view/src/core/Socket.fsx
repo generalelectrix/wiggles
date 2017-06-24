@@ -24,12 +24,13 @@ let private logException msg (e: System.Exception) = Browser.console.error(msg, 
 /// Returns a subscription that will produce a stream of messages received, as well as a function
 /// that will send a message on the socket.
 /// Pass a function that lifts a socket message into the overall message type for this application.
-let openSocket wrapSocketMessage =
+let openSocket<'rsp, 'msg> (wrapSocketMessage: SocketMessage -> 'msg) =
 
     // let host = sprintf "ws://%s/" Browser.window.location.host
     let host = "ws://127.0.0.1:2794"
 
     let ws: Browser.WebSocket = Browser.WebSocket.Create(host, Case1("wiggles"))
+
 
     /// Return a subscription.  Curry on the function that converts whatever we expect to receive
     /// on the wire into the top-level message type for the application.
@@ -41,8 +42,10 @@ let openSocket wrapSocketMessage =
             ws.addEventListener_message(
                 fun (event: Browser.MessageEvent) ->
                     try
-                        unbox event.data
-                        |> ofJson
+                        let message: string = unbox event.data
+                        printfn "Received message: %s" (message)
+                        let deserialized: 'rsp = message |> ofJson
+                        deserialized
                         |> messageWrapper
                         |> dispatch
                     with e ->
