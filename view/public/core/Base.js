@@ -1,13 +1,84 @@
-import { Message, ServerCommand, ConnectionState, Model, SavesAvailable, BaseModel } from "./Types";
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+import { setType } from "fable-core/Symbol";
+import _Symbol from "fable-core/Symbol";
+import { Message, ServerCommand, ConnectionState, SavesAvailable } from "./Types";
+import { GenericParam, Array as _Array, makeGeneric } from "fable-core/Util";
 import { ofArray } from "fable-core/List";
 import List from "fable-core/List";
-import { viewSplash, view as view_2, update as update_2, prompt as prompt_1, Message as Message_1, initialModel } from "./Modal";
+import { viewSplash, view as view_2, update as update_2, prompt as prompt_1, Message as Message_1, initialModel, ModalRequest } from "./Modal";
+import { view as view_1, update as update_1, Model as Model_1 } from "./Navbar";
 import { CmdModule } from "fable-elmish/elmish";
 import { fsFormat } from "fable-core/String";
-import { view as view_1, update as update_1 } from "./Navbar";
 import { createElement } from "react";
 import { fold } from "fable-core/Seq";
 import { Container } from "./Bootstrap";
+export var BaseModel = function () {
+  function BaseModel(name, savesAvailable, showsAvailable, modalDialog, navbar) {
+    _classCallCheck(this, BaseModel);
+
+    this.name = name;
+    this.savesAvailable = savesAvailable;
+    this.showsAvailable = showsAvailable;
+    this.modalDialog = modalDialog;
+    this.navbar = navbar;
+  }
+
+  _createClass(BaseModel, [{
+    key: _Symbol.reflection,
+    value: function () {
+      return {
+        type: "Base.BaseModel",
+        interfaces: ["FSharpRecord"],
+        properties: {
+          name: "string",
+          savesAvailable: SavesAvailable,
+          showsAvailable: makeGeneric(List, {
+            T: "string"
+          }),
+          modalDialog: _Array(ModalRequest),
+          navbar: makeGeneric(Model_1, {
+            msg: GenericParam("msg")
+          })
+        }
+      };
+    }
+  }]);
+
+  return BaseModel;
+}();
+setType("Base.BaseModel", BaseModel);
+export var Model = function () {
+  function Model(connection, baseModel, showModel) {
+    _classCallCheck(this, Model);
+
+    this.connection = connection;
+    this.baseModel = baseModel;
+    this.showModel = showModel;
+  }
+
+  _createClass(Model, [{
+    key: _Symbol.reflection,
+    value: function () {
+      return {
+        type: "Base.Model",
+        interfaces: ["FSharpRecord"],
+        properties: {
+          connection: ConnectionState,
+          baseModel: makeGeneric(BaseModel, {
+            msg: GenericParam("msg")
+          }),
+          showModel: GenericParam("m")
+        }
+      };
+    }
+  }]);
+
+  return Model;
+}();
+setType("Base.Model", Model);
 export function liftResponseAndFilter(f, filter, message) {
   return [filter, f(message)];
 }
@@ -111,8 +182,8 @@ function viewInner(viewShow, model, dispatch) {
     dispatch(new Message("Modal", [new Message_1("Open", [req])]));
   };
 
-  var dispatchServer = function dispatchServer($var78) {
-    return dispatch(function ($var77) {
+  var dispatchServer = function dispatchServer($var75) {
+    return dispatch(function ($var74) {
       return function (tupledArg_1) {
         return new Message("Command", [tupledArg_1[0], tupledArg_1[1]]);
       }(function () {
@@ -123,26 +194,26 @@ function viewInner(viewShow, model, dispatch) {
         return function (tupledArg) {
           return liftResponseAndFilter(f, tupledArg[0], tupledArg[1]);
         };
-      }()($var77));
-    }($var78));
+      }()($var74));
+    }($var75));
   };
 
-  var showView = viewShow(openModal)(model.showModel)(function ($var79) {
+  var showView = viewShow(openModal)(model.showModel)(function ($var76) {
     return dispatch(function (arg0_1) {
       return new Message("Inner", [arg0_1]);
-    }($var79));
+    }($var76));
   })(dispatchServer);
-  return createElement("div", {}, createElement("div", {}, view_1(model.baseModel.navbar, dispatch, function ($var80) {
+  return createElement("div", {}, createElement("div", {}, view_1(model.baseModel.navbar, dispatch, function ($var77) {
     return dispatch(function (arg0_2) {
       return new Message("Navbar", [arg0_2]);
-    }($var80));
+    }($var77));
   })), createElement("div", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
-  }, {}, [Container.Fluid]), showView, view_2(model.baseModel.modalDialog, function ($var81) {
+  }, {}, [Container.Fluid]), showView, view_2(model.baseModel.modalDialog, function ($var78) {
     return dispatch(function (arg0_3) {
       return new Message("Modal", [arg0_3]);
-    }($var81));
+    }($var78));
   })));
 }
 

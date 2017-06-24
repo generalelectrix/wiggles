@@ -95,7 +95,7 @@ let viewShow openModal model dispatch dispatchServer =
 /// Type alias to ensure that generic inference gets the right types all the way down.
 type ConcreteMessage = Message<ShowServerCommand, ShowServerResponse, ShowMessage>
 
-type ConcreteModel = Model<ShowModel, ConcreteMessage>
+type ConcreteModel = Base.Model<ShowModel, ConcreteMessage>
 
 
 // Launch the websocket we'll use to talk to the server.

@@ -4,10 +4,10 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { GenericParam, Array as _Array, compareRecords, equalsRecords, makeGeneric, compareUnions, equalsUnions } from "fable-core/Util";
+import { GenericParam, compareRecords, equalsRecords, makeGeneric, compareUnions, equalsUnions } from "fable-core/Util";
 import List from "fable-core/List";
-import { Message as Message_1, ModalRequest } from "./Modal";
-import { Message as Message_2, Model as Model_1 } from "./Navbar";
+import { Message as Message_1 } from "./Modal";
+import { Message as Message_2 } from "./Navbar";
 import { SocketMessage } from "./Socket";
 export var ResponseFilter = function () {
   function ResponseFilter(caseName, fields) {
@@ -45,9 +45,6 @@ export var ResponseFilter = function () {
   return ResponseFilter;
 }();
 setType("Types.ResponseFilter", ResponseFilter);
-export function liftResponseAndFilter(f, filter, message) {
-  return [filter, f(message)];
-}
 export var ConnectionState = function () {
   function ConnectionState(caseName, fields) {
     _classCallCheck(this, ConnectionState);
@@ -123,70 +120,6 @@ export var SavesAvailable = function () {
   return SavesAvailable;
 }();
 setType("Types.SavesAvailable", SavesAvailable);
-export var BaseModel = function () {
-  function BaseModel(name, savesAvailable, showsAvailable, modalDialog, navbar) {
-    _classCallCheck(this, BaseModel);
-
-    this.name = name;
-    this.savesAvailable = savesAvailable;
-    this.showsAvailable = showsAvailable;
-    this.modalDialog = modalDialog;
-    this.navbar = navbar;
-  }
-
-  _createClass(BaseModel, [{
-    key: _Symbol.reflection,
-    value: function () {
-      return {
-        type: "Types.BaseModel",
-        interfaces: ["FSharpRecord"],
-        properties: {
-          name: "string",
-          savesAvailable: SavesAvailable,
-          showsAvailable: makeGeneric(List, {
-            T: "string"
-          }),
-          modalDialog: _Array(ModalRequest),
-          navbar: makeGeneric(Model_1, {
-            msg: GenericParam("msg")
-          })
-        }
-      };
-    }
-  }]);
-
-  return BaseModel;
-}();
-setType("Types.BaseModel", BaseModel);
-export var Model = function () {
-  function Model(connection, baseModel, showModel) {
-    _classCallCheck(this, Model);
-
-    this.connection = connection;
-    this.baseModel = baseModel;
-    this.showModel = showModel;
-  }
-
-  _createClass(Model, [{
-    key: _Symbol.reflection,
-    value: function () {
-      return {
-        type: "Types.Model",
-        interfaces: ["FSharpRecord"],
-        properties: {
-          connection: ConnectionState,
-          baseModel: makeGeneric(BaseModel, {
-            msg: GenericParam("msg")
-          }),
-          showModel: GenericParam("m")
-        }
-      };
-    }
-  }]);
-
-  return Model;
-}();
-setType("Types.Model", Model);
 export var LoadSpec = function () {
   function LoadSpec(caseName, fields) {
     _classCallCheck(this, LoadSpec);

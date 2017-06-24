@@ -26,39 +26,12 @@ type ResponseFilter =
     /// Disable talkback on this request.
     | AllButSelf
 
-/// Helper function to lift a tuple of filter and message up the message hierarchy.
-let liftResponseAndFilter f (filter, message) = (filter, f message)
-
 type ConnectionState =
     | Waiting
     | Open
     | Closed
 
 type SavesAvailable = {saves: string list; autosaves: string list}
-
-/// Basic model pieces used by a view application.
-type BaseModel<'msg> = {
-    /// The name of the currently-running show.
-    name: string
-    /// Saved states available for this show.
-    savesAvailable: SavesAvailable
-    /// Saved shows available for this console.
-    showsAvailable: string list
-    /// Pop-over modal dialog.  Shared among everything that needs it.
-    modalDialog: Modal.Model
-    /// App navigation bar.
-    navbar: Navbar.Model<'msg>
-}
-
-/// Top-level model type for a wiggles view application.
-type Model<'m, 'msg> = {
-    /// State of the connection to the console server.
-    connection: ConnectionState
-    /// The basic model pieces that every console uses.
-    baseModel: BaseModel<'msg>
-    /// The specific model used by this console.
-    showModel: 'm
-}
 
 /// Specification for which saved state of a show to load.
 type LoadSpec =
