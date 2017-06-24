@@ -200,5 +200,5 @@ export function view(shows, model, onComplete, dispatch, dispatchServer) {
     }($var64));
   });
   var loadButton_1 = loadButton(shows, model, onComplete, dispatchServer);
-  return createElement("div", {}, Grid.fullRow(ofArray([showTable])), Grid.fullRow(ofArray([loadModeSelector(model.loadSpec, dispatch)])), Grid.distribute(ofArray([ofArray([loadButton_1]), ofArray([cancelButton(onComplete)])])));
+  return createElement("div", {}, createElement("h2", {}, "Load a show:"), Grid.fullRow(ofArray([showTable])), Grid.fullRow(ofArray([loadModeSelector(model.loadSpec, dispatch)])), Grid.distribute(ofArray([ofArray([loadButton_1]), ofArray([cancelButton(onComplete)])])));
 }

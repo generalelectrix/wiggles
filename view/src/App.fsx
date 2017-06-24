@@ -44,9 +44,9 @@ let navItem: Navbar.Item<_> = {
 }
 
 let navbar: Navbar.Model<_> = {
-    leftItems = [Navbar.Single navItem]
+    leftItems = [Navbar.Dropdown Base.utilDropdown; Navbar.Single navItem]
     rightItems = []
-    activeItem = Navbar.Left(0)
+    activeItem = Navbar.Left(1)
 }
 
 let initShowModel () = {

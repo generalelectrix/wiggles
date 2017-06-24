@@ -10,7 +10,7 @@ import List from "fable-core/List";
 import { ServerResponse, ConnectionState, SavesAvailable, ServerCommand, ResponseFilter } from "./Types";
 import { view as view_1, update as update_3, Message as Message_3, initModel as initModel_1, Model as Model_1 } from "./LoadShow";
 import { viewSplash, view as view_3, update as update_2, prompt as prompt_1, Message as Message_1, initialModel, ModalRequest } from "./Modal";
-import { view as view_2, update as update_1, Message as Message_2, Model as Model_2 } from "./Navbar";
+import { view as view_2, DropdownItem, DropdownModel, Item, update as update_1, Message as Message_2, Model as Model_2 } from "./Navbar";
 import { SocketMessage } from "./Socket";
 import { CmdModule } from "fable-elmish/elmish";
 import { fsFormat } from "fable-core/String";
@@ -272,7 +272,8 @@ export function update(initCommands_1, socketSend, wrapShowResponse, updateShow,
     }, initCommands_1)];
   }
 }
-export function viewUtil(utilPage, model, dispatch, dispatchServer) {
+
+function viewUtil(utilPage, model, dispatch, dispatchServer) {
   var onComplete = function onComplete() {
     dispatch(new Message("UtilPage", [null]));
   };
@@ -282,6 +283,16 @@ export function viewUtil(utilPage, model, dispatch, dispatchServer) {
       return new Message("ShowLoader", [arg0]);
     }($var78));
   }, dispatchServer);
+}
+
+function showLoaderItem() {
+  return new Item("Load show...", function (dispatch) {
+    dispatch(new Message("UtilPage", [new UtilPage("ShowLoader", [])]));
+  });
+}
+
+export function utilDropdown() {
+  return new DropdownModel("Wiggles", ofArray([new DropdownItem("Selection", [showLoaderItem()]), new DropdownItem("Separator", [])]), false);
 }
 
 function viewInner(viewShow, model, dispatch) {

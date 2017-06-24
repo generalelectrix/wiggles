@@ -172,7 +172,7 @@ let update initCommands socketSend wrapShowResponse updateShow message model =
         {model with showModel = showModel}, showMessages |> Cmd.map Message.Inner
 
 /// View function to render a particular core console utility.
-let viewUtil utilPage model dispatch dispatchServer =
+let private viewUtil utilPage model dispatch dispatchServer =
     let bm = model.baseModel
     let onComplete() = None |> Message.UtilPage |> dispatch
     match utilPage with
@@ -183,6 +183,18 @@ let viewUtil utilPage model dispatch dispatchServer =
             onComplete
             (Message.ShowLoader >> dispatch)
             dispatchServer
+
+/// Navbar dropdown for accessing utility pages.
+let private showLoaderItem: Navbar.Item<_> = {
+    text = "Load show..."
+    onClick = (fun dispatch -> ShowLoader |> Some |> Message.UtilPage |> dispatch)
+}
+
+let utilDropdown: Navbar.DropdownModel<_> = {
+    text = "Wiggles"
+    items = [Navbar.Selection(showLoaderItem); Navbar.Separator]
+    isOpen = false
+}
 
 /// View the basic page structure including the navbar and the modal dialog if it's open.
 /// Display a utility page if one is selected.  Otherwise, delegate the rest of the view to the console.
