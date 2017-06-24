@@ -9,7 +9,7 @@ import { map, ofArray } from "fable-core/List";
 import List from "fable-core/List";
 import { ServerResponse, ConnectionState, SavesAvailable, ServerCommand, ResponseFilter } from "./Types";
 import { view as view_1, update as update_3, Message as Message_3, initModel as initModel_1, Model as Model_1 } from "./LoadShow";
-import { viewSplash, view as view_3, update as update_2, prompt as prompt_1, Message as Message_1, initialModel, ModalRequest } from "./Modal";
+import { viewSplash, view as view_3, confirm, update as update_2, prompt as prompt_1, Message as Message_1, initialModel, ModalRequest } from "./Modal";
 import { view as view_2, DropdownItem, DropdownModel, Item, update as update_1, Message as Message_2, Model as Model_2 } from "./Navbar";
 import { SocketMessage } from "./Socket";
 import { CmdModule } from "fable-elmish/elmish";
@@ -299,8 +299,19 @@ function saveShowItem() {
   });
 }
 
+function quitItem() {
+  return new Item("Quit", function (dispatch) {
+    var modalAction = confirm("Are you sure you want to quit?", function (_arg1) {
+      dispatch(function (tupledArg) {
+        return new Message("Command", [tupledArg[0], tupledArg[1]]);
+      }([new ResponseFilter("All", []), new ServerCommand("Quit", [])]));
+    });
+    dispatch(new Message("Modal", [new Message_1("Open", [modalAction])]));
+  });
+}
+
 export function utilDropdown() {
-  return new DropdownModel("Wiggles", ofArray([new DropdownItem("Selection", [showLoaderItem()]), new DropdownItem("Separator", []), new DropdownItem("Selection", [saveShowItem()])]), false);
+  return new DropdownModel("Wiggles", ofArray([new DropdownItem("Selection", [showLoaderItem()]), new DropdownItem("Separator", []), new DropdownItem("Selection", [saveShowItem()]), new DropdownItem("Separator", []), new DropdownItem("Selection", [quitItem()])]), false);
 }
 
 function viewInner(viewShow, model, dispatch) {

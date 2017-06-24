@@ -199,9 +199,26 @@ let private saveShowItem: Navbar.Item<_> = {
         |> dispatch)
 }
 
+/// Dropdown item to quit the console (this one is of questionable utility).
+let private quitItem: Navbar.Item<_> = {
+    text = "Quit"
+    onClick = (fun dispatch ->
+        let modalAction =
+            Modal.confirm
+                "Are you sure you want to quit?"
+                (fun _ -> (All, ServerCommand.Quit) |> Message.Command |> dispatch)
+        modalAction |> Modal.Open |> Message.Modal |> dispatch)
+}
+
 let utilDropdown: Navbar.DropdownModel<_> = {
     text = "Wiggles"
-    items = [Navbar.Selection(showLoaderItem); Navbar.Separator; Navbar.Selection(saveShowItem)]
+    items = [
+        Navbar.Selection(showLoaderItem)
+        Navbar.Separator
+        Navbar.Selection(saveShowItem)
+        Navbar.Separator
+        Navbar.Selection(quitItem)
+    ]
     isOpen = false
 }
 
