@@ -9,8 +9,8 @@ import { map, ofArray } from "fable-core/List";
 import { view as view_1, update as update_1, Message as Message_1, Model as Model_1 } from "./Table";
 import { ResponseFilter, LoadShow, ServerCommand, LoadSpec } from "./Types";
 import { createElement } from "react";
-import { Button, Grid } from "./Bootstrap";
-import { fold, tryItem } from "fable-core/Seq";
+import { tryItem, fold } from "fable-core/Seq";
+import { Button, Grid, InputType } from "./Bootstrap";
 import { logError } from "./Util";
 import { fsFormat } from "fable-core/String";
 export var Row = function () {
@@ -141,12 +141,10 @@ export function loadModeSelector(selected, dispatch) {
 
       return createElement("div", {
         className: "radio"
-      }, createElement("label", {}, createElement("input", {
-        type: "radio",
-        onClick: onClick,
-        checked: selected.Equals(spec),
-        readOnly: true
-      }), text));
+      }, createElement("label", {}, createElement("input", fold(function (o, kv) {
+        o[kv[0]] = kv[1];
+        return o;
+      }, {}, [["readOnly", true], ["checked", selected.Equals(spec)], ["onClick", onClick], InputType.Radio])), text));
     };
   };
 
@@ -197,5 +195,5 @@ export function view(shows, model, onComplete, dispatch, dispatchServer) {
     }($var68));
   });
   var loadButton_1 = loadButton(shows, model, onComplete, dispatchServer);
-  return createElement("div", {}, createElement("h2", {}, "Load a show:"), Grid.fullRow(ofArray([showTable])), Grid.fullRow(ofArray([loadModeSelector(model.loadSpec, dispatch)])), Grid.layout(ofArray([[1, ofArray([loadButton_1])], [1, ofArray([cancelButton(onComplete)])]])));
+  return createElement("div", {}, Grid.fullRow(ofArray([showTable])), Grid.fullRow(ofArray([loadModeSelector(model.loadSpec, dispatch)])), Grid.layout(ofArray([[1, ofArray([loadButton_1])], [1, ofArray([cancelButton(onComplete)])]])));
 }

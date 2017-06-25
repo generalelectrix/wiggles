@@ -9,11 +9,11 @@ import { globalAddressFromOptionals, PatchServerRequest, parseUniverseId, parseD
 import { view as view_1, update as update_1, initialModel as initialModel_1, Message as Message_1, Model as Model_1 } from "../core/EditBox";
 import { OptionalModule, emptyIfNone, Optional } from "../core/Util";
 import { Result } from "fable-elmish/result";
+import { Grid, Form, Button, InputType } from "../core/Bootstrap";
 import { CmdModule } from "fable-elmish/elmish";
 import { ResponseFilter } from "../core/Types";
 import { createElement } from "react";
 import { fold } from "fable-core/Seq";
-import { Grid, Form, Button } from "../core/Bootstrap";
 import { fsFormat } from "fable-core/String";
 import { confirm } from "../core/Modal";
 import { ofArray } from "fable-core/List";
@@ -106,7 +106,7 @@ setType("PatchEdit.Message", Message);
 export function initialModel() {
   return new Model(null, initialModel_1("Name:", function (s) {
     return new Result("Ok", [s]);
-  }, "text"), initialModel_1("Address:", parseDmxAddress, "number"), initialModel_1("Universe:", parseUniverseId, "number"));
+  }, InputType.Text), initialModel_1("Address:", parseDmxAddress, InputType.Number), initialModel_1("Universe:", parseUniverseId, InputType.Number));
 }
 export function update(message, model) {
   var clear = function clear(submodel) {
@@ -127,11 +127,11 @@ export function update(message, model) {
   }() : function () {
     var clearBuffers = void 0;
     var matchValue = [model.selected, message.Fields[0]];
-    var $var101 = matchValue[0] != null ? matchValue[1] != null ? [0, matchValue[0], matchValue[1]] : [1] : [1];
+    var $var160 = matchValue[0] != null ? matchValue[1] != null ? [0, matchValue[0], matchValue[1]] : [1] : [1];
 
-    switch ($var101[0]) {
+    switch ($var160[0]) {
       case 0:
-        if ($var101[1].id !== $var101[2].id) {
+        if ($var160[1].id !== $var160[2].id) {
           clearBuffers = true;
         } else {
           clearBuffers = false;
@@ -167,12 +167,12 @@ function nameEditOnKeyDown(fixtureId, dispatchLocal, dispatchServer, nameEditMod
 
     switch (matchValue) {
       case 13:
-        var $var102 = nameEditModel.value != null ? nameEditModel.value.Case === "Ok" ? [0, nameEditModel.value.Fields[0]] : [1] : [1];
+        var $var161 = nameEditModel.value != null ? nameEditModel.value.Case === "Ok" ? [0, nameEditModel.value.Fields[0]] : [1] : [1];
 
-        switch ($var102[0]) {
+        switch ($var161[0]) {
           case 0:
             clear(null);
-            dispatchServer([new ResponseFilter("All", []), new PatchServerRequest("Rename", [fixtureId, $var102[1]])]);
+            dispatchServer([new ResponseFilter("All", []), new PatchServerRequest("Rename", [fixtureId, $var161[1]])]);
             break;
 
           case 1:
@@ -194,23 +194,23 @@ function nameEditBox(selected, model, dispatchLocal, dispatchServer) {
     return nameEditOnKeyDown(selected.id, dispatchLocal, dispatchServer, nameEditModel);
   };
 
-  return view_1(onKeyDown, selected.name, model.nameEdit, function ($var103) {
+  return view_1(onKeyDown, selected.name, model.nameEdit, function ($var162) {
     return dispatchLocal(function (arg0) {
       return new Message("NameEdit", [arg0]);
-    }($var103));
+    }($var162));
   });
 }
 
 function addressEditor(selected, model, dispatchLocal, dispatchServer, openModal) {
-  var universeBox = view_1(null, emptyIfNone(selected.universe), model.universeEdit, function ($var104) {
+  var universeBox = view_1(null, emptyIfNone(selected.universe), model.universeEdit, function ($var163) {
     return dispatchLocal(function (arg0) {
       return new Message("UniverseEdit", [arg0]);
-    }($var104));
+    }($var163));
   });
-  var addressBox = view_1(null, emptyIfNone(selected.dmxAddress), model.addressEdit, function ($var105) {
+  var addressBox = view_1(null, emptyIfNone(selected.dmxAddress), model.addressEdit, function ($var164) {
     return dispatchLocal(function (arg0_1) {
       return new Message("AddressEdit", [arg0_1]);
-    }($var105));
+    }($var164));
   });
 
   var clear = function clear(msg) {

@@ -53,16 +53,16 @@ let initialModel () = {
     kinds = [||]
     selectedKind = None
     name =
-        EditBox.initialModel "Name:" errorIfEmpty "text"
+        EditBox.initialModel "Name:" errorIfEmpty InputType.Text
         |> EditBox.setFailed ""
     universe =
-        EditBox.initialModel "Universe:" parseUniverseId "number"
+        EditBox.initialModel "Universe:" parseUniverseId InputType.Number
         |> EditBox.setParsed Absent
     address =
-        EditBox.initialModel "Address:" parseDmxAddress "number"
+        EditBox.initialModel "Address:" parseDmxAddress InputType.Number
         |> EditBox.setParsed Absent
     quantity =
-        EditBox.initialModel "Quantity:" parsePositiveInt "number"
+        EditBox.initialModel "Quantity:" parsePositiveInt InputType.Number
         |> EditBox.setParsed 1
 }
 

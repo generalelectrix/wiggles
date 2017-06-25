@@ -11,6 +11,9 @@ module Base
 #load "Types.fsx"
 #load "Slider.fsx"
 #load "LoadShow.fsx"
+#load "SaveShowAs.fsx"
+#load "NewShow.fsx"
+#load "RenameShow.fsx"
 
 open Fable.Core
 open Fable.Import
@@ -24,12 +27,18 @@ open Types
 
 type UtilPage =
     | ShowLoader
+    | SaveShowAs
+    | NewShow
+    | RenameShow
 
 let commandsForUtilPageChange page =
     match page with
     | ShowLoader ->
         // emit a command to update our collection of available shows
         [(Exclusive, ServerCommand.SavedShows)]
+    | SaveShowAs -> []
+    | NewShow -> []
+    | RenameShow -> []
 
 
 /// Basic model pieces used by a view application.
@@ -44,6 +53,12 @@ type BaseModel<'msg> = {
     utilPage: UtilPage option
     /// Tool to load shows.
     showLoader: LoadShow.Model
+    /// Tool to save a show as a different name.
+    saveAsUtil: SaveShowAs.Model
+    /// Tool to create a new show.
+    newShowUtil: NewShow.Model
+    /// Tool to rename the show.
+    renameShowUtil: RenameShow.Model
     /// Pop-over modal dialog.  Shared among everything that needs it.
     modalDialog: Modal.Model
     /// App navigation bar.
@@ -69,6 +84,9 @@ let private initBaseModel navbar = {
     showsAvailable = []
     utilPage = None
     showLoader = LoadShow.initModel()
+    saveAsUtil = SaveShowAs.initModel()
+    newShowUtil = NewShow.initModel()
+    renameShowUtil = RenameShow.initModel()
     modalDialog = Modal.initialModel()
     navbar = navbar
 }
@@ -95,6 +113,12 @@ type Message<'cmd, 'rsp, 'msg> =
     | Modal of Modal.Message
     /// Show loader
     | ShowLoader of LoadShow.Message
+    /// Util to save a show as a different name
+    | SaveShowAs of SaveShowAs.Message
+    /// Util to create a new show
+    | NewShow of NewShow.Message
+    /// Util to rename the show
+    | RenameShow of RenameShow.Message
     /// Message for the internal operation of this console view.
     | Inner of 'msg
    
@@ -168,6 +192,18 @@ let update initCommands socketSend wrapShowResponse updateShow message model =
         let newModel =
             updateBaseModel (fun bm -> {bm with showLoader = LoadShow.update msg bm.showLoader})
         newModel, Cmd.none
+    | Message.SaveShowAs(msg) ->
+        let newModel =
+            updateBaseModel (fun bm -> {bm with saveAsUtil = SaveShowAs.update msg bm.saveAsUtil})
+        newModel, Cmd.none
+    | Message.RenameShow(msg) ->
+        let newModel =
+            updateBaseModel (fun bm -> {bm with renameShowUtil = RenameShow.update msg bm.renameShowUtil})
+        newModel, Cmd.none
+    | Message.NewShow(msg) ->
+        let newModel =
+            updateBaseModel (fun bm -> {bm with newShowUtil = NewShow.update msg bm.newShowUtil})
+        newModel, Cmd.none
     | Message.Inner(msg) ->
         let showModel, showMessages = updateShow msg model.showModel
         {model with showModel = showModel}, showMessages |> Cmd.map Message.Inner
@@ -184,11 +220,30 @@ let private viewUtil utilPage model dispatch dispatchServer =
             onComplete
             (Message.ShowLoader >> dispatch)
             dispatchServer
+    | SaveShowAs ->
+        SaveShowAs.view
+            bm.name
+            bm.saveAsUtil
+            onComplete
+            (Message.SaveShowAs >> dispatch)
+            dispatchServer
+    | RenameShow ->
+        RenameShow.view
+            bm.name
+            bm.renameShowUtil
+            onComplete
+            (Message.RenameShow >> dispatch)
+            dispatchServer
+    | NewShow ->
+        NewShow.view
+            bm.newShowUtil
+            onComplete
+            (Message.NewShow >> dispatch)
+            dispatchServer
 
-/// Dropdown item for accessing show loader page.
-let private showLoaderItem: Navbar.Item<_> = {
-    text = "Load show..."
-    onClick = (fun dispatch -> ShowLoader |> Some |> Message.UtilPage |> dispatch)
+let private utilPageItem text page : Navbar.Item<_> = {
+    text = text
+    onClick = (fun dispatch -> page |> Some |> Message.UtilPage |> dispatch)
 }
 
 /// Dropdown item for saving the current show.
@@ -211,12 +266,15 @@ let private quitItem: Navbar.Item<_> = {
         modalAction |> Modal.Open |> Message.Modal |> dispatch)
 }
 
-let utilDropdown: Navbar.DropdownModel<_> = {
+let utilDropdown(): Navbar.DropdownModel<Message<_, _, _>> = {
     text = "Wiggles"
-    items = [
-        Navbar.Selection(showLoaderItem)
+    items = 
+       [Navbar.Selection(utilPageItem "New show..." UtilPage.NewShow)
+        Navbar.Selection(utilPageItem "Load show..." UtilPage.ShowLoader)
         Navbar.Separator
         Navbar.Selection(saveShowItem)
+        Navbar.Selection(utilPageItem "Save as..." UtilPage.SaveShowAs)
+        Navbar.Selection(utilPageItem "Rename..." UtilPage.RenameShow)
         Navbar.Separator
         Navbar.Selection(quitItem)
     ]

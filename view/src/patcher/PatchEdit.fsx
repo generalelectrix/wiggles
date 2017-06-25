@@ -39,9 +39,9 @@ type Message =
 
 let initialModel () = {
     selected = None
-    nameEdit = EditBox.initialModel "Name:" (fun s -> Ok(s)) "text"
-    addressEdit = EditBox.initialModel "Address:" parseDmxAddress "number"
-    universeEdit = EditBox.initialModel "Universe:" parseUniverseId "number"
+    nameEdit = EditBox.initialModel "Name:" (fun s -> Ok(s)) InputType.Text
+    addressEdit = EditBox.initialModel "Address:" parseDmxAddress InputType.Number
+    universeEdit = EditBox.initialModel "Universe:" parseUniverseId InputType.Number
 }
 
 let update message (model: Model) =

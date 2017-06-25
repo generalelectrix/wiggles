@@ -12,10 +12,10 @@ import { view as view_1, $7C$Parsed$7C$_$7C$ as _Parsed___, update as update_1, 
 import { errorIfEmpty, parseInt, Result as Result_1, Optional } from "../core/Util";
 import { range, map, fold, sortWith, tryFind } from "fable-core/Seq";
 import { ResultModule, Result } from "fable-elmish/result";
+import { Grid, Button, Form, InputType } from "../core/Bootstrap";
 import { CmdModule } from "fable-elmish/elmish";
 import { createElement } from "react";
 import { trim, fsFormat } from "fable-core/String";
-import { Grid, Button, Form } from "../core/Bootstrap";
 import { ofArray } from "fable-core/List";
 import { ResponseFilter } from "../core/Types";
 export var Model = function () {
@@ -123,7 +123,7 @@ export var Message = function () {
 }();
 setType("NewPatch.Message", Message);
 
-var parsePositiveInt = function parsePositiveInt($var125) {
+var parsePositiveInt = function parsePositiveInt($var184) {
   return function () {
     var f = function f(number) {
       if (number < 1) {
@@ -136,13 +136,13 @@ var parsePositiveInt = function parsePositiveInt($var125) {
     return function (r) {
       return ResultModule.bind(f, r);
     };
-  }()(function ($var124) {
-    return Result_1.ofOption(parseInt($var124));
-  }($var125));
+  }()(function ($var183) {
+    return Result_1.ofOption(parseInt($var183));
+  }($var184));
 };
 
 export function initialModel() {
-  return new Model([], null, setFailed("", initialModel_1("Name:", errorIfEmpty, "text")), setParsed(new Optional("Absent", []), initialModel_1("Universe:", parseUniverseId, "number")), setParsed(new Optional("Absent", []), initialModel_1("Address:", parseDmxAddress, "number")), setParsed(1, initialModel_1("Quantity:", parsePositiveInt, "number")));
+  return new Model([], null, setFailed("", initialModel_1("Name:", errorIfEmpty, InputType.Text)), setParsed(new Optional("Absent", []), initialModel_1("Universe:", parseUniverseId, InputType.Number)), setParsed(new Optional("Absent", []), initialModel_1("Address:", parseDmxAddress, InputType.Number)), setParsed(1, initialModel_1("Quantity:", parsePositiveInt, InputType.Number)));
 }
 export function update(message, model) {
   return function (m) {
@@ -170,33 +170,33 @@ export function update(message, model) {
     return new Model(model.kinds, model.selectedKind, model.name, model.universe, model.address, quantity);
   }() : message.Case === "AdvanceAddress" ? function () {
     var matchValue_1 = [model.address, model.quantity, model.selectedKind];
-    var $var126 = void 0;
+    var $var185 = void 0;
 
-    var activePatternResult665 = _Parsed___(matchValue_1[0]);
+    var activePatternResult943 = _Parsed___(matchValue_1[0]);
 
-    if (activePatternResult665 != null) {
-      if (activePatternResult665.Case === "Present") {
-        var activePatternResult666 = _Parsed___(matchValue_1[1]);
+    if (activePatternResult943 != null) {
+      if (activePatternResult943.Case === "Present") {
+        var activePatternResult944 = _Parsed___(matchValue_1[1]);
 
-        if (activePatternResult666 != null) {
+        if (activePatternResult944 != null) {
           if (matchValue_1[2] != null) {
-            $var126 = [0, activePatternResult665.Fields[0], matchValue_1[2], activePatternResult666];
+            $var185 = [0, activePatternResult943.Fields[0], matchValue_1[2], activePatternResult944];
           } else {
-            $var126 = [1];
+            $var185 = [1];
           }
         } else {
-          $var126 = [1];
+          $var185 = [1];
         }
       } else {
-        $var126 = [1];
+        $var185 = [1];
       }
     } else {
-      $var126 = [1];
+      $var185 = [1];
     }
 
-    switch ($var126[0]) {
+    switch ($var185[0]) {
       case 0:
-        var newStartAddress = 512 < $var126[1] + $var126[3] * $var126[2].channelCount ? 512 : $var126[1] + $var126[3] * $var126[2].channelCount;
+        var newStartAddress = 512 < $var185[1] + $var185[3] * $var185[2].channelCount ? 512 : $var185[1] + $var185[3] * $var185[2].channelCount;
         var address_1 = setParsed(new Optional("Present", [newStartAddress]), model.address);
         return new Model(model.kinds, model.selectedKind, model.name, model.universe, address_1, model.quantity);
 
@@ -271,47 +271,47 @@ function patchButton(model, dispatchLocal, dispatchServer) {
       console.log(x);
     })(model);
     var matchValue_2 = [model.selectedKind, model.name, model.universe, model.address, model.quantity];
-    var $var128 = void 0;
+    var $var187 = void 0;
 
     if (matchValue_2[0] != null) {
-      var activePatternResult684_1 = _Parsed___(matchValue_2[1]);
+      var activePatternResult962_1 = _Parsed___(matchValue_2[1]);
 
-      if (activePatternResult684_1 != null) {
-        var activePatternResult685_1 = _Parsed___(matchValue_2[2]);
+      if (activePatternResult962_1 != null) {
+        var activePatternResult963_1 = _Parsed___(matchValue_2[2]);
 
-        if (activePatternResult685_1 != null) {
-          var activePatternResult686_1 = _Parsed___(matchValue_2[3]);
+        if (activePatternResult963_1 != null) {
+          var activePatternResult964_1 = _Parsed___(matchValue_2[3]);
 
-          if (activePatternResult686_1 != null) {
-            var activePatternResult687_1 = _Parsed___(matchValue_2[4]);
+          if (activePatternResult964_1 != null) {
+            var activePatternResult965_1 = _Parsed___(matchValue_2[4]);
 
-            if (activePatternResult687_1 != null) {
-              $var128 = [0, activePatternResult686_1, matchValue_2[0], activePatternResult684_1, activePatternResult687_1, activePatternResult685_1];
+            if (activePatternResult965_1 != null) {
+              $var187 = [0, activePatternResult964_1, matchValue_2[0], activePatternResult962_1, activePatternResult965_1, activePatternResult963_1];
             } else {
-              $var128 = [1];
+              $var187 = [1];
             }
           } else {
-            $var128 = [1];
+            $var187 = [1];
           }
         } else {
-          $var128 = [1];
+          $var187 = [1];
         }
       } else {
-        $var128 = [1];
+        $var187 = [1];
       }
     } else {
-      $var128 = [1];
+      $var187 = [1];
     }
 
-    switch ($var128[0]) {
+    switch ($var187[0]) {
       case 0:
-        var matchValue_3 = globalAddressFromOptionals($var128[5], $var128[1]);
+        var matchValue_3 = globalAddressFromOptionals($var187[5], $var187[1]);
 
         if (matchValue_3.Case === "Ok") {
           fsFormat("Addr: %+A")(function (x) {
             console.log(x);
           })(matchValue_3.Fields[0]);
-          var newPatchResult_1 = newPatchesSequential($var128[3], $var128[2], $var128[4], matchValue_3.Fields[0]);
+          var newPatchResult_1 = newPatchesSequential($var187[3], $var187[2], $var187[4], matchValue_3.Fields[0]);
 
           if (newPatchResult_1.Case === "Ok") {
             dispatchServer([new ResponseFilter("All", []), new PatchServerRequest("NewPatches", [newPatchResult_1.Fields[0]])]);
@@ -334,25 +334,25 @@ export function view(model, dispatchLocal, dispatchServer) {
   if (model.kinds.length === 0) {
     return createElement("div", {}, "No patch types available.");
   } else {
-    var nameEntry = view_1(null, "", model.name, function ($var129) {
+    var nameEntry = view_1(null, "", model.name, function ($var188) {
       return dispatchLocal(function (arg0) {
         return new Message("NameEdit", [arg0]);
-      }($var129));
+      }($var188));
     });
-    var universeEntry = view_1(null, "", model.universe, function ($var130) {
+    var universeEntry = view_1(null, "", model.universe, function ($var189) {
       return dispatchLocal(function (arg0_1) {
         return new Message("UnivEdit", [arg0_1]);
-      }($var130));
+      }($var189));
     });
-    var addressEntry = view_1(null, "", model.address, function ($var131) {
+    var addressEntry = view_1(null, "", model.address, function ($var190) {
       return dispatchLocal(function (arg0_2) {
         return new Message("AddrEdit", [arg0_2]);
-      }($var131));
+      }($var190));
     });
-    var quantityEntry = view_1(null, "", model.quantity, function ($var132) {
+    var quantityEntry = view_1(null, "", model.quantity, function ($var191) {
       return dispatchLocal(function (arg0_3) {
         return new Message("QuantEdit", [arg0_3]);
-      }($var132));
+      }($var191));
     });
     return createElement("div", fold(function (o, kv) {
       o[kv[0]] = kv[1];

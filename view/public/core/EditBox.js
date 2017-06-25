@@ -4,7 +4,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { toString, compareUnions, equalsUnions, makeGeneric, GenericParam, Option } from "fable-core/Util";
+import { toString, compareUnions, equalsUnions, Any, makeGeneric, GenericParam, Option } from "fable-core/Util";
 import { Result } from "fable-elmish/result";
 import { fold } from "fable-core/Seq";
 import { Form } from "./Bootstrap";
@@ -32,18 +32,18 @@ export var Model = function () {
           })),
           parser: "function",
           label: "string",
-          inputType: "string"
+          inputType: Any
         }
       };
     }
   }, {
     key: "ParsedValueOr",
     value: function (defaultValue) {
-      var $var88 = this.value != null ? this.value.Case === "Ok" ? [0, this.value.Fields[0]] : [1] : [1];
+      var $var83 = this.value != null ? this.value.Case === "Ok" ? [0, this.value.Fields[0]] : [1] : [1];
 
-      switch ($var88[0]) {
+      switch ($var83[0]) {
         case 0:
-          return $var88[1];
+          return $var83[1];
 
         case 1:
           return defaultValue;
@@ -52,9 +52,9 @@ export var Model = function () {
   }, {
     key: "IsOk",
     get: function () {
-      var $var86 = this.value != null ? this.value.Case === "Error" ? [0] : [1] : [1];
+      var $var81 = this.value != null ? this.value.Case === "Error" ? [0] : [1] : [1];
 
-      switch ($var86[0]) {
+      switch ($var81[0]) {
         case 0:
           return false;
 
@@ -65,9 +65,9 @@ export var Model = function () {
   }, {
     key: "HasParsed",
     get: function () {
-      var $var87 = this.value != null ? this.value.Case === "Ok" ? [0] : [1] : [1];
+      var $var82 = this.value != null ? this.value.Case === "Ok" ? [0] : [1] : [1];
 
-      switch ($var87[0]) {
+      switch ($var82[0]) {
         case 0:
           return true;
 
@@ -142,11 +142,11 @@ export function setFailed(value, model) {
 }
 
 function _Parsed___(model) {
-  var $var89 = model.value != null ? model.value.Case === "Ok" ? [0, model.value.Fields[0]] : [1] : [1];
+  var $var84 = model.value != null ? model.value.Case === "Ok" ? [0, model.value.Fields[0]] : [1] : [1];
 
-  switch ($var89[0]) {
+  switch ($var84[0]) {
     case 0:
-      return $var89[1];
+      return $var84[1];
 
     case 1:
       return null;
@@ -161,7 +161,7 @@ export function view(extraAction, defaultValue, model, dispatch) {
     return o;
   }, {}, [["value", value], ["onChange", function (e_1) {
     dispatch(new Message("Update", [e_1.target.value]));
-  }], ["type", model.inputType], Form.Control]);
+  }], model.inputType, Form.Control]);
   var allAttrs = extraAction == null ? attrs : Object.assign({}, fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
@@ -169,8 +169,11 @@ export function view(extraAction, defaultValue, model, dispatch) {
   return createElement("div", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
-  }, {}, [model.IsOk ? Form.Group : Form.GroupError]), createElement("label", fold(function (o, kv) {
+  }, {}, [model.IsOk ? Form.Group : Form.GroupError]), createElement("div", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
-  }, {}, [Form.ControlLabel]), model.label, createElement("input", allAttrs)));
+  }, {}, [Form.InputGroup]), createElement("label", fold(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [Form.ControlLabel]), model.label, createElement("input", allAttrs))));
 }

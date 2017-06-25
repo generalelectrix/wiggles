@@ -26,7 +26,7 @@ type Model<'T> = {
     value: Result<'T, string> option
     parser: string -> Result<'T, unit>
     label: string
-    inputType: string}
+    inputType: IHTMLProp}
     with
     /// Is this edit box parsed successfully or never touched?
     member this.IsOk =
@@ -85,7 +85,7 @@ let view (extraAction: (Model<'T> -> IHTMLProp) option) defaultValue (model: Mod
 
     let (attrs: IHTMLProp list) = [
         Form.Control
-        Type model.inputType
+        model.inputType
         OnChange (fun e -> !!e.target?value |> Update |> dispatch)
         Value (Case1 (value))
     ]
@@ -98,8 +98,10 @@ let view (extraAction: (Model<'T> -> IHTMLProp) option) defaultValue (model: Mod
     R.div [
         (if model.IsOk then Form.Group else Form.GroupError)
     ] [
-        R.label [Form.ControlLabel] [
-            R.str model.label
-            R.input allAttrs []
+        R.div [Form.InputGroup] [
+            R.label [Form.ControlLabel] [
+                R.str model.label
+                R.input allAttrs []
+            ]
         ]
     ]

@@ -64,6 +64,7 @@ export var Grid = function (__exports) {
 export var Form = function (__exports) {
   var Control = __exports.Control = cn("form-control");
   var ControlLabel = __exports.ControlLabel = cn("control-label");
+  var InputGroup = __exports.InputGroup = cn("input-group");
   var Group = __exports.Group = cn("form-group");
   var GroupSuccess = __exports.GroupSuccess = cn("form-group has-success");
   var GroupWarning = __exports.GroupWarning = cn("form-group has-warning");
@@ -110,5 +111,20 @@ export var Button = function (__exports) {
   var Warning = __exports.Warning = buttonStyle("warning");
   var Danger = __exports.Danger = buttonStyle("danger");
   var Link = __exports.Link = buttonStyle("link");
+  return __exports;
+}({});
+export var InputType = function (__exports) {
+  var _Text = __exports.Text = ["type", "text"];
+
+  var _Number = __exports.Number = ["type", "number"];
+
+  var Button_1 = __exports.Button = ["type", "button"];
+  var Checkbox = __exports.Checkbox = ["type", "checkbox"];
+  var Radio = __exports.Radio = ["type", "radio"];
+  var Color = __exports.Color = ["type", "color"];
+  var Submit = __exports.Submit = ["type", "submit"];
+
+  var _Range = __exports.Range = ["type", "range"];
+
   return __exports;
 }({});

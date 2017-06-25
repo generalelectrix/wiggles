@@ -21,6 +21,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "core", "core", "{9908BA9D-B
 		src\core\LoadShow.fsx = src\core\LoadShow.fsx
 		src\core\Table.fsx = src\core\Table.fsx
 		src\core\Slider.fsx = src\core\Slider.fsx
+		src\core\SaveShowAs.fsx = src\core\SaveShowAs.fsx
+		src\core\SimpleEditor.fsx = src\core\SimpleEditor.fsx
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "patcher", "patcher", "{A551274F-F429-4609-8632-493AB759C119}"

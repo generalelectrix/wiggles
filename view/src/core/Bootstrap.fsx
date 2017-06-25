@@ -1,4 +1,5 @@
 /// React CSS props for various Bootstrap CSS classes.
+/// Also includes a few odds and ends related to strongly-typing HTML.
 module Bootstrap
 
 #r "../node_modules/fable-react/Fable.React.dll"
@@ -44,6 +45,7 @@ module Grid =
 module Form =
     let Control = cn "form-control"
     let ControlLabel = cn "control-label"
+    let InputGroup = cn "input-group"
     let Group = cn "form-group"
     let GroupSuccess = cn "form-group has-success"
     let GroupWarning = cn "form-group has-warning"
@@ -75,3 +77,13 @@ module Button =
     let Warning = buttonStyle "warning"
     let Danger = buttonStyle "danger"
     let Link = buttonStyle "link"
+
+module InputType =
+    let Text = Type "text"
+    let Number = Type "number"
+    let Button = Type "button"
+    let Checkbox = Type "checkbox"
+    let Radio = Type "radio"
+    let Color = Type "color"
+    let Submit = Type "submit"
+    let Range = Type "range"

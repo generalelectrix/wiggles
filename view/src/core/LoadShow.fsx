@@ -53,7 +53,7 @@ let loadModeSelector selected dispatch =
         R.div [ClassName "radio"] [
             R.label [] [
                 R.input [
-                    Type "radio"
+                    InputType.Radio
                     OnClick onClick
                     Checked (selected = spec)
                     ReadOnly true // not actually read-only but react complains otherwise
@@ -102,7 +102,6 @@ let view shows model onComplete dispatch dispatchServer =
     let showTable = Table.view (shows |> List.map Row) model.table (Table >> dispatch)
     let loadButton = loadButton shows model onComplete dispatchServer
     R.div [] [
-        R.h2 [] [R.str "Load a show:"]
         Grid.fullRow [showTable]
         Grid.fullRow [loadModeSelector model.loadSpec dispatch]
         Grid.layout [

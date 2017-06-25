@@ -82,7 +82,7 @@ let view onValueChange model dispatch =
 
     R.div [] [
         R.input [
-            Type "range"
+            InputType.Range
             Min (Case1 model.min)
             Max (Case1 model.max)
             Step (Case1 model.step)

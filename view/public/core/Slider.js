@@ -12,6 +12,8 @@ import List from "fable-core/List";
 import { fsFormat } from "fable-core/String";
 import { parseFloat } from "./Util";
 import { createElement } from "react";
+import { fold } from "fable-core/Seq";
+import { InputType } from "./Bootstrap";
 export var nextId = 0;
 export var Model = function () {
   function Model(uniqueId, value, min, max, step, detents, inputEventHasFired) {
@@ -151,16 +153,10 @@ export function view(onValueChange, model, dispatch) {
       value: String(d)
     });
   }, model.detents);
-  return createElement("div", {}, createElement("input", {
-    type: "range",
-    min: model.min,
-    max: model.max,
-    step: model.step,
-    onInput: onInput,
-    onChange: onChange,
-    list: model.uniqueId,
-    value: String(model.value)
-  }), createElement.apply(undefined, ["datalist", {
+  return createElement("div", {}, createElement("input", fold(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [["value", String(model.value)], ["list", model.uniqueId], ["onChange", onChange], ["onInput", onInput], ["step", model.step], ["max", model.max], ["min", model.min], InputType.Range])), createElement.apply(undefined, ["datalist", {
     id: model.uniqueId
   }].concat(_toConsumableArray(detents))));
 }

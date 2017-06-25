@@ -5,6 +5,7 @@
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
 #load "core/Base.fsx"
+#load "patcher/Patcher.fsx"
 
 open Fable.Core
 open Fable.Import
@@ -38,13 +39,18 @@ type ShowMessage =
     | SetPage of Page
     | Slider of Slider.Message
 
-let navItem: Navbar.Item<_> = {
+/// Type alias to ensure that generic inference gets the right types all the way down.
+type ConcreteMessage = Base.Message<ShowServerCommand, ShowServerResponse, ShowMessage>
+
+type ConcreteModel = Base.Model<ShowModel, ConcreteMessage>
+
+let navItem: Navbar.Item<ConcreteMessage> = {
     text = "Test"
     onClick = (fun dispatch -> SetPage TestPage |> Base.Message.Inner |> dispatch)
 }
 
-let navbar: Navbar.Model<_> = {
-    leftItems = [Navbar.Dropdown Base.utilDropdown; Navbar.Single navItem]
+let navbar: Navbar.Model<ConcreteMessage> = {
+    leftItems = [Navbar.Dropdown (Base.utilDropdown()); Navbar.Single navItem]
     rightItems = []
     activeItem = Navbar.Left(1)
 }
@@ -88,11 +94,6 @@ let viewShow openModal model dispatch dispatchServer =
         R.div [] [
             Slider.view onSliderChange model.slider (Slider >> dispatch)
         ]
-
-/// Type alias to ensure that generic inference gets the right types all the way down.
-type ConcreteMessage = Base.Message<ShowServerCommand, ShowServerResponse, ShowMessage>
-
-type ConcreteModel = Base.Model<ShowModel, ConcreteMessage>
 
 
 // Launch the websocket we'll use to talk to the server.
