@@ -136,8 +136,10 @@ let private updateFromResponse wrapShowResponse updateShow message model =
     | ServerResponse.ShowsAvailable(shows) -> 
         {model with baseModel = {model.baseModel with showsAvailable = shows}}, Cmd.none
     | ServerResponse.Loaded(name) ->
-        // For the moment blow up on show load
-        failwith "A new show was loaded but view reloading is not implemented yet."
+        // Rather than try to implement reload logic, we punt and refresh the page.
+        Browser.location.reload()
+        // This next line is unreachable.
+        model, Cmd.none
     | ServerResponse.Renamed(name) ->
         {model with baseModel = {model.baseModel with name = name}}, Cmd.none
     | ServerResponse.Saved ->

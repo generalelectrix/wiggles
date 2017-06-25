@@ -22,42 +22,45 @@ open Bootstrap
 let withConsoleTrace = false
 
 type Page =
-    | TestPage
+    | Patcher
 
 type ShowModel = {
     page: Page
-    slider: Slider.Model
+    patcher: Patcher.Model
 }
 
+[<RequireQualifiedAccess>]
 type ShowServerCommand =
-    | TestCommand of float
+    | Patcher of PatchTypes.PatchServerRequest
   
+[<RequireQualifiedAccess>]
 type ShowServerResponse =
-    | TestResponse of float
+    | Patcher of PatchTypes.PatchServerResponse
 
+[<RequireQualifiedAccess>]
 type ShowMessage =
     | SetPage of Page
-    | Slider of Slider.Message
+    | Patcher of Patcher.Message
 
 /// Type alias to ensure that generic inference gets the right types all the way down.
 type ConcreteMessage = Base.Message<ShowServerCommand, ShowServerResponse, ShowMessage>
 
 type ConcreteModel = Base.Model<ShowModel, ConcreteMessage>
 
-let navItem: Navbar.Item<ConcreteMessage> = {
-    text = "Test"
-    onClick = (fun dispatch -> SetPage TestPage |> Base.Message.Inner |> dispatch)
+let patcherNavItem: Navbar.Item<ConcreteMessage> = {
+    text = "Patch"
+    onClick = (fun dispatch -> ShowMessage.SetPage Patcher |> Base.Message.Inner |> dispatch)
 }
 
 let navbar: Navbar.Model<ConcreteMessage> = {
-    leftItems = [Navbar.Dropdown (Base.utilDropdown()); Navbar.Single navItem]
-    rightItems = []
-    activeItem = Navbar.Left(1)
+    leftItems = [Navbar.Dropdown (Base.utilDropdown())]
+    rightItems = [Navbar.Single patcherNavItem]
+    activeItem = Navbar.Right(0)
 }
 
 let initShowModel () = {
-    page = TestPage
-    slider = Slider.initModel 0.0 0.0 1.0 0.001 [0.0; 0.5]
+    page = Patcher
+    patcher = Patcher.initialModel()
 }
 
 /// Master function to initialize the whole interface.
@@ -66,10 +69,10 @@ let initShowModel () = {
 let initModel () = (Base.initModel navbar (initShowModel()), Cmd.none)
 
 /// Every command we need to emit when we connect to the server.
-/// We assume that since that these are query-only, the responses are all filtered to just this
+/// We assume that these are query-only and the responses are all filtered to just this
 /// client.
 let initCommands =
-    [Base.initCommands]
+    [Base.initCommands; Patcher.initCommands |> List.map (ShowServerCommand.Patcher >> ServerCommand.Console)]
     |> List.concat
     |> List.map (fun c -> (Exclusive, c))
     |> List.map Cmd.ofMsg
@@ -80,20 +83,23 @@ let initCommands =
 /// response messages expected by this show.
 let wrapShowResponse (message: ShowServerResponse) =
     match message with
-    | TestResponse(v) -> v |> Slider.ValueChange |> Slider
+    | ShowServerResponse.Patcher(m) -> m |> Patcher.Message.Response |> ShowMessage.Patcher
 
 let updateShow message model =
     match message with
-    | SetPage(page) -> {model with page = page}, Cmd.none
-    | Slider(msg) -> {model with slider = Slider.update msg model.slider}, Cmd.none
+    | ShowMessage.SetPage(page) -> {model with page = page}, Cmd.none
+    | ShowMessage.Patcher(msg) ->
+        let updatedPatcher, commands = Patcher.update msg model.patcher
+        {model with patcher = updatedPatcher}, commands |> Cmd.map ShowMessage.Patcher
 
 let viewShow openModal model dispatch dispatchServer =
     match model.page with
-    | TestPage ->
-        let onSliderChange v = (AllButSelf, TestCommand v) |> dispatchServer
-        R.div [] [
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
-        ]
+    | Patcher ->
+        Patcher.view
+            openModal
+            model.patcher
+            (ShowMessage.Patcher >> dispatch)
+            ((Base.liftResponseAndFilter ShowServerCommand.Patcher) >> dispatchServer)
 
 
 // Launch the websocket we'll use to talk to the server.

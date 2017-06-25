@@ -222,7 +222,8 @@ function updateFromResponse(wrapShowResponse, updateShow, message, model) {
       return new Model(model.connection, baseModel_1, model.showModel);
     }(), CmdModule.none()];
   } else if (message.Case === "Loaded") {
-    throw new Error("A new show was loaded but view reloading is not implemented yet.");
+    location.reload();
+    return [model, CmdModule.none()];
   } else if (message.Case === "Renamed") {
     return [function () {
       var baseModel_2 = new BaseModel(message.Fields[0], model.baseModel.savesAvailable, model.baseModel.showsAvailable, model.baseModel.utilPage, model.baseModel.showLoader, model.baseModel.saveAsUtil, model.baseModel.newShowUtil, model.baseModel.renameShowUtil, model.baseModel.modalDialog, model.baseModel.navbar);
