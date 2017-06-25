@@ -9,11 +9,15 @@ use console_server::*;
 use console_server::reactor::*;
 
 #[derive(Serialize, Deserialize)]
-struct NoopConsole {}
+struct TestConsole {
+    value: f64
+}
 
-impl Default for NoopConsole {
+impl Default for TestConsole {
     fn default() -> Self {
-        NoopConsole{}
+        TestConsole{
+            value: 0.0
+        }
     }
 }
 
@@ -29,7 +33,7 @@ enum Rsp {
 
 impl WrapResponse for Rsp {}
 
-impl Console for NoopConsole {
+impl Console for TestConsole {
     type Command = Cmd;
     type Response = Rsp;
 
@@ -43,6 +47,7 @@ impl Console for NoopConsole {
 
     fn handle_command(&mut self, cmd: CommandWrapper<Cmd>) -> Messages<ResponseWrapper<Rsp>> {
         let Cmd::TestCommand(v) = cmd.payload;
+        self.value = v;
         Messages::one(Rsp::TestResponse(v).with_client(cmd.client_data))
     }
 }
@@ -50,7 +55,7 @@ impl Console for NoopConsole {
 fn main() {
     simple_logger::init_with_level(log::LogLevel::Warn);
     
-    let state: InitialState<NoopConsole> = InitialState::default();
+    let state: InitialState<TestConsole> = InitialState::default();
 
     console_server::run(state).unwrap();
 }

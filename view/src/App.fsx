@@ -51,7 +51,7 @@ let navbar: Navbar.Model<_> = {
 
 let initShowModel () = {
     page = TestPage
-    slider = Slider.initModel 0.0 0.0 1.0 0.001 [0.0]
+    slider = Slider.initModel 0.0 0.0 1.0 0.001 [0.0; 0.5]
 }
 
 /// Master function to initialize the whole interface.
@@ -86,27 +86,6 @@ let viewShow openModal model dispatch dispatchServer =
     | TestPage ->
         let onSliderChange v = (AllButSelf, TestCommand v) |> dispatchServer
         R.div [] [
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
-            Slider.view onSliderChange model.slider (Slider >> dispatch)
             Slider.view onSliderChange model.slider (Slider >> dispatch)
         ]
 
