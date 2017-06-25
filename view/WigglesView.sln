@@ -18,7 +18,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "core", "core", "{9908BA9D-B
 		src\core\Socket.fsx = src\core\Socket.fsx
 		src\core\Types.fsx = src\core\Types.fsx
 		src\core\Util.fsx = src\core\Util.fsx
-		src\core\LoadShow.fsx = src\core\LoadShow.fsx
 		src\core\Table.fsx = src\core\Table.fsx
 		src\core\Slider.fsx = src\core\Slider.fsx
 		src\core\SaveShowAs.fsx = src\core\SaveShowAs.fsx

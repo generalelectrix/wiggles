@@ -10,10 +10,7 @@ module Base
 #load "Navbar.fsx"
 #load "Types.fsx"
 #load "Slider.fsx"
-#load "LoadShow.fsx"
-#load "SaveShowAs.fsx"
-#load "NewShow.fsx"
-#load "RenameShow.fsx"
+#load "UtilPages.fsx"
 
 open Fable.Core
 open Fable.Import
@@ -24,6 +21,7 @@ module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Bootstrap
 open Types
+open UtilPages
 
 type UtilPage =
     | ShowLoader

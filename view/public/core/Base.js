@@ -8,13 +8,10 @@ import { GenericParam, Array as _Array, Option, makeGeneric, compareUnions, equa
 import { map, ofArray } from "fable-core/List";
 import List from "fable-core/List";
 import { ServerResponse, ConnectionState, SavesAvailable, ServerCommand, ResponseFilter } from "./Types";
-import { view as view_4, update as update_3, Message as Message_4, initModel as initModel_1, Model as Model_1 } from "./LoadShow";
-import { Model as Model_2 } from "./SimpleEditor";
-import { viewSplash, view as view_6, confirm, update as update_2, prompt as prompt_1, Message as Message_1, initialModel, ModalRequest } from "./Modal";
-import { view as view_5, DropdownItem, DropdownModel, Item, update as update_1, Message as Message_2, Model as Model_3 } from "./Navbar";
-import { view as view_1, update as update_4, initModel as initModel_2 } from "./SaveShowAs";
-import { view as view_3, update as update_6, initModel as initModel_3 } from "./NewShow";
-import { view as view_2, update as update_5, initModel as initModel_4 } from "./RenameShow";
+import { RenameShow, NewShow, SaveShowAs, LoadShow } from "./UtilPages";
+import { Model as Model_1 } from "./SimpleEditor";
+import { viewSplash, view as view_2, confirm, update as update_2, prompt as prompt_1, Message as Message_1, initialModel, ModalRequest } from "./Modal";
+import { view as view_1, DropdownItem, DropdownModel, Item, update as update_1, Message as Message_2, Model as Model_2 } from "./Navbar";
 import { Message as Message_3 } from "./EditBox";
 import { SocketMessage } from "./Socket";
 import { CmdModule } from "fable-elmish/elmish";
@@ -99,18 +96,18 @@ export var BaseModel = function () {
             T: "string"
           }),
           utilPage: Option(UtilPage),
-          showLoader: Model_1,
-          saveAsUtil: makeGeneric(Model_2, {
+          showLoader: LoadShow.Model,
+          saveAsUtil: makeGeneric(Model_1, {
             a: "string"
           }),
-          newShowUtil: makeGeneric(Model_2, {
+          newShowUtil: makeGeneric(Model_1, {
             a: "string"
           }),
-          renameShowUtil: makeGeneric(Model_2, {
+          renameShowUtil: makeGeneric(Model_1, {
             a: "string"
           }),
           modalDialog: _Array(ModalRequest),
-          navbar: makeGeneric(Model_3, {
+          navbar: makeGeneric(Model_2, {
             msg: GenericParam("msg")
           })
         }
@@ -155,7 +152,7 @@ export function liftResponseAndFilter(f, filter, message) {
 }
 
 function initBaseModel(navbar) {
-  return new BaseModel("", new SavesAvailable(new List(), new List()), new List(), null, initModel_1(), initModel_2(), initModel_3(), initModel_4(), initialModel(), navbar);
+  return new BaseModel("", new SavesAvailable(new List(), new List()), new List(), null, LoadShow.initModel(), SaveShowAs.initModel(), NewShow.initModel(), RenameShow.initModel(), initialModel(), navbar);
 }
 
 export function initModel(navbar, showModel) {
@@ -194,7 +191,7 @@ export var Message = function () {
           SaveShowAs: [makeGeneric(Message_3, {
             T: "string"
           })],
-          ShowLoader: [Message_4],
+          ShowLoader: [LoadShow.Message],
           Socket: [SocketMessage],
           UtilPage: [Option(UtilPage)]
         }
@@ -292,25 +289,25 @@ export function update(initCommands_1, socketSend, wrapShowResponse, updateShow,
     return [newModel_2, CmdModule.none()];
   } else if (message.Case === "ShowLoader") {
     var newModel_3 = updateBaseModel(function (bm_3) {
-      var showLoader = update_3(message.Fields[0], bm_3.showLoader);
+      var showLoader = LoadShow.update(message.Fields[0], bm_3.showLoader);
       return new BaseModel(bm_3.name, bm_3.savesAvailable, bm_3.showsAvailable, bm_3.utilPage, showLoader, bm_3.saveAsUtil, bm_3.newShowUtil, bm_3.renameShowUtil, bm_3.modalDialog, bm_3.navbar);
     });
     return [newModel_3, CmdModule.none()];
   } else if (message.Case === "SaveShowAs") {
     var newModel_4 = updateBaseModel(function (bm_4) {
-      var saveAsUtil = update_4()(message.Fields[0])(bm_4.saveAsUtil);
+      var saveAsUtil = SaveShowAs.update()(message.Fields[0])(bm_4.saveAsUtil);
       return new BaseModel(bm_4.name, bm_4.savesAvailable, bm_4.showsAvailable, bm_4.utilPage, bm_4.showLoader, saveAsUtil, bm_4.newShowUtil, bm_4.renameShowUtil, bm_4.modalDialog, bm_4.navbar);
     });
     return [newModel_4, CmdModule.none()];
   } else if (message.Case === "RenameShow") {
     var newModel_5 = updateBaseModel(function (bm_5) {
-      var renameShowUtil = update_5()(message.Fields[0])(bm_5.renameShowUtil);
+      var renameShowUtil = RenameShow.update()(message.Fields[0])(bm_5.renameShowUtil);
       return new BaseModel(bm_5.name, bm_5.savesAvailable, bm_5.showsAvailable, bm_5.utilPage, bm_5.showLoader, bm_5.saveAsUtil, bm_5.newShowUtil, renameShowUtil, bm_5.modalDialog, bm_5.navbar);
     });
     return [newModel_5, CmdModule.none()];
   } else if (message.Case === "NewShow") {
     var newModel_6 = updateBaseModel(function (bm_6) {
-      var newShowUtil = update_6()(message.Fields[0])(bm_6.newShowUtil);
+      var newShowUtil = NewShow.update()(message.Fields[0])(bm_6.newShowUtil);
       return new BaseModel(bm_6.name, bm_6.savesAvailable, bm_6.showsAvailable, bm_6.utilPage, bm_6.showLoader, bm_6.saveAsUtil, newShowUtil, bm_6.renameShowUtil, bm_6.modalDialog, bm_6.navbar);
     });
     return [newModel_6, CmdModule.none()];
@@ -334,25 +331,25 @@ function viewUtil(utilPage, model, dispatch, dispatchServer) {
   };
 
   if (utilPage.Case === "SaveShowAs") {
-    return view_1(model.baseModel.name, model.baseModel.saveAsUtil, onComplete, function ($var125) {
+    return SaveShowAs.view(model.baseModel.name, model.baseModel.saveAsUtil, onComplete, function ($var125) {
       return dispatch(function (arg0) {
         return new Message("SaveShowAs", [arg0]);
       }($var125));
     }, dispatchServer);
   } else if (utilPage.Case === "RenameShow") {
-    return view_2(model.baseModel.name, model.baseModel.renameShowUtil, onComplete, function ($var126) {
+    return RenameShow.view(model.baseModel.name, model.baseModel.renameShowUtil, onComplete, function ($var126) {
       return dispatch(function (arg0_1) {
         return new Message("RenameShow", [arg0_1]);
       }($var126));
     }, dispatchServer);
   } else if (utilPage.Case === "NewShow") {
-    return view_3(model.baseModel.newShowUtil, onComplete, function ($var127) {
+    return NewShow.view(model.baseModel.newShowUtil, onComplete, function ($var127) {
       return dispatch(function (arg0_2) {
         return new Message("NewShow", [arg0_2]);
       }($var127));
     }, dispatchServer);
   } else {
-    return view_4(model.baseModel.showsAvailable, model.baseModel.showLoader, onComplete, function ($var128) {
+    return LoadShow.view(model.baseModel.showsAvailable, model.baseModel.showLoader, onComplete, function ($var128) {
       return dispatch(function (arg0_3) {
         return new Message("ShowLoader", [arg0_3]);
       }($var128));
@@ -427,14 +424,14 @@ function viewInner(viewShow, model, dispatch) {
     })(dispatchServer);
   }
 
-  return createElement("div", {}, createElement("div", {}, view_5(model.baseModel.navbar, dispatch, function ($var133) {
+  return createElement("div", {}, createElement("div", {}, view_1(model.baseModel.navbar, dispatch, function ($var133) {
     return dispatch(function (arg0_2) {
       return new Message("Navbar", [arg0_2]);
     }($var133));
   })), createElement("div", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
-  }, {}, [Container.Fluid]), page, view_6(model.baseModel.modalDialog, function ($var134) {
+  }, {}, [Container.Fluid]), page, view_2(model.baseModel.modalDialog, function ($var134) {
     return dispatch(function (arg0_3) {
       return new Message("Modal", [arg0_3]);
     }($var134));
