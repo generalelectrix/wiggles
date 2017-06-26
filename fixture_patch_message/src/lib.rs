@@ -4,10 +4,12 @@ extern crate fixture_patch;
 extern crate console_server;
 #[macro_use] extern crate serde_derive;
 extern crate serde;
+extern crate rust_dmx;
 
 use std::fmt;
 use fixture_patch::*;
 use console_server::reactor::Messages;
+use rust_dmx::{DmxPort, open_port, available_ports, Error as DmxPortError};
 
 type GlobalAddress = (UniverseId, DmxAddress);
 
@@ -57,6 +59,14 @@ impl<'a> From<&'a Profile> for FixtureKindDescription {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PortAttachment {
+    universe: UniverseId,
+    port_namespace: String,
+    port_id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub enum PatchServerRequest {
     PatchState,
     NewPatches(Vec<PatchRequest>),
@@ -64,6 +74,10 @@ pub enum PatchServerRequest {
     Repatch(FixtureId, Option<GlobalAddress>),
     Remove(FixtureId),
     GetKinds,
+    AddUniverse,
+    RemoveUniverse(UniverseId, bool),
+    AttachPort(PortAttachment),
+    AvailablePorts,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -73,6 +87,10 @@ pub enum PatchServerResponse {
     Update(PatchItemDescription),
     Remove(FixtureId),
     Kinds(Vec<FixtureKindDescription>),
+    NewUniverse(UniverseId),
+    UniverseRemoved(UniverseId),
+    PortAttached(PortAttachment),
+    AvailablePorts(Vec<(String, String)>),
 }
 
 /// Handle a command to the fixture patch, producing either a response message or forwarding an
@@ -159,6 +177,23 @@ pub fn handle_message(
             let kinds = PROFILES.values().map(Into::into).collect();
             Ok(PatchServerResponse::Kinds(kinds))
         }
+        AddUniverse => {
+            // add a universe mapped to an offline port
+            Ok(PatchServerResponse::NewUniverse(patch.add_universe(Universe::new_offline())))
+        }
+        RemoveUniverse(id, force) => {
+            patch.remove_universe(id, force)?;
+            Ok(PatchServerResponse::UniverseRemoved(id))
+        }
+        AttachPort(pa) => {
+            let port = open_port(&pa.port_namespace, pa.port_id.as_str())?;
+            patch.set_universe_port(pa.universe, port)?;
+            Ok(PatchServerResponse::PortAttached(pa))
+        }
+        AvailablePorts => {
+            // get all the ports we have available
+            Ok(PatchServerResponse::AvailablePorts(available_ports()))
+        }
     }
 }
 
@@ -166,6 +201,7 @@ pub fn handle_message(
 pub enum PatchRequestError {
     PatchError(PatchError),
     ProfileNotFound(String),
+
 }
 
 impl fmt::Display for PatchRequestError {
@@ -180,6 +216,12 @@ impl fmt::Display for PatchRequestError {
 impl From<PatchError> for PatchRequestError {
     fn from(pe: PatchError) -> Self {
         PatchRequestError::PatchError(pe)
+    }
+}
+
+impl From<DmxPortError> for PatchRequestError {
+    fn from(pe: DmxPortError) -> Self {
+        PatchError::PortError(pe).into()
     }
 }
 

@@ -50,15 +50,11 @@ type PatchItem = {
     member this.universe = this.address |> Option.map fst
     member this.dmxAddress = this.address |> Option.map snd
 
-let testPatches = [|
-    {id = 0; name = "foo"; kind = "dimmer"; address = None; channelCount = 2}
-    {id = 1; name = "charlie"; kind = "roto"; address = Some(0, 27); channelCount = 1}
-|]
-
-let testKinds : FixtureKind array = [|
-    {name = "dimmer"; channelCount = 1}
-    {name = "roto"; channelCount = 2}
-|]
+type PortAttachment = {
+    universe: UniverseId
+    portNamespace: string
+    portName: string
+}
     
 
 /// All possible requests we can make to the patch server.
@@ -76,6 +72,14 @@ type PatchServerRequest =
     | Remove of FixtureId
     /// Retrieve a listing of every available fixture kind.
     | GetKinds
+    /// Add a new universe.
+    | AddUniverse
+    /// Remove a universe by id, optionally forcing removal.
+    | RemoveUniverse of UniverseId * bool
+    /// Attach a DMX port to a universe.
+    | AttachPort of PortAttachment
+    /// List the available DMX ports.
+    | AvailablePorts
 
 /// All possible responses we can receive from the patch server.
 [<RequireQualifiedAccess>]
@@ -90,3 +94,11 @@ type PatchServerResponse =
     | Remove of FixtureId
     /// A listing of every available fixture kind.
     | Kinds of FixtureKind array
+    /// A new universe was added.
+    | NewUniverse of UniverseId
+    /// A universe was removed.
+    | UniverseRemoved of UniverseId
+    /// A port was attached to a universe.
+    | PortAttached of PortAttachment
+    /// A listing of the available port namespace/id pairs.
+    | AvailablePorts of (string * string) list

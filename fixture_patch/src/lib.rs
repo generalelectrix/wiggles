@@ -56,7 +56,6 @@ fn empty_buffer() -> [DmxValue; UNIVERSE_SIZE] {
 
 #[derive(Serialize, Deserialize)]
 pub struct Universe {
-    name: String,
     #[serde(with="rust_dmx")]
     port: Box<DmxPort>,
     #[serde(skip_serializing)]
@@ -65,18 +64,22 @@ pub struct Universe {
     buffer: [DmxValue; UNIVERSE_SIZE],
 }
 
+impl fmt::Debug for Universe {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.port)
+    }
+}
+
 impl Universe {
-    pub fn new(name: String, port: Box<DmxPort>) -> Self {
+    pub fn new(port: Box<DmxPort>) -> Self {
         Universe {
-            name: name,
             port: port,
             buffer: [0; UNIVERSE_SIZE],
         }
     }
 
-    pub fn new_offline<N: Into<String>>(name: N) -> Self {
-        let port = Box::new(OfflineDmxPort{});
-        Universe::new(name.into(), port)
+    pub fn new_offline() -> Self {
+        Universe::new(Box::new(OfflineDmxPort))
     }
 
     pub fn set_port(&mut self, port: Box<DmxPort>) {
@@ -88,16 +91,9 @@ impl Universe {
     }
 }
 
-impl fmt::Debug for Universe {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "Universe {{ name: {}, port: {:?} }}", self.name, self.port.serializable())
-    }
-}
-
 impl PartialEq for Universe {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-        && self.port.serializable() == other.port.serializable()
+        self.port.serializable() == other.port.serializable()
         && self.buffer[..] == other.buffer[..]
     }
 }
@@ -168,12 +164,12 @@ impl Patch {
         }
     }
 
-    /// Return a vec of tuples of (universe_id, name).
-    pub fn describe_universes(&self) -> Vec<(UniverseId, &str)> {
+    /// Return a vec of ids for populated universes.
+    pub fn universes(&self) -> Vec<UniverseId> {
         let mut descriptions = Vec::new();
         for (i, maybe_u) in self.universes.iter().enumerate() {
-            if let &Some(ref u) = maybe_u {
-                descriptions.push((i as UniverseId, u.name.as_str()));
+            if maybe_u.is_some() {
+                descriptions.push(i as UniverseId);
             }
         }
         descriptions
@@ -282,6 +278,18 @@ impl Patch {
             None | Some(&None) => Err(PatchError::InvalidUniverseId(id)),
             Some(&Some(ref u)) => Ok(u),
         }
+    }
+
+    /// Get a mutable reference to a universe by id, if it exists.
+    fn universe_mut(&mut self, id: UniverseId) -> Result<&mut Universe, PatchError> {
+        match self.universes.get_mut(id as usize) {
+            None | Some(&mut None) => Err(PatchError::InvalidUniverseId(id)),
+            Some(&mut Some(ref mut u)) => Ok(u),
+        }
+    }
+
+    pub fn set_universe_port(&mut self, id: UniverseId, port: Box<DmxPort>) -> Result<(), PatchError> {
+        Ok(self.universe_mut(id)?.set_port(port))
     }
 
     /// Return a summary of the contents of a universe.
