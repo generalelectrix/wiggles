@@ -8,6 +8,7 @@ extern crate fixture_patch_message;
 
 use std::time::Duration;
 use console_server::*;
+use console_server::clients::{ClientData, ResponseFilter};
 use console_server::reactor::*;
 use fixture_patch::Patch;
 use fixture_patch_message::{
@@ -21,10 +22,25 @@ struct TestConsole {
 }
 
 impl TestConsole {
-    fn handle_patch_message(&mut self, message: PatchServerRequest) -> Messages<Response> {
+    fn handle_patch_message(
+            &mut self,
+            message: PatchServerRequest,
+            mut client_data: ClientData)
+            -> Messages<ResponseWrapper<Response>>
+    {
         match handle_patch_message(&mut self.patch, message) {
-            Ok(resp) => Messages::wrap(resp),
-            Err(e) => Messages::one(Response::Error(format!("{}", e))),
+            Ok((mut resp, maybe_filter)) => {
+                if let Some(filter) = maybe_filter {
+                    client_data.filter = filter;
+                }
+                resp.drain()
+                    .map(|m| Response::Patch(m).with_client(client_data))
+                    .collect()
+            }
+            Err(e) => {
+                client_data.filter = ResponseFilter::Exclusive;
+                Messages::one(Response::Error(format!("{}", e)).with_client(client_data))
+            }
         }
     }
 }
@@ -65,12 +81,9 @@ impl Console for TestConsole {
     }
 
     fn handle_command(&mut self, cmd: CommandWrapper<Command>) -> Messages<ResponseWrapper<Response>> {
-        let client_data = cmd.client_data;
         match cmd.payload {
             Command::Patch(msg) => {
-                let mut responses = self.handle_patch_message(msg);
-                let responses = responses.drain().map(|r| r.with_client(client_data)).collect();
-                responses
+                self.handle_patch_message(msg, cmd.client_data)
             }
         }
     }

@@ -55,6 +55,8 @@ type UnivWithPort = {
     portNamespace: string
     portName: string
 }
+
+type Port = string * string
     
 
 /// All possible requests we can make to the patch server.
@@ -85,7 +87,7 @@ type PatchServerRequest =
 [<RequireQualifiedAccess>]
 type PatchServerResponse =
     /// Full current state of the patch.
-    | PatchState of PatchItem array
+    | PatchState of PatchItem array * UnivWithPort array
     /// One or more new patches added.
     | NewPatches of PatchItem array
     /// A patch has been updated, update our version if we have it.
@@ -99,4 +101,4 @@ type PatchServerResponse =
     /// A universe was removed.
     | UniverseRemoved of UniverseId
     /// A listing of the available port namespace/id pairs.
-    | AvailablePorts of (string * string) list
+    | AvailablePorts of Port array

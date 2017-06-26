@@ -82,8 +82,12 @@ impl Universe {
         Universe::new(Box::new(OfflineDmxPort))
     }
 
-    pub fn port(&self) -> &DmxPort {
-        &*self.port
+    pub fn port_namespace(&self) -> &str {
+        self.port.namespace()
+    }
+
+    pub fn port_id(&self) -> &str {
+        self.port.port_name()
     }
 
     pub fn set_port(&mut self, port: Box<DmxPort>) {
@@ -168,15 +172,15 @@ impl Patch {
         }
     }
 
-    /// Return a vec of ids for populated universes.
-    pub fn universes(&self) -> Vec<UniverseId> {
-        let mut descriptions = Vec::new();
+    /// Return a vector referencing populated universes along with their IDs.
+    pub fn universes(&self) -> Vec<(UniverseId, &Universe)> {
+        let mut universes = Vec::new();
         for (i, maybe_u) in self.universes.iter().enumerate() {
-            if maybe_u.is_some() {
-                descriptions.push(i as UniverseId);
+            if let &Some(ref univ) = maybe_u {
+                universes.push((i as UniverseId, univ))
             }
         }
-        descriptions
+        universes
     }
 
     /// Get an immutable reference to the current patches.

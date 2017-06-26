@@ -20,7 +20,8 @@ open Bootstrap
 
 type Model = {
     patches: PatchItem array
-    universes: PortAttachment array
+    universes: UnivWithPort array
+    availablePorts: Port array
     // Current fixture ID we have selected, if any.
     selected: FixtureId option
     // Model for the patch editor.
@@ -58,8 +59,8 @@ let updateEditorState patches selectedFixtureId =
 
 let private updateFromServerMessage message model =
     match r with
-    | PatchServerResponse.PatchState s ->
-        {model with patches = s}, updateEditorState s model.selected
+    | PatchServerResponse.PatchState(patches, universes) ->
+        {model with patches = s; universes = universes}, updateEditorState patches model.selected
     | PatchServerResponse.NewPatches patches ->
         {model with patches = patches |> Array.append model.patches}, Cmd.none
     | PatchServerResponse.Update p ->
@@ -72,14 +73,22 @@ let private updateFromServerMessage message model =
         {model with patches = newPatches}, updateEditorState newPatches model.selected
     | PatchServerResponse.Kinds kinds ->
         model, kinds |> NewPatch.UpdateKinds |> Create |> Cmd.ofMsg
-    | PatchServerResponse.NewUniverse id ->
+    | PatchServerResponse.UpdateUniverse newUniv ->
+        let mutable found = false
         let universes =
-            if model.universes |> Array.contains id then model.universes
-            else Array.append model.universes [|id|]
+            model.universes
+            |> Array.map (fun u ->
+                if u.id = newUniv.id then
+                    found <- true
+                    newUniv
+                else u)
+        let universes =
+            if not found then Array.append universes [|newUniv|] else universes
         {model with universes = universe}, Cmd.none
     | PatchServerResponse.UniverseRemoved id ->
-        {model with universes = model.universes |> Array.filter (fun u -> u <> id)}, Cmd.none
-    | PatchServerResponse.PortAttached pa ->
+        {model with universes = model.universes |> Array.filter (fun u -> u.id <> id)}, Cmd.none
+    | PatchServerResponse.AvailablePorts ports ->
+        {model with availablePorts = ports}, Cmd.none
 
 
 let update message model =
