@@ -20,7 +20,7 @@ open Bootstrap
 
 type Model = {
     patches: PatchItem array
-    universes: UniverseId array
+    universes: PortAttachment array
     // Current fixture ID we have selected, if any.
     selected: FixtureId option
     // Model for the patch editor.
@@ -72,6 +72,15 @@ let private updateFromServerMessage message model =
         {model with patches = newPatches}, updateEditorState newPatches model.selected
     | PatchServerResponse.Kinds kinds ->
         model, kinds |> NewPatch.UpdateKinds |> Create |> Cmd.ofMsg
+    | PatchServerResponse.NewUniverse id ->
+        let universes =
+            if model.universes |> Array.contains id then model.universes
+            else Array.append model.universes [|id|]
+        {model with universes = universe}, Cmd.none
+    | PatchServerResponse.UniverseRemoved id ->
+        {model with universes = model.universes |> Array.filter (fun u -> u <> id)}, Cmd.none
+    | PatchServerResponse.PortAttached pa ->
+
 
 let update message model =
     match message with

@@ -82,6 +82,10 @@ impl Universe {
         Universe::new(Box::new(OfflineDmxPort))
     }
 
+    pub fn port(&self) -> &DmxPort {
+        &*self.port
+    }
+
     pub fn set_port(&mut self, port: Box<DmxPort>) {
         self.port = port;
     }

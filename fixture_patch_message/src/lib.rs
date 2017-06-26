@@ -60,10 +60,22 @@ impl<'a> From<&'a Profile> for FixtureKindDescription {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct PortAttachment {
+pub struct UnivWithPort {
     universe: UniverseId,
     port_namespace: String,
     port_id: String,
+}
+
+impl UnivWithPort {
+    fn new<N, I>(id: UniverseId, namespace: N, port_id: I) -> Self
+        where N: Into<String>, I: Into<String>
+    {
+        UnivWithPort {
+            universe: id,
+            port_namespace: namespace.into(),
+            port_id: port_id.into(),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -76,7 +88,7 @@ pub enum PatchServerRequest {
     GetKinds,
     AddUniverse,
     RemoveUniverse(UniverseId, bool),
-    AttachPort(PortAttachment),
+    AttachPort(UnivWithPort),
     AvailablePorts,
 }
 
@@ -87,9 +99,8 @@ pub enum PatchServerResponse {
     Update(PatchItemDescription),
     Remove(FixtureId),
     Kinds(Vec<FixtureKindDescription>),
-    NewUniverse(UniverseId),
+    UpdateUniverse(UnivWithPort),
     UniverseRemoved(UniverseId),
-    PortAttached(PortAttachment),
     AvailablePorts(Vec<(String, String)>),
 }
 
@@ -179,7 +190,12 @@ pub fn handle_message(
         }
         AddUniverse => {
             // add a universe mapped to an offline port
-            Ok(Messages::one(PatchServerResponse::NewUniverse(patch.add_universe(Universe::new_offline()))))
+            let universe = Universe::new_offline();
+            let namespace = universe.port().namespace().to_string();
+            let port_id = universe.port().port_name().to_string();
+            let univ_id = patch.add_universe(universe);
+            let desc = UnivWithPort::new(univ_id, namespace, port_id);
+            Ok(Messages::one(PatchServerResponse::UpdateUniverse(desc)))
         }
         RemoveUniverse(id, force) => {
             let removed_fixtures = patch.remove_universe(id, force)?;
@@ -194,7 +210,7 @@ pub fn handle_message(
         AttachPort(pa) => {
             let port = open_port(&pa.port_namespace, pa.port_id.as_str())?;
             patch.set_universe_port(pa.universe, port)?;
-            Ok(Messages::one(PatchServerResponse::PortAttached(pa)))
+            Ok(Messages::one(PatchServerResponse::UpdateUniverse(pa)))
         }
         AvailablePorts => {
             // get all the ports we have available

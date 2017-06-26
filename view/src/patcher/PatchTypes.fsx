@@ -50,7 +50,7 @@ type PatchItem = {
     member this.universe = this.address |> Option.map fst
     member this.dmxAddress = this.address |> Option.map snd
 
-type PortAttachment = {
+type UnivWithPort = {
     universe: UniverseId
     portNamespace: string
     portName: string
@@ -77,7 +77,7 @@ type PatchServerRequest =
     /// Remove a universe by id, optionally forcing removal.
     | RemoveUniverse of UniverseId * bool
     /// Attach a DMX port to a universe.
-    | AttachPort of PortAttachment
+    | AttachPort of UnivWithPort
     /// List the available DMX ports.
     | AvailablePorts
 
@@ -94,11 +94,9 @@ type PatchServerResponse =
     | Remove of FixtureId
     /// A listing of every available fixture kind.
     | Kinds of FixtureKind array
-    /// A new universe was added.
-    | NewUniverse of UniverseId
+    /// A universe was updated or added.
+    | UpdateUniverse of UnivWithPort
     /// A universe was removed.
     | UniverseRemoved of UniverseId
-    /// A port was attached to a universe.
-    | PortAttached of PortAttachment
     /// A listing of the available port namespace/id pairs.
     | AvailablePorts of (string * string) list
