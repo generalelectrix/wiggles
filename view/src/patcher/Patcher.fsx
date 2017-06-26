@@ -20,6 +20,7 @@ open Bootstrap
 
 type Model = {
     patches: PatchItem array
+    universes: UniverseId array
     // Current fixture ID we have selected, if any.
     selected: FixtureId option
     // Model for the patch editor.
@@ -39,6 +40,7 @@ let initCommands = [PatchServerRequest.PatchState; PatchServerRequest.GetKinds]
 
 let initialModel () = {
     patches = Array.empty
+    universes = Array.empty
     selected = None
     editorModel = PatchEdit.initialModel()
     newPatchModel = NewPatch.initialModel()
@@ -54,25 +56,26 @@ let updateEditorState patches selectedFixtureId =
     |> Edit
     |> Cmd.ofMsg
 
-let update message model =
+let private updateFromServerMessage message model =
+    match r with
+    | PatchServerResponse.PatchState s ->
+        {model with patches = s}, updateEditorState s model.selected
+    | PatchServerResponse.NewPatches patches ->
+        {model with patches = patches |> Array.append model.patches}, Cmd.none
+    | PatchServerResponse.Update p ->
+        let newPatches =
+            model.patches
+            |> Array.map (fun existing -> if existing.id = p.id then p else existing)
+        {model with patches = newPatches}, updateEditorState newPatches model.selected
+    | PatchServerResponse.Remove id ->
+        let newPatches = model.patches |> Array.filter (fun p -> p.id <> id)
+        {model with patches = newPatches}, updateEditorState newPatches model.selected
+    | PatchServerResponse.Kinds kinds ->
+        model, kinds |> NewPatch.UpdateKinds |> Create |> Cmd.ofMsg
 
+let update message model =
     match message with
-    | Response r ->
-        match r with
-        | PatchServerResponse.PatchState s ->
-            {model with patches = s}, updateEditorState s model.selected
-        | PatchServerResponse.NewPatches patches ->
-            {model with patches = patches |> Array.append model.patches}, Cmd.none
-        | PatchServerResponse.Update p ->
-            let newPatches =
-                model.patches
-                |> Array.map (fun existing -> if existing.id = p.id then p else existing)
-            {model with patches = newPatches}, updateEditorState newPatches model.selected
-        | PatchServerResponse.Remove id ->
-            let newPatches = model.patches |> Array.filter (fun p -> p.id <> id)
-            {model with patches = newPatches}, updateEditorState newPatches model.selected
-        | PatchServerResponse.Kinds kinds ->
-            model, kinds |> NewPatch.UpdateKinds |> Create |> Cmd.ofMsg
+    | Response r -> updateFromServerMessage r model
     | SetSelected id ->
         {model with selected = Some id}, updateEditorState model.patches (Some(id))
     | Deselect -> {model with selected = None}, updateEditorState model.patches None

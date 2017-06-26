@@ -9,7 +9,7 @@ extern crate rust_dmx;
 use std::fmt;
 use fixture_patch::*;
 use console_server::reactor::Messages;
-use rust_dmx::{DmxPort, open_port, available_ports, Error as DmxPortError};
+use rust_dmx::{open_port, available_ports, Error as DmxPortError};
 
 type GlobalAddress = (UniverseId, DmxAddress);
 
@@ -20,7 +20,7 @@ pub struct PatchRequest {
     address: Option<GlobalAddress>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PatchItemDescription {
     id: FixtureId,
@@ -42,7 +42,7 @@ impl<'a> From<&'a PatchItem> for PatchItemDescription {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct FixtureKindDescription {
     name: String,
@@ -58,7 +58,7 @@ impl<'a> From<&'a Profile> for FixtureKindDescription {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PortAttachment {
     universe: UniverseId,
@@ -80,7 +80,7 @@ pub enum PatchServerRequest {
     AvailablePorts,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum PatchServerResponse {
     PatchState(Vec<PatchItemDescription>),
     NewPatches(Vec<PatchItemDescription>),
@@ -98,13 +98,13 @@ pub enum PatchServerResponse {
 pub fn handle_message(
         patch: &mut Patch,
         command: PatchServerRequest)
-        -> Result<PatchServerResponse, PatchRequestError>
+        -> Result<Messages<PatchServerResponse>, PatchRequestError>
 {
     use PatchServerRequest::*;
     match command {
         PatchState => {
             let descriptions = patch.items().iter().map(Into::into).collect();
-            Ok(PatchServerResponse::PatchState(descriptions))
+            Ok(Messages::one(PatchServerResponse::PatchState(descriptions)))
         }
         NewPatches(mut reqs) => {
             // Keep track of fixture IDs that we've added so we can remove them if any patch action
@@ -154,45 +154,51 @@ pub fn handle_message(
                         descriptions.push(item.into());
                     }
                 }
-                Ok(PatchServerResponse::NewPatches(descriptions))
+                Ok(Messages::one(PatchServerResponse::NewPatches(descriptions)))
             }
         }
         Rename(id, name) => {
             let mut item = patch.item_mut(id)?;
             item.name = name;
-            Ok(PatchServerResponse::Update((&*item).into()))
+            Ok(Messages::one(PatchServerResponse::Update((&*item).into())))
         }
         Repatch(id, addr) => {
             let item = match addr {
                 Some((u, a)) => patch.repatch(id, u, a),
                 None => patch.unpatch(id),
             }?;
-            Ok(PatchServerResponse::Update(item.into()))
+            Ok(Messages::one(PatchServerResponse::Update(item.into())))
         }
         Remove(id) => {
             let item = patch.remove(id)?;
-            Ok(PatchServerResponse::Remove(item.id()))
+            Ok(Messages::one(PatchServerResponse::Remove(item.id())))
         }
         GetKinds => {
             let kinds = PROFILES.values().map(Into::into).collect();
-            Ok(PatchServerResponse::Kinds(kinds))
+            Ok(Messages::one(PatchServerResponse::Kinds(kinds)))
         }
         AddUniverse => {
             // add a universe mapped to an offline port
-            Ok(PatchServerResponse::NewUniverse(patch.add_universe(Universe::new_offline())))
+            Ok(Messages::one(PatchServerResponse::NewUniverse(patch.add_universe(Universe::new_offline()))))
         }
         RemoveUniverse(id, force) => {
-            patch.remove_universe(id, force)?;
-            Ok(PatchServerResponse::UniverseRemoved(id))
+            let removed_fixtures = patch.remove_universe(id, force)?;
+            let mut messages = Messages::one(PatchServerResponse::UniverseRemoved(id));
+            for id in removed_fixtures {
+                if let Ok(item) = patch.item(id) {
+                    messages.push(PatchServerResponse::Update(item.into()));
+                }
+            }
+            Ok(messages)
         }
         AttachPort(pa) => {
             let port = open_port(&pa.port_namespace, pa.port_id.as_str())?;
             patch.set_universe_port(pa.universe, port)?;
-            Ok(PatchServerResponse::PortAttached(pa))
+            Ok(Messages::one(PatchServerResponse::PortAttached(pa)))
         }
         AvailablePorts => {
             // get all the ports we have available
-            Ok(PatchServerResponse::AvailablePorts(available_ports()))
+            Ok(Messages::one(PatchServerResponse::AvailablePorts(available_ports())))
         }
     }
 }

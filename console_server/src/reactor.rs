@@ -6,7 +6,8 @@ use event_loop::{EventLoop, Event, Settings};
 use std::fmt;
 use std::sync::mpsc::{channel, Sender, Receiver, RecvTimeoutError};
 use std::time::Duration;
-use smallvec::SmallVec;
+use std::iter::FromIterator;
+use smallvec::{SmallVec, self};
 use serde::{Serialize, Deserialize};
 use serde::de::DeserializeOwned;
 
@@ -126,8 +127,7 @@ impl<T> ResponseWrapper<T> {
     }
 }
 
-/// A trait that can be added to message types to provide methods that wrap the message up with
-/// client data.
+/// Add to message types to provide methods that wrap the message up with client data.
 pub trait WrapResponse: Sized {
     /// Wrap this response with client data.
     fn with_client(self, client_data: ClientData) -> ResponseWrapper<Self> {
@@ -170,6 +170,19 @@ impl<T> Messages<T> {
             msgs.0.drain()
                 .map(|m| m.into())
                 .collect())
+    }
+
+    /// Drain this message collection.
+    /// Technically this leaks part of the SmallVec sub-implementation but since it is effectively
+    /// an iterator interface we should be OK here.
+    pub fn drain(&mut self) -> smallvec::Drain<T> {
+        self.0.drain()
+    }
+}
+
+impl<T> FromIterator<T> for Messages<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iterable: I) -> Messages<T> {
+        Messages(SmallVec::from_iter(iterable))
     }
 }
 

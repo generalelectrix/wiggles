@@ -4,9 +4,10 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { compareUnions, equalsUnions, Array as _Array, defaultArg, Tuple, Option, compareRecords, equalsRecords } from "fable-core/Util";
+import { makeGeneric, compareUnions, equalsUnions, Array as _Array, defaultArg, Tuple, Option, compareRecords, equalsRecords } from "fable-core/Util";
 import { Result } from "fable-elmish/result";
 import { parseOptionalNumber } from "../core/Util";
+import List from "fable-core/List";
 export var FixtureKind = function () {
   function FixtureKind(name, channelCount) {
     _classCallCheck(this, FixtureKind);
@@ -173,8 +174,43 @@ export var PatchItem = function () {
   return PatchItem;
 }();
 setType("PatchTypes.PatchItem", PatchItem);
-export var testPatches = [new PatchItem(0, "foo", "dimmer", null, 2), new PatchItem(1, "charlie", "roto", [0, 27], 1)];
-export var testKinds = [new FixtureKind("dimmer", 1), new FixtureKind("roto", 2)];
+export var PortAttachment = function () {
+  function PortAttachment(universe, portNamespace, portName) {
+    _classCallCheck(this, PortAttachment);
+
+    this.universe = universe;
+    this.portNamespace = portNamespace;
+    this.portName = portName;
+  }
+
+  _createClass(PortAttachment, [{
+    key: _Symbol.reflection,
+    value: function () {
+      return {
+        type: "PatchTypes.PortAttachment",
+        interfaces: ["FSharpRecord", "System.IEquatable", "System.IComparable"],
+        properties: {
+          universe: "number",
+          portNamespace: "string",
+          portName: "string"
+        }
+      };
+    }
+  }, {
+    key: "Equals",
+    value: function (other) {
+      return equalsRecords(this, other);
+    }
+  }, {
+    key: "CompareTo",
+    value: function (other) {
+      return compareRecords(this, other);
+    }
+  }]);
+
+  return PortAttachment;
+}();
+setType("PatchTypes.PortAttachment", PortAttachment);
 export var PatchServerRequest = function () {
   function PatchServerRequest(caseName, fields) {
     _classCallCheck(this, PatchServerRequest);
@@ -190,10 +226,14 @@ export var PatchServerRequest = function () {
         type: "PatchTypes.PatchServerRequest",
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
+          AddUniverse: [],
+          AttachPort: [PortAttachment],
+          AvailablePorts: [],
           GetKinds: [],
           NewPatches: [_Array(PatchRequest)],
           PatchState: [],
           Remove: ["number"],
+          RemoveUniverse: ["number", "boolean"],
           Rename: ["number", "string"],
           Repatch: ["number", Option(Tuple(["number", "number"]))]
         }
@@ -229,10 +269,16 @@ export var PatchServerResponse = function () {
         type: "PatchTypes.PatchServerResponse",
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
+          AvailablePorts: [makeGeneric(List, {
+            T: Tuple(["string", "string"])
+          })],
           Kinds: [_Array(FixtureKind)],
           NewPatches: [_Array(PatchItem)],
+          NewUniverse: ["number"],
           PatchState: [_Array(PatchItem)],
+          PortAttached: [PortAttachment],
           Remove: ["number"],
+          UniverseRemoved: ["number"],
           Update: [PatchItem]
         }
       };

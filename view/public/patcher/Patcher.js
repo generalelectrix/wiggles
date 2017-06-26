@@ -116,6 +116,8 @@ export function update(message, model) {
     return [new Model(model.patches, model.selected, model.editorModel, patternInput_1[0]), CmdModule.map(function (arg0_1) {
       return new Message("Create", [arg0_1]);
     }, patternInput_1[1])];
+  } else if (message.Fields[0].Case === "PatchState") {
+    return [new Model(message.Fields[0].Fields[0], model.selected, model.editorModel, model.newPatchModel), updateEditorState(message.Fields[0].Fields[0], model.selected)];
   } else if (message.Fields[0].Case === "NewPatches") {
     return [new Model(model.patches.concat(message.Fields[0].Fields[0]), model.selected, model.editorModel, model.newPatchModel), CmdModule.none()];
   } else if (message.Fields[0].Case === "Update") {
@@ -131,7 +133,7 @@ export function update(message, model) {
   } else if (message.Fields[0].Case === "Kinds") {
     return [model, CmdModule.ofMsg(new Message("Create", [new Message_1("UpdateKinds", [message.Fields[0].Fields[0]])]))];
   } else {
-    return [new Model(message.Fields[0].Fields[0], model.selected, model.editorModel, model.newPatchModel), updateEditorState(message.Fields[0].Fields[0], model.selected)];
+    throw new Error("/Users/macklin/src/wiggles/view/src/patcher/Patcher.fsx", 61, 14);
   }
 }
 export function viewPatchTableRow(dispatch, selectedId, item) {

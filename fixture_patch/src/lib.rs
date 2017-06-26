@@ -197,19 +197,23 @@ impl Patch {
 
     /// Delete an existing universe.
     /// If force=false, fail if any fixtures are patched in this universe.
-    pub fn remove_universe(&mut self, id: UniverseId, force: bool) -> Result<(), PatchError> {
+    /// If successful, returns a list of fixtures that were unpatched, if any.
+    pub fn remove_universe(&mut self, id: UniverseId, force: bool) -> Result<Vec<FixtureId>, PatchError> {
 
         if !force && self.items.iter().any(|item| item.universe() == Some(id)) {
             return Err(PatchError::NonEmptyUniverse(id))
         }
 
+        *self.universes.get_mut(id as usize).ok_or(PatchError::InvalidUniverseId(id))? = None;
+
+        let mut unpatched_fixtures = Vec::new();
         /// unpatch any fixtures that are patched in this universe
         for item in self.items.iter_mut().filter(|item| item.universe() == Some(id)) {
             item.address = None;
+            unpatched_fixtures.push(item.id);
         }
 
-        *self.universes.get_mut(id as usize).ok_or(PatchError::InvalidUniverseId(id))? = None;
-        Ok(())
+        Ok(unpatched_fixtures)
     }
 
     /// Generate the next fixture id.
@@ -406,6 +410,12 @@ impl Patch {
             }
         }
         write_errs
+    }
+}
+
+impl Default for Patch {
+    fn default() -> Self {
+        Patch::new()
     }
 }
 
