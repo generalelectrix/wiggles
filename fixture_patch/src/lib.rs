@@ -20,8 +20,8 @@ use std::fmt;
 
 use wiggles_value::Data;
 use rust_dmx::{DmxPort, Error as DmxPortError, OfflineDmxPort};
-use profiles::{Profile, PROFILES};
-use fixture::{DmxFixture, DmxValue, DmxChannelCount, FixtureError};
+pub use profiles::{Profile, PROFILES};
+pub use fixture::{DmxFixture, DmxValue, DmxChannelCount, FixtureError};
 
 mod fixture;
 mod profiles;
@@ -119,27 +119,31 @@ pub struct PatchItem {
 
 impl PatchItem {
     /// Unique fixture id.
-    fn id(&self) -> FixtureId { 
+    pub fn id(&self) -> FixtureId { 
         self.id
     }
     /// The name of this kind of fixture.
-    fn kind(&self) -> &str {
+    pub fn kind(&self) -> &str {
         self.fixture.kind()
     }
 
-    fn universe(&self) -> Option<UniverseId> {
+    pub fn universe(&self) -> Option<UniverseId> {
         self.address.map(|(id, _)| id)
     }
 
-    fn address(&self) -> Option<DmxAddress> {
+    pub fn address(&self) -> Option<DmxAddress> {
         self.address.map(|(_, addr)| addr)
     }
 
-    fn channel_count(&self) -> DmxChannelCount {
+    pub fn global_address(&self) -> Option<(UniverseId, DmxAddress)> {
+        self.address
+    }
+
+    pub fn channel_count(&self) -> DmxChannelCount {
         self.fixture.channel_count()
     }
 
-    fn set_control(&mut self, control_id: usize, value: Data) -> Result<(), PatchError> {
+    pub fn set_control(&mut self, control_id: usize, value: Data) -> Result<(), PatchError> {
         self.fixture.set_control(control_id, value).map_err(|fe| PatchError::from_fixture_error(fe, self.id))
     }
 }
@@ -255,10 +259,10 @@ impl Patch {
         }
 
     /// Remove a fixture by id, if it exists, and return it.
-    pub fn remove(&mut self, id: FixtureId) -> Option<PatchItem> {
+    pub fn remove(&mut self, id: FixtureId) -> Result<PatchItem, PatchError> {
         match self.items.iter().position(|item| item.id == id) {
-            Some(index) => Some(self.items.swap_remove(index)),
-            None => None
+            Some(index) => Ok(self.items.swap_remove(index)),
+            None => Err(PatchError::InvalidFixtureId(id)),
         }
     }
 
@@ -309,12 +313,13 @@ impl Patch {
     }
 
     /// Try to patch a fixture at a particular address in a particular universe.
+    /// If successful, return a reference to the repatched item.
     pub fn repatch(
             &mut self,
             id: FixtureId,
             universe: UniverseId,
             address: DmxAddress)
-            -> Result<(), PatchError> {
+            -> Result<&PatchItem, PatchError> {
         let address = valid_address(address)?;
         // Use this value for indexes!
         let address_from_zero = address - 1;
@@ -332,7 +337,7 @@ impl Patch {
         if conflicting_fixtures.is_empty() {
             // No conflicts, good to patch.
             item.address = Some((universe, address));
-            Ok(())
+            Ok(item)
         }
         else {
             // Deduplicate the list of conflicting fixture ids.
@@ -342,9 +347,11 @@ impl Patch {
     }
 
     /// Unpatch a fixture.
-    pub fn unpatch(&mut self, id: FixtureId) -> Result<(), PatchError> {
-        self.item_mut(id)?.address = None;
-        Ok(())
+    /// Return a reference to the item if it exists.
+    pub fn unpatch(&mut self, id: FixtureId) -> Result<&PatchItem, PatchError> {
+        let item = self.item_mut(id)?;
+        item.address = None;
+        Ok(item)
     }
 
     /// Set the render state of a fixture.  If render is False, then the fixture will be ignored
