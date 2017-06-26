@@ -4,10 +4,9 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { makeGeneric, compareUnions, equalsUnions, Array as _Array, defaultArg, Tuple, Option, compareRecords, equalsRecords } from "fable-core/Util";
+import { compareUnions, equalsUnions, Array as _Array, defaultArg, Tuple, Option, compareRecords, equalsRecords } from "fable-core/Util";
 import { Result } from "fable-elmish/result";
 import { parseOptionalNumber } from "../core/Util";
-import List from "fable-core/List";
 export var FixtureKind = function () {
   function FixtureKind(name, channelCount) {
     _classCallCheck(this, FixtureKind);
@@ -174,20 +173,20 @@ export var PatchItem = function () {
   return PatchItem;
 }();
 setType("PatchTypes.PatchItem", PatchItem);
-export var PortAttachment = function () {
-  function PortAttachment(universe, portNamespace, portName) {
-    _classCallCheck(this, PortAttachment);
+export var UnivWithPort = function () {
+  function UnivWithPort(universe, portNamespace, portName) {
+    _classCallCheck(this, UnivWithPort);
 
     this.universe = universe;
     this.portNamespace = portNamespace;
     this.portName = portName;
   }
 
-  _createClass(PortAttachment, [{
+  _createClass(UnivWithPort, [{
     key: _Symbol.reflection,
     value: function () {
       return {
-        type: "PatchTypes.PortAttachment",
+        type: "PatchTypes.UnivWithPort",
         interfaces: ["FSharpRecord", "System.IEquatable", "System.IComparable"],
         properties: {
           universe: "number",
@@ -208,9 +207,9 @@ export var PortAttachment = function () {
     }
   }]);
 
-  return PortAttachment;
+  return UnivWithPort;
 }();
-setType("PatchTypes.PortAttachment", PortAttachment);
+setType("PatchTypes.UnivWithPort", UnivWithPort);
 export var PatchServerRequest = function () {
   function PatchServerRequest(caseName, fields) {
     _classCallCheck(this, PatchServerRequest);
@@ -227,7 +226,7 @@ export var PatchServerRequest = function () {
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
           AddUniverse: [],
-          AttachPort: [PortAttachment],
+          AttachPort: [UnivWithPort],
           AvailablePorts: [],
           GetKinds: [],
           NewPatches: [_Array(PatchRequest)],
@@ -269,17 +268,14 @@ export var PatchServerResponse = function () {
         type: "PatchTypes.PatchServerResponse",
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
-          AvailablePorts: [makeGeneric(List, {
-            T: Tuple(["string", "string"])
-          })],
+          AvailablePorts: [_Array(Tuple(["string", "string"]))],
           Kinds: [_Array(FixtureKind)],
           NewPatches: [_Array(PatchItem)],
-          NewUniverse: ["number"],
-          PatchState: [_Array(PatchItem)],
-          PortAttached: [PortAttachment],
+          PatchState: [_Array(PatchItem), _Array(UnivWithPort)],
           Remove: ["number"],
           UniverseRemoved: ["number"],
-          Update: [PatchItem]
+          Update: [PatchItem],
+          UpdateUniverse: [UnivWithPort]
         }
       };
     }

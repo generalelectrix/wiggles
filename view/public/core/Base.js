@@ -242,9 +242,7 @@ function updateFromResponse(wrapShowResponse, updateShow, message, model) {
     return [model, CmdModule.none()];
   } else if (message.Case === "Console") {
     var patternInput = updateShow(wrapShowResponse(message.Fields[0]))(model.showModel);
-    return [new Model(model.connection, model.baseModel, patternInput[0]), CmdModule.map(function (arg0) {
-      return new Message("Inner", [arg0]);
-    }, patternInput[1])];
+    return [new Model(model.connection, model.baseModel, patternInput[0]), patternInput[1]];
   } else {
     return [function () {
       var baseModel_3 = new BaseModel(message.Fields[0], model.baseModel.savesAvailable, model.baseModel.showsAvailable, model.baseModel.utilPage, model.baseModel.showLoader, model.baseModel.saveAsUtil, model.baseModel.newShowUtil, model.baseModel.renameShowUtil, model.baseModel.modalDialog, model.baseModel.navbar);
@@ -314,9 +312,7 @@ export function update(initCommands_1, socketSend, wrapShowResponse, updateShow,
     return [newModel_6, CmdModule.none()];
   } else if (message.Case === "Inner") {
     var patternInput = updateShow(message.Fields[0])(model.showModel);
-    return [new Model(model.connection, model.baseModel, patternInput[0]), CmdModule.map(function (arg0) {
-      return new Message("Inner", [arg0]);
-    }, patternInput[1])];
+    return [new Model(model.connection, model.baseModel, patternInput[0]), patternInput[1]];
   } else if (message.Fields[0].Case === "Disconnected") {
     return [new Model(new ConnectionState("Closed", []), model.baseModel, model.showModel), CmdModule.none()];
   } else {

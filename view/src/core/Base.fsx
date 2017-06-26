@@ -153,7 +153,7 @@ let private updateFromResponse wrapShowResponse updateShow message model =
         model, Cmd.none
     | ServerResponse.Console(m) ->
         let showModel, showMessages = updateShow (wrapShowResponse m) model.showModel
-        {model with showModel = showModel}, showMessages |> Cmd.map Message.Inner
+        {model with showModel = showModel}, showMessages
 
 /// Update the whole view by processing a message.
 let update initCommands socketSend wrapShowResponse updateShow message model =
@@ -205,8 +205,8 @@ let update initCommands socketSend wrapShowResponse updateShow message model =
             updateBaseModel (fun bm -> {bm with newShowUtil = NewShow.update msg bm.newShowUtil})
         newModel, Cmd.none
     | Message.Inner(msg) ->
-        let showModel, showMessages = updateShow msg model.showModel
-        {model with showModel = showModel}, showMessages |> Cmd.map Message.Inner
+        let showModel, commands = updateShow msg model.showModel
+        {model with showModel = showModel}, commands
 
 /// View function to render a particular core console utility.
 let private viewUtil utilPage model dispatch dispatchServer =

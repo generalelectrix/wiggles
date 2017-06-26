@@ -35,10 +35,12 @@ type ShowServerCommand =
   
 [<RequireQualifiedAccess>]
 type ShowServerResponse =
+    | Error of string
     | Patcher of PatchTypes.PatchServerResponse
 
 [<RequireQualifiedAccess>]
 type ShowMessage =
+    | Error of string
     | SetPage of Page
     | Patcher of Patcher.Message
 
@@ -83,14 +85,17 @@ let initCommands =
 /// response messages expected by this show.
 let wrapShowResponse (message: ShowServerResponse) =
     match message with
+    | ShowServerResponse.Error(e) -> e |> ShowMessage.Error
     | ShowServerResponse.Patcher(m) -> m |> Patcher.Message.Response |> ShowMessage.Patcher
 
-let updateShow message model =
+let updateShow message model : ShowModel * Cmd<ConcreteMessage> =
     match message with
+    | ShowMessage.Error(e) ->
+        model, Modal.prompt e |> Modal.Open |> Base.Message.Modal |> Cmd.ofMsg
     | ShowMessage.SetPage(page) -> {model with page = page}, Cmd.none
     | ShowMessage.Patcher(msg) ->
         let updatedPatcher, commands = Patcher.update msg model.patcher
-        {model with patcher = updatedPatcher}, commands |> Cmd.map ShowMessage.Patcher
+        {model with patcher = updatedPatcher}, commands |> Cmd.map (ShowMessage.Patcher >> Base.Message.Inner)
 
 let viewShow openModal model dispatch dispatchServer =
     match model.page with

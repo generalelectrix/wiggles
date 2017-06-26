@@ -34,7 +34,7 @@ impl TestConsole {
                     client_data.filter = filter;
                 }
                 resp.drain()
-                    .map(|m| Response::Patch(m).with_client(client_data))
+                    .map(|m| Response::Patcher(m).with_client(client_data))
                     .collect()
             }
             Err(e) => {
@@ -47,18 +47,18 @@ impl TestConsole {
 
 #[derive(Debug, Serialize, Deserialize)]
 enum Command {
-    Patch(PatchServerRequest),
+    Patcher(PatchServerRequest),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 enum Response {
     Error(String),
-    Patch(PatchServerResponse),
+    Patcher(PatchServerResponse),
 }
 
 impl From<PatchServerResponse> for Response {
     fn from(r: PatchServerResponse) -> Self {
-        Response::Patch(r)
+        Response::Patcher(r)
     }
 }
 
@@ -82,7 +82,7 @@ impl Console for TestConsole {
 
     fn handle_command(&mut self, cmd: CommandWrapper<Command>) -> Messages<ResponseWrapper<Response>> {
         match cmd.payload {
-            Command::Patch(msg) => {
+            Command::Patcher(msg) => {
                 self.handle_patch_message(msg, cmd.client_data)
             }
         }

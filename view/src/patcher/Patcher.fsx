@@ -42,6 +42,7 @@ let initCommands = [PatchServerRequest.PatchState; PatchServerRequest.GetKinds]
 let initialModel () = {
     patches = Array.empty
     universes = Array.empty
+    availablePorts = Array.empty
     selected = None
     editorModel = PatchEdit.initialModel()
     newPatchModel = NewPatch.initialModel()
@@ -58,9 +59,9 @@ let updateEditorState patches selectedFixtureId =
     |> Cmd.ofMsg
 
 let private updateFromServerMessage message model =
-    match r with
+    match message with
     | PatchServerResponse.PatchState(patches, universes) ->
-        {model with patches = s; universes = universes}, updateEditorState patches model.selected
+        {model with patches = patches; universes = universes}, updateEditorState patches model.selected
     | PatchServerResponse.NewPatches patches ->
         {model with patches = patches |> Array.append model.patches}, Cmd.none
     | PatchServerResponse.Update p ->
@@ -78,15 +79,15 @@ let private updateFromServerMessage message model =
         let universes =
             model.universes
             |> Array.map (fun u ->
-                if u.id = newUniv.id then
+                if u.universe = newUniv.universe then
                     found <- true
                     newUniv
                 else u)
         let universes =
             if not found then Array.append universes [|newUniv|] else universes
-        {model with universes = universe}, Cmd.none
+        {model with universes = universes}, Cmd.none
     | PatchServerResponse.UniverseRemoved id ->
-        {model with universes = model.universes |> Array.filter (fun u -> u.id <> id)}, Cmd.none
+        {model with universes = model.universes |> Array.filter (fun u -> u.universe <> id)}, Cmd.none
     | PatchServerResponse.AvailablePorts ports ->
         {model with availablePorts = ports}, Cmd.none
 
