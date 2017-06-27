@@ -223,7 +223,7 @@ pub mod clay_paky_astroraggi_power {
             }
         };
         // channel 0 - rotation
-        buffer[0] = bipolar_as_range(controls[3].value(), 128, 255);
+        buffer[0] = bipolar_as_range(controls[2].value(), 128, 255);
         // channel 1 - shutter/strobe
         buffer[1] = shutter_channel_val;
     }
