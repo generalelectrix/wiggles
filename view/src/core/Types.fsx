@@ -26,6 +26,15 @@ type ResponseFilter =
     /// Disable talkback on this request.
     | AllButSelf
 
+let private withFilter filter message = (filter, message)
+
+/// Attach a "All" response filter to a message.
+let all message = withFilter All message
+/// Attach a "Exclusive" response filter to a message.
+let exclusive message = withFilter Exclusive message
+/// Attach a "AllButSelf" response filter to a message.
+let allButSelf message = withFilter AllButSelf message
+
 type ConnectionState =
     | Waiting
     | Open

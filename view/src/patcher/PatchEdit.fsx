@@ -84,7 +84,7 @@ let private nameEditOnKeyDown
             match nameEditModel.value with
             | Some(Ok(name)) ->
                 clear()
-                (ResponseFilter.All, PatchServerRequest.Rename(fixtureId, name)) |> dispatchServer
+                PatchServerRequest.Rename(fixtureId, name) |> all |> dispatchServer
             | _ -> ()
         | EscapeKey ->
             clear()
@@ -131,7 +131,7 @@ let private addressEditor (selected: PatchItem) model dispatchLocal dispatchServ
             // We can only do something if both are some or both are none.
             match globalAddressFromOptionals univ addr with
             | Ok a ->
-                (ResponseFilter.All, PatchServerRequest.Repatch(selected.id, a)) |> dispatchServer
+                PatchServerRequest.Repatch(selected.id, a) |> all |> dispatchServer
                 clearAll()
             | _ -> ()
 
@@ -151,9 +151,8 @@ let private addressEditor (selected: PatchItem) model dispatchLocal dispatchServ
                         "Are you sure you want to delete fixture %d (%s)?"
                         selected.id
                         selected.name
-                let removeAction _ =
-                    (ResponseFilter.All, PatchServerRequest.Remove selected.id)
-                    |> dispatchServer
+                let removeAction _ = PatchServerRequest.Remove selected.id |> all |> dispatchServer
+
                 Modal.confirm confirmMessage removeAction
                 |> openModal
             )

@@ -33,7 +33,7 @@ let commandsForUtilPageChange page =
     match page with
     | ShowLoader ->
         // emit a command to update our collection of available shows
-        [(Exclusive, ServerCommand.SavedShows)]
+        [ServerCommand.SavedShows |> exclusive]
     | SaveShowAs -> []
     | NewShow -> []
     | RenameShow -> []
@@ -250,7 +250,8 @@ let private utilPageItem text page : Navbar.Item<_> = {
 let private saveShowItem: Navbar.Item<_> = {
     text = "Save"
     onClick = (fun dispatch ->
-        (Exclusive, ServerCommand.Save)
+        ServerCommand.Save
+        |> exclusive
         |> Message.Command
         |> dispatch)
 }
@@ -262,7 +263,7 @@ let private quitItem: Navbar.Item<_> = {
         let modalAction =
             Modal.confirm
                 "Are you sure you want to quit?"
-                (fun _ -> (All, ServerCommand.Quit) |> Message.Command |> dispatch)
+                (fun _ -> ServerCommand.Quit |> all |> Message.Command |> dispatch)
         modalAction |> Modal.Open |> Message.Modal |> dispatch)
 }
 

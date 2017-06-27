@@ -78,8 +78,10 @@ module LoadShow =
             | Some(i) ->
                 match shows |> List.tryItem i with
                 | Some(save) ->
-                    let command = ServerCommand.Load({name = save; spec = model.loadSpec})
-                    (All, command) |> dispatchServer
+                    ServerCommand.Load({name = save; spec = model.loadSpec})
+                    |> all
+                    |> dispatchServer
+
                     onComplete()
                 | None ->
                     // log this as this is unexpected
@@ -121,9 +123,7 @@ module RenameShow =
     let update = SimpleEditor.update
 
     let view showName model onComplete dispatch dispatchServer = 
-        let onOk name = 
-            let command = ServerCommand.Rename(name)
-            (All, command) |> dispatchServer
+        let onOk name = ServerCommand.Rename(name) |> all |> dispatchServer
 
         SimpleEditor.view showName model onOk onComplete dispatch
     
@@ -136,9 +136,7 @@ module SaveShowAs =
     let update = SimpleEditor.update
 
     let view showName model onComplete dispatch dispatchServer = 
-        let onOk newName = 
-            let command = ServerCommand.SaveAs(newName)
-            (All, command) |> dispatchServer
+        let onOk newName = ServerCommand.SaveAs(newName) |> all |> dispatchServer
 
         SimpleEditor.view showName model onOk onComplete dispatch
      
@@ -151,8 +149,6 @@ module NewShow =
     let update = SimpleEditor.update
 
     let view model onComplete dispatch dispatchServer = 
-        let onOk name = 
-            let command = ServerCommand.NewShow(name)
-            (All, command) |> dispatchServer
+        let onOk name = ServerCommand.NewShow(name) |> all |> dispatchServer
 
         SimpleEditor.view "" model onOk onComplete dispatch

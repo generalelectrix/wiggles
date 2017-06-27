@@ -7,6 +7,7 @@
 #load "PatchTypes.fsx"
 #load "PatchEdit.fsx"
 #load "NewPatch.fsx"
+#load "Universes.fsx"
 
 open Fable.Core
 open Fable.Import
@@ -143,7 +144,10 @@ let viewPatchTable dispatch patches selectedId =
 /// View the patcher page.
 let view openModal model dispatch dispatchServer =
     Grid.layout [
-        (8, [ viewPatchTable dispatch model.patches model.selected ])
+        (8, [
+            viewPatchTable dispatch model.patches model.selected
+            Universes.view model.universes model.availablePorts openModal dispatchServer
+        ])
         (4, [
             Grid.fullRow [
                 PatchEdit.view model.editorModel (Edit >> dispatch) dispatchServer openModal]

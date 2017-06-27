@@ -76,7 +76,7 @@ let initModel () = (Base.initModel navbar (initShowModel()), Cmd.none)
 let initCommands =
     [Base.initCommands; Patcher.initCommands |> List.map (ShowServerCommand.Patcher >> ServerCommand.Console)]
     |> List.concat
-    |> List.map (fun c -> (Exclusive, c))
+    |> List.map exclusive
     |> List.map Cmd.ofMsg
     |> Cmd.batch
 
