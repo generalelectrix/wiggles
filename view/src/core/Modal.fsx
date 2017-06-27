@@ -29,6 +29,7 @@ type ModalAction = {
 
 type ModalRequest = {
     message: string
+    focused: bool
     // Once the abomination that is KeyValueList is gone, these can become a list.
     action0: ModalAction
     action1: ModalAction option
@@ -56,7 +57,7 @@ let confirm message action =
         label = "Cancel"
         buttonType = Button.Default
         action = ignore}
-    {message = message; action0 = okAction; action1 = Some cancelAction}
+    {message = message; focused = false; action0 = okAction; action1 = Some cancelAction}
 
 /// Create a request to open a dialog that provides a message and prompts the user to dismiss it.
 let prompt message =
@@ -64,7 +65,7 @@ let prompt message =
         label = "OK"
         buttonType = Button.Basic
         action = ignore}
-    {message = message; action0 = okAction; action1 = None}
+    {message = message; focused = false; action0 = okAction; action1 = None}
 
 let initialModel() = Array.empty
 
@@ -77,8 +78,20 @@ let update message (model: Model) =
         newModel
     | Close -> (model |> Array.skip 1)
     | Focus ->
-        enqueueBrowserAction (fun () -> Browser.document.getElementById(modalOkButtonId).focus())
-        model
+        match model |> Array.tryHead with
+        | None -> model
+        | Some(head) ->
+            if not head.focused then
+                enqueueBrowserAction (fun () ->
+                    Browser.document.getElementById(modalOkButtonId).focus())
+
+                let head = {head with focused = true}
+                if model.Length > 1 then
+                    Array.append [|head|] (Array.tail model)
+                else
+                    [|head|]
+            else
+                model
 
 /// Draw a button to present a modal action option, such as "Ok" or "Cancel".
 /// Clicking will run the provided action as well as close the dialog.
@@ -99,10 +112,9 @@ let private modalActionButton dispatch (id: string option) action =
 
 /// Display a float-on-top Bootstrap modal dialog.
 let view (model: Model) dispatch =
-    if model |> Array.isEmpty then
-        R.div [] []
-    else
-        let state = model.[0]
+    match model |> Array.tryHead with
+    | None -> R.div [] []
+    | Some(state) ->
         let message = R.p [] [R.str state.message]
         let bodyContents =
             let okButton = modalActionButton dispatch (Some modalOkButtonId) state.action0
@@ -113,8 +125,10 @@ let view (model: Model) dispatch =
                  modalActionButton dispatch None action1]
             | None -> [message; okButton]
 
-        // Emit a message to focus on our about-to-be-created OK button.
-        Focus |> dispatch
+        // Emit a message to focus on our about-to-be-created OK button if we're drawing this
+        // modal request for the first time.
+        if not state.focused then
+            Focus |> dispatch
            
         R.div [
             ClassName "modal in"

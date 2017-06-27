@@ -8,8 +8,8 @@ import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
 import { Option, Any } from "fable-core/Util";
 import { Button } from "./Bootstrap";
+import { fold, singleton, tryHead } from "fable-core/Seq";
 import { enqueueBrowserAction } from "./Util";
-import { fold, singleton } from "fable-core/Seq";
 import { createElement } from "react";
 import { ofArray } from "fable-core/List";
 export var ModalAction = function () {
@@ -40,10 +40,11 @@ export var ModalAction = function () {
 }();
 setType("Modal.ModalAction", ModalAction);
 export var ModalRequest = function () {
-  function ModalRequest(message, action0, action1) {
+  function ModalRequest(message, focused, action0, action1) {
     _classCallCheck(this, ModalRequest);
 
     this.message = message;
+    this.focused = focused;
     this.action0 = action0;
     this.action1 = action1;
   }
@@ -56,6 +57,7 @@ export var ModalRequest = function () {
         interfaces: ["FSharpRecord"],
         properties: {
           message: "string",
+          focused: "boolean",
           action0: ModalAction,
           action1: Option(ModalAction)
         }
@@ -97,13 +99,13 @@ export function confirm(message, action) {
   var cancelAction = new ModalAction("Cancel", Button.Default, function (value) {
     value;
   });
-  return new ModalRequest(message, okAction, cancelAction);
+  return new ModalRequest(message, false, okAction, cancelAction);
 }
 export function prompt(message) {
   var okAction = new ModalAction("OK", Button.Basic, function (value) {
     value;
   });
-  return new ModalRequest(message, okAction, null);
+  return new ModalRequest(message, false, okAction, null);
 }
 export function initialModel() {
   return new Array(0);
@@ -113,10 +115,28 @@ export function update(message, model) {
   if (message.Case === "Close") {
     return model.slice(1);
   } else if (message.Case === "Focus") {
-    enqueueBrowserAction(function () {
-      document.getElementById(modalOkButtonId).focus();
-    });
-    return model;
+    var matchValue = tryHead(model);
+
+    if (matchValue != null) {
+      if (!matchValue.focused) {
+        enqueueBrowserAction(function () {
+          document.getElementById(modalOkButtonId).focus();
+        });
+        var head = void 0;
+        var focused = true;
+        head = new ModalRequest(matchValue.message, focused, matchValue.action0, matchValue.action1);
+
+        if (model.length > 1) {
+          return [head].concat(model.slice(1));
+        } else {
+          return [head];
+        }
+      } else {
+        return model;
+      }
+    } else {
+      return model;
+    }
   } else {
     var newModel = function (array2) {
       return model.concat(array2);
@@ -142,21 +162,23 @@ function modalActionButton(dispatch, id, action) {
 }
 
 export function view(model, dispatch) {
-  if (model.length === 0) {
-    return createElement("div", {});
-  } else {
-    var state = model[0];
-    var message = createElement("p", {}, state.message);
-    var bodyContents = void 0;
-    var okButton = modalActionButton(dispatch, modalOkButtonId, state.action0);
+  var matchValue = tryHead(model);
 
-    if (state.action1 == null) {
+  if (matchValue != null) {
+    var message = createElement("p", {}, matchValue.message);
+    var bodyContents = void 0;
+    var okButton = modalActionButton(dispatch, modalOkButtonId, matchValue.action0);
+
+    if (matchValue.action1 == null) {
       bodyContents = ofArray([message, okButton]);
     } else {
-      bodyContents = ofArray([message, okButton, modalActionButton(dispatch, null, state.action1)]);
+      bodyContents = ofArray([message, okButton, modalActionButton(dispatch, null, matchValue.action1)]);
     }
 
-    dispatch(new Message("Focus", []));
+    if (!matchValue.focused) {
+      dispatch(new Message("Focus", []));
+    }
+
     return createElement("div", {
       className: "modal in",
       role: "dialog",
@@ -170,6 +192,8 @@ export function view(model, dispatch) {
     }, createElement.apply(undefined, ["div", {
       className: "modal-body"
     }].concat(_toConsumableArray(bodyContents))))));
+  } else {
+    return createElement("div", {});
   }
 }
 export function viewSplash(message) {
