@@ -61,6 +61,7 @@ let updateEditorState patches selectedFixtureId =
 let private updateFromServerMessage message model =
     match message with
     | PatchServerResponse.PatchState(patches, universes) ->
+        patches |> Array.sortInPlaceBy (fun p -> p.id)
         {model with patches = patches; universes = universes}, updateEditorState patches model.selected
     | PatchServerResponse.NewPatches patches ->
         {model with patches = patches |> Array.append model.patches}, Cmd.none

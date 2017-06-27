@@ -13,6 +13,7 @@ import { view as view_2, update as update_2, initialModel as initialModel_2, Mes
 import { map, ofArray } from "fable-core/List";
 import { CmdModule } from "fable-elmish/elmish";
 import { map as map_1, singleton, append, delay, toList, fold, tryFind } from "fable-core/Seq";
+import { sortInPlaceBy } from "fable-core/Array";
 import { createElement } from "react";
 import { Grid, Table } from "../core/Bootstrap";
 export var Model = function () {
@@ -137,6 +138,9 @@ function updateFromServerMessage(message, model) {
   } else if (message.Case === "AvailablePorts") {
     return [new Model(model.patches, model.universes, message.Fields[0], model.selected, model.editorModel, model.newPatchModel), CmdModule.none()];
   } else {
+    sortInPlaceBy(function (p_1) {
+      return p_1.id;
+    }, message.Fields[0]);
     return [new Model(message.Fields[0], message.Fields[1], model.availablePorts, model.selected, model.editorModel, model.newPatchModel), updateEditorState(message.Fields[0], model.selected)];
   }
 }
