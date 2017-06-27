@@ -27,7 +27,7 @@ open EditBox
 
 let private addButton dispatchServer =
     R.button [
-        Button.Basic
+        Button.Primary
         OnClick (fun _ -> PatchServerRequest.AddUniverse |> all |> dispatchServer)
     ] [R.str "Add universe"]
 
@@ -39,7 +39,7 @@ let private refreshPortsButton dispatchServer =
 
 let private deleteButton universeId openModal dispatchServer =
     R.button [
-        Button.Danger
+        Button.Default
         OnClick (fun _ ->
             Modal.confirm
                 (sprintf "Are you sure you want to delete universe %d?" universeId)
@@ -116,6 +116,7 @@ let private viewTable ports openModal dispatchServer universes =
 /// Render the universe and port editor.
 let view universes ports openModal dispatchServer =
     R.div [] [
+        R.h4 [] [R.str "Universes"]
         viewTable ports openModal dispatchServer universes
         addButton dispatchServer
         refreshPortsButton dispatchServer

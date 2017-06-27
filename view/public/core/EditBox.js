@@ -169,7 +169,7 @@ export function view(extraAction, defaultValue, model, dispatch) {
   return createElement("div", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
-  }, {}, [model.IsOk ? Form.Group : Form.GroupError]), createElement("div", fold(function (o, kv) {
+  }, {}, [model.IsOk ? Form.Group : Form.GroupWarning]), createElement("div", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
   }, {}, [Form.InputGroup]), createElement("label", fold(function (o, kv) {

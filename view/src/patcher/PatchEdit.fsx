@@ -137,13 +137,13 @@ let private addressEditor (selected: PatchItem) model dispatchLocal dispatchServ
 
     let repatchButton =
         R.button [
-            Button.Warning
+            Button.Primary
             OnClick handleRepatchButtonClick
         ] [ R.str "Repatch"]
 
     let removeButton =
         R.button [
-            Button.Danger
+            Button.Default
             OnClick (fun e ->
                 e.currentTarget?blur() |> ignore
                 let confirmMessage =
@@ -169,7 +169,7 @@ let private addressEditor (selected: PatchItem) model dispatchLocal dispatchServ
 /// Display the patch editor.
 ///</summary>
 let view model dispatchLocal dispatchServer openModal =
-    let header = R.h3 [] [ R.str "Edit patch" ]
+    let header = R.h4 [] [ R.str "Edit patch" ]
     let editor =
         match model.selected with
         | None -> R.str (sprintf "No fixture selected.")

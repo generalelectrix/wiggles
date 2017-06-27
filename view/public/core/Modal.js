@@ -95,14 +95,14 @@ export var Message = function () {
 }();
 setType("Modal.Message", Message);
 export function confirm(message, action) {
-  var okAction = new ModalAction("OK", Button.Basic, action);
+  var okAction = new ModalAction("OK", Button.Primary, action);
   var cancelAction = new ModalAction("Cancel", Button.Default, function (value) {
     value;
   });
   return new ModalRequest(message, false, okAction, cancelAction);
 }
 export function prompt(message) {
-  var okAction = new ModalAction("OK", Button.Basic, function (value) {
+  var okAction = new ModalAction("OK", Button.Primary, function (value) {
     value;
   });
   return new ModalRequest(message, false, okAction, null);

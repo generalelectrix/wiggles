@@ -327,7 +327,7 @@ function patchButton(model, dispatchLocal, dispatchServer) {
         })(matchValue_2);
         break;
     }
-  }], Button.Warning]), "Patch");
+  }], Button.Primary]), "Patch");
 }
 
 export function view(model, dispatchLocal, dispatchServer) {
@@ -357,6 +357,6 @@ export function view(model, dispatchLocal, dispatchServer) {
     return createElement("div", fold(function (o, kv) {
       o[kv[0]] = kv[1];
       return o;
-    }, {}, [Form.Group]), createElement("span", {}, createElement("h3", {}, "Create new patch")), typeSelector(model.kinds, model.selectedKind, dispatchLocal), nameEntry, Grid.distribute(ofArray([ofArray([universeEntry]), ofArray([addressEntry])])), Grid.distribute(ofArray([ofArray([quantityEntry]), ofArray([patchButton(model, dispatchLocal, dispatchServer)])])));
+    }, {}, [Form.Group]), createElement("span", {}, createElement("h4", {}, "Create new patch")), typeSelector(model.kinds, model.selectedKind, dispatchLocal), nameEntry, Grid.distribute(ofArray([ofArray([universeEntry]), ofArray([addressEntry])])), Grid.distribute(ofArray([ofArray([quantityEntry]), ofArray([patchButton(model, dispatchLocal, dispatchServer)])])));
   }
 }

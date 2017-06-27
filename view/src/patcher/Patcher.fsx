@@ -137,10 +137,13 @@ let patchTableHeader =
     |> R.tr []
 
 let viewPatchTable dispatch patches selectedId =
-    R.table [Table.Condensed] [
-        R.tbody [] [
-            yield patchTableHeader
-            for patch in patches -> viewPatchTableRow dispatch selectedId patch
+    R.div [] [
+        R.h4 [] [R.str "Fixtures"]
+        R.table [Table.Condensed] [
+            R.tbody [] [
+                yield patchTableHeader
+                for patch in patches -> viewPatchTableRow dispatch selectedId patch
+            ]
         ]
     ]
 

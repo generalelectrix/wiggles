@@ -135,7 +135,7 @@ let private newPatchesSequential (name: string) (kind: FixtureKind) n startAddre
 /// Issues a server request for new patches if all data is correctly parsed and valid.
 let private patchButton model dispatchLocal dispatchServer =
     R.button [
-        Button.Warning
+        Button.Primary
         OnClick (fun _ ->
             printfn "%+A" model
             match model.selectedKind, model.name, model.universe, model.address, model.quantity with
@@ -171,7 +171,7 @@ let view model dispatchLocal dispatchServer =
         let quantityEntry = EditBox.view None "" model.quantity (QuantEdit >> dispatchLocal)
 
         R.div [Form.Group] [
-            R.span [] [ R.h3 [] [R.str "Create new patch"]]
+            R.span [] [ R.h4 [] [R.str "Create new patch"]]
             typeSelector model.kinds model.selectedKind dispatchLocal
             nameEntry
             Grid.distribute [

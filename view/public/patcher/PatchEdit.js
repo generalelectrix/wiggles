@@ -242,7 +242,7 @@ function addressEditor(selected, model, dispatchLocal, dispatchServer, openModal
   var repatchButton = createElement("button", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
-  }, {}, [["onClick", handleRepatchButtonClick], Button.Warning]), "Repatch");
+  }, {}, [["onClick", handleRepatchButtonClick], Button.Primary]), "Repatch");
   var removeButton = createElement("button", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
@@ -257,7 +257,7 @@ function addressEditor(selected, model, dispatchLocal, dispatchServer, openModal
     };
 
     openModal(confirm(confirmMessage_1, removeAction_1));
-  }], Button.Danger]), "Remove");
+  }], Button.Default]), "Remove");
   return createElement("div", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
@@ -265,7 +265,7 @@ function addressEditor(selected, model, dispatchLocal, dispatchServer, openModal
 }
 
 export function view(model, dispatchLocal, dispatchServer, openModal) {
-  var header = createElement("h3", {}, "Edit patch");
+  var header = createElement("h4", {}, "Edit patch");
   var editor = model.selected != null ? createElement("div", {}, Grid.layout(ofArray([[3, ofArray([fsFormat("Id: %d")(function (x) {
     return x;
   })(model.selected.id)])], [9, ofArray([fsFormat("Type: %s")(function (x) {

@@ -51,7 +51,7 @@ type Message =
 let confirm message action =
     let okAction = {
         label = "OK"
-        buttonType = Button.Basic
+        buttonType = Button.Primary
         action = action}
     let cancelAction = {
         label = "Cancel"
@@ -63,7 +63,7 @@ let confirm message action =
 let prompt message =
     let okAction = {
         label = "OK"
-        buttonType = Button.Basic
+        buttonType = Button.Primary
         action = ignore}
     {message = message; focused = false; action0 = okAction; action1 = None}
 

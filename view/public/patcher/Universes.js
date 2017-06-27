@@ -17,7 +17,7 @@ function addButton(dispatchServer) {
     return o;
   }, {}, [["onClick", function (_arg1_1) {
     dispatchServer(all(new PatchServerRequest("AddUniverse", [])));
-  }], Button.Basic]), "Add universe");
+  }], Button.Primary]), "Add universe");
 }
 
 function refreshPortsButton(dispatchServer) {
@@ -39,7 +39,7 @@ function deleteButton(universeId, openModal, dispatchServer) {
     })(universeId), function (_arg1_1) {
       dispatchServer(all(new PatchServerRequest("RemoveUniverse", [universeId, false])));
     }));
-  }], Button.Danger]), "Delete");
+  }], Button.Default]), "Delete");
 }
 
 function portSelector(universe, ports, dispatchServer) {
@@ -120,5 +120,5 @@ function viewTable(ports, openModal, dispatchServer, universes) {
 }
 
 export function view(universes, ports, openModal, dispatchServer) {
-  return createElement("div", {}, viewTable(ports, openModal, dispatchServer, universes), addButton(dispatchServer), refreshPortsButton(dispatchServer));
+  return createElement("div", {}, createElement("h4", {}, "Universes"), viewTable(ports, openModal, dispatchServer, universes), addButton(dispatchServer), refreshPortsButton(dispatchServer));
 }

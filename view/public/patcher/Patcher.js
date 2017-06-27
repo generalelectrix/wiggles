@@ -209,7 +209,7 @@ export var patchTableHeader = createElement.apply(undefined, ["tr", {}].concat(_
   return createElement("th", {}, x);
 }, ofArray(["id", "name", "kind", "universe", "address", "channel count"])))));
 export function viewPatchTable(dispatch, patches, selectedId) {
-  return createElement("table", fold(function (o, kv) {
+  return createElement("div", {}, createElement("h4", {}, "Fixtures"), createElement("table", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
   }, {}, [Table.Condensed]), createElement.apply(undefined, ["tbody", {}].concat(_toConsumableArray(toList(delay(function () {
@@ -218,7 +218,7 @@ export function viewPatchTable(dispatch, patches, selectedId) {
         return viewPatchTableRow(dispatch, selectedId, patch);
       }, patches);
     }));
-  }))))));
+  })))))));
 }
 export function view(openModal, model, dispatch, dispatchServer) {
   return Grid.layout(ofArray([[8, ofArray([viewPatchTable(dispatch, model.patches, model.selected), view_1(model.universes, model.availablePorts, openModal, dispatchServer)])], [4, ofArray([Grid.fullRow(ofArray([view_2(model.editorModel, function ($var223) {

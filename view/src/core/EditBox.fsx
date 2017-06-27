@@ -96,7 +96,7 @@ let view (extraAction: (Model<'T> -> IHTMLProp) option) defaultValue (model: Mod
         | None -> attrs
 
     R.div [
-        (if model.IsOk then Form.Group else Form.GroupError)
+        (if model.IsOk then Form.Group else Form.GroupWarning)
     ] [
         R.div [Form.InputGroup] [
             R.label [Form.ControlLabel] [
