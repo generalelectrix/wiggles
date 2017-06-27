@@ -60,6 +60,9 @@ export function openSocket(wrapSocketMessage, _genArgs) {
             var deserialized = ofJson(message, {
               T: _genArgs.rsp
             });
+            fsFormat("Deserailized to %+A")(function (x) {
+              console.log(x);
+            })(deserialized);
             dispatch(messageWrapper(deserialized));
           } catch (e) {
             logException("Message deserialization error:", e);

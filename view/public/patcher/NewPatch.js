@@ -17,7 +17,7 @@ import { CmdModule } from "fable-elmish/elmish";
 import { createElement } from "react";
 import { trim, fsFormat } from "fable-core/String";
 import { ofArray } from "fable-core/List";
-import { ResponseFilter } from "../core/Types";
+import { all } from "../core/Types";
 export var Model = function () {
   function Model(kinds, selectedKind, name, universe, address, quantity) {
     _classCallCheck(this, Model);
@@ -172,15 +172,15 @@ export function update(message, model) {
     var matchValue_1 = [model.address, model.quantity, model.selectedKind];
     var $var185 = void 0;
 
-    var activePatternResult957 = _Parsed___(matchValue_1[0]);
+    var activePatternResult966 = _Parsed___(matchValue_1[0]);
 
-    if (activePatternResult957 != null) {
-      if (activePatternResult957.Case === "Present") {
-        var activePatternResult958 = _Parsed___(matchValue_1[1]);
+    if (activePatternResult966 != null) {
+      if (activePatternResult966.Case === "Present") {
+        var activePatternResult967 = _Parsed___(matchValue_1[1]);
 
-        if (activePatternResult958 != null) {
+        if (activePatternResult967 != null) {
           if (matchValue_1[2] != null) {
-            $var185 = [0, activePatternResult957.Fields[0], matchValue_1[2], activePatternResult958];
+            $var185 = [0, activePatternResult966.Fields[0], matchValue_1[2], activePatternResult967];
           } else {
             $var185 = [1];
           }
@@ -274,19 +274,19 @@ function patchButton(model, dispatchLocal, dispatchServer) {
     var $var187 = void 0;
 
     if (matchValue_2[0] != null) {
-      var activePatternResult976_1 = _Parsed___(matchValue_2[1]);
+      var activePatternResult985_1 = _Parsed___(matchValue_2[1]);
 
-      if (activePatternResult976_1 != null) {
-        var activePatternResult977_1 = _Parsed___(matchValue_2[2]);
+      if (activePatternResult985_1 != null) {
+        var activePatternResult986_1 = _Parsed___(matchValue_2[2]);
 
-        if (activePatternResult977_1 != null) {
-          var activePatternResult978_1 = _Parsed___(matchValue_2[3]);
+        if (activePatternResult986_1 != null) {
+          var activePatternResult987_1 = _Parsed___(matchValue_2[3]);
 
-          if (activePatternResult978_1 != null) {
-            var activePatternResult979_1 = _Parsed___(matchValue_2[4]);
+          if (activePatternResult987_1 != null) {
+            var activePatternResult988_1 = _Parsed___(matchValue_2[4]);
 
-            if (activePatternResult979_1 != null) {
-              $var187 = [0, activePatternResult978_1, matchValue_2[0], activePatternResult976_1, activePatternResult979_1, activePatternResult977_1];
+            if (activePatternResult988_1 != null) {
+              $var187 = [0, activePatternResult987_1, matchValue_2[0], activePatternResult985_1, activePatternResult988_1, activePatternResult986_1];
             } else {
               $var187 = [1];
             }
@@ -314,7 +314,7 @@ function patchButton(model, dispatchLocal, dispatchServer) {
           var newPatchResult_1 = newPatchesSequential($var187[3], $var187[2], $var187[4], matchValue_3.Fields[0]);
 
           if (newPatchResult_1.Case === "Ok") {
-            dispatchServer([new ResponseFilter("All", []), new PatchServerRequest("NewPatches", [newPatchResult_1.Fields[0]])]);
+            dispatchServer(all(new PatchServerRequest("NewPatches", [newPatchResult_1.Fields[0]])));
             dispatchLocal(new Message("AdvanceAddress", []));
           }
         }

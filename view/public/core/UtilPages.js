@@ -7,7 +7,7 @@ import _Symbol from "fable-core/Symbol";
 import { compareRecords, equalsRecords, compareUnions, equalsUnions } from "fable-core/Util";
 import { map, ofArray } from "fable-core/List";
 import { view as view_1, update as update_1, Message as Message_1, Model as Model_1 } from "./Table";
-import { ResponseFilter, LoadShow as LoadShow_1, ServerCommand, LoadSpec } from "./Types";
+import { LoadShow as LoadShow_1, ServerCommand, all, LoadSpec } from "./Types";
 import { createElement } from "react";
 import { tryItem, fold } from "fable-core/Seq";
 import { Button, Grid, InputType } from "./Bootstrap";
@@ -175,8 +175,7 @@ export var LoadShow = function (__exports) {
             return x;
           })(matchValue));
         } else {
-          var command = new ServerCommand("Load", [new LoadShow_1(matchValue_1, model.loadSpec)]);
-          dispatchServer([new ResponseFilter("All", []), command]);
+          dispatchServer(all(new ServerCommand("Load", [new LoadShow_1(matchValue_1, model.loadSpec)])));
           onComplete(null);
         }
       }
@@ -228,8 +227,7 @@ export var RenameShow = function (__exports) {
 
   var view = __exports.view = function (showName, model, onComplete, dispatch, dispatchServer) {
     var onOk = function onOk(name) {
-      var command = new ServerCommand("Rename", [name]);
-      dispatchServer([new ResponseFilter("All", []), command]);
+      dispatchServer(all(new ServerCommand("Rename", [name])));
     };
 
     return view_2(showName, model, onOk, onComplete, dispatch);
@@ -252,8 +250,7 @@ export var SaveShowAs = function (__exports) {
 
   var view = __exports.view = function (showName, model, onComplete, dispatch, dispatchServer) {
     var onOk = function onOk(newName) {
-      var command = new ServerCommand("SaveAs", [newName]);
-      dispatchServer([new ResponseFilter("All", []), command]);
+      dispatchServer(all(new ServerCommand("SaveAs", [newName])));
     };
 
     return view_2(showName, model, onOk, onComplete, dispatch);
@@ -276,8 +273,7 @@ export var NewShow = function (__exports) {
 
   var view = __exports.view = function (model, onComplete, dispatch, dispatchServer) {
     var onOk = function onOk(name) {
-      var command = new ServerCommand("NewShow", [name]);
-      dispatchServer([new ResponseFilter("All", []), command]);
+      dispatchServer(all(new ServerCommand("NewShow", [name])));
     };
 
     return view_2("", model, onOk, onComplete, dispatch);

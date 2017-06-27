@@ -7,7 +7,7 @@ import _Symbol from "fable-core/Symbol";
 import { GenericParam, Array as _Array, Option, makeGeneric, compareUnions, equalsUnions } from "fable-core/Util";
 import { map, ofArray } from "fable-core/List";
 import List from "fable-core/List";
-import { ServerResponse, ConnectionState, SavesAvailable, ServerCommand, ResponseFilter } from "./Types";
+import { all, ServerResponse, ResponseFilter, ConnectionState, SavesAvailable, ServerCommand, exclusive } from "./Types";
 import { RenameShow, NewShow, SaveShowAs, LoadShow } from "./UtilPages";
 import { Model as Model_1 } from "./SimpleEditor";
 import { viewSplash, view as view_2, confirm, update as update_2, prompt as prompt_1, Message as Message_1, initialModel, ModalRequest } from "./Modal";
@@ -64,7 +64,7 @@ export function commandsForUtilPageChange(page) {
   } else if (page.Case === "RenameShow") {
     return new List();
   } else {
-    return ofArray([[new ResponseFilter("Exclusive", []), new ServerCommand("SavedShows", [])]]);
+    return ofArray([exclusive(new ServerCommand("SavedShows", []))]);
   }
 }
 export var BaseModel = function () {
@@ -364,7 +364,7 @@ function saveShowItem() {
   return new Item("Save", function (dispatch) {
     dispatch(function (tupledArg) {
       return new Message("Command", [tupledArg[0], tupledArg[1]]);
-    }([new ResponseFilter("Exclusive", []), new ServerCommand("Save", [])]));
+    }(exclusive(new ServerCommand("Save", []))));
   });
 }
 
@@ -373,7 +373,7 @@ function quitItem() {
     var modalAction = confirm("Are you sure you want to quit?", function (_arg1) {
       dispatch(function (tupledArg) {
         return new Message("Command", [tupledArg[0], tupledArg[1]]);
-      }([new ResponseFilter("All", []), new ServerCommand("Quit", [])]));
+      }(all(new ServerCommand("Quit", []))));
     });
     dispatch(new Message("Modal", [new Message_1("Open", [modalAction])]));
   });

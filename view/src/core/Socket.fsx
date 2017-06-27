@@ -44,6 +44,7 @@ let openSocket<'rsp, 'msg> (wrapSocketMessage: SocketMessage -> 'msg) =
                         let message: string = unbox event.data
                         printfn "Received message: %s" (message)
                         let deserialized: 'rsp = message |> ofJson
+                        printfn "Deserailized to %+A" deserialized
                         deserialized
                         |> messageWrapper
                         |> dispatch

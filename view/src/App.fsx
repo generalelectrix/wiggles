@@ -19,7 +19,7 @@ open Socket
 open Bootstrap
 
 // If true, log verbose and interactive messages to the javascript console on every update.
-let withConsoleTrace = false
+let withConsoleTrace = true
 
 type Page =
     | Patcher

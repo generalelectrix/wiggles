@@ -11,7 +11,7 @@ import { OptionalModule, emptyIfNone, Optional } from "../core/Util";
 import { Result } from "fable-elmish/result";
 import { Grid, Form, Button, InputType } from "../core/Bootstrap";
 import { CmdModule } from "fable-elmish/elmish";
-import { ResponseFilter } from "../core/Types";
+import { all } from "../core/Types";
 import { createElement } from "react";
 import { fold } from "fable-core/Seq";
 import { fsFormat } from "fable-core/String";
@@ -172,7 +172,7 @@ function nameEditOnKeyDown(fixtureId, dispatchLocal, dispatchServer, nameEditMod
         switch ($var161[0]) {
           case 0:
             clear(null);
-            dispatchServer([new ResponseFilter("All", []), new PatchServerRequest("Rename", [fixtureId, $var161[1]])]);
+            dispatchServer(all(new PatchServerRequest("Rename", [fixtureId, $var161[1]])));
             break;
 
           case 1:
@@ -233,7 +233,7 @@ function addressEditor(selected, model, dispatchLocal, dispatchServer, openModal
       var matchValue = globalAddressFromOptionals(univ, addr);
 
       if (matchValue.Case === "Ok") {
-        dispatchServer([new ResponseFilter("All", []), new PatchServerRequest("Repatch", [selected.id, matchValue.Fields[0]])]);
+        dispatchServer(all(new PatchServerRequest("Repatch", [selected.id, matchValue.Fields[0]])));
         clearAll(null);
       }
     }
@@ -253,7 +253,7 @@ function addressEditor(selected, model, dispatchLocal, dispatchServer, openModal
     })(selected.id)(selected.name);
 
     var removeAction_1 = function removeAction_1(_arg2_1) {
-      dispatchServer([new ResponseFilter("All", []), new PatchServerRequest("Remove", [selected.id])]);
+      dispatchServer(all(new PatchServerRequest("Remove", [selected.id])));
     };
 
     openModal(confirm(confirmMessage_1, removeAction_1));

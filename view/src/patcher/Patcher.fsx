@@ -38,7 +38,10 @@ type Message =
     | Create of NewPatch.Message
 
 // Commands needed to initialize the patcher.
-let initCommands = [PatchServerRequest.PatchState; PatchServerRequest.GetKinds]
+let initCommands = [
+    PatchServerRequest.AvailablePorts;
+    PatchServerRequest.PatchState;
+    PatchServerRequest.GetKinds]
 
 let initialModel () = {
     patches = Array.empty

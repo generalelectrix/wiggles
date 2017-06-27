@@ -174,12 +174,12 @@ export var PatchItem = function () {
 }();
 setType("PatchTypes.PatchItem", PatchItem);
 export var UnivWithPort = function () {
-  function UnivWithPort(universe, portNamespace, portName) {
+  function UnivWithPort(universe, portNamespace, portId) {
     _classCallCheck(this, UnivWithPort);
 
     this.universe = universe;
     this.portNamespace = portNamespace;
-    this.portName = portName;
+    this.portId = portId;
   }
 
   _createClass(UnivWithPort, [{
@@ -191,7 +191,7 @@ export var UnivWithPort = function () {
         properties: {
           universe: "number",
           portNamespace: "string",
-          portName: "string"
+          portId: "string"
         }
       };
     }

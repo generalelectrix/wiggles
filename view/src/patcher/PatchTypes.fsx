@@ -53,7 +53,7 @@ type PatchItem = {
 type UnivWithPort = {
     universe: UniverseId
     portNamespace: string
-    portName: string
+    portId: string
 }
 
 type Port = string * string

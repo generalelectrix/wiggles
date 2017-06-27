@@ -42,6 +42,20 @@ export var ResponseFilter = function () {
   return ResponseFilter;
 }();
 setType("Types.ResponseFilter", ResponseFilter);
+
+function withFilter(filter, message) {
+  return [filter, message];
+}
+
+export function all(message) {
+  return withFilter(new ResponseFilter("All", []), message);
+}
+export function exclusive(message) {
+  return withFilter(new ResponseFilter("Exclusive", []), message);
+}
+export function allButSelf(message) {
+  return withFilter(new ResponseFilter("AllButSelf", []), message);
+}
 export var ConnectionState = function () {
   function ConnectionState(caseName, fields) {
     _classCallCheck(this, ConnectionState);

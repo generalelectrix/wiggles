@@ -20,6 +20,13 @@ export var Result = function (__exports) {
 
   return __exports;
 }({});
+export function withDefault(value, opt) {
+  if (opt == null) {
+    return value;
+  } else {
+    return opt;
+  }
+}
 export function emptyIfNone(opt) {
   if (opt == null) {
     return "";

@@ -8,14 +8,15 @@ import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
 import { equals, toString, defaultArg, compareUnions, equalsUnions, Option, Tuple, Array as _Array } from "fable-core/Util";
 import { PatchServerRequest, PatchServerResponse, UnivWithPort, PatchItem } from "./PatchTypes";
-import { view as view_1, update as update_1, initialModel as initialModel_1, Message as Message_2, Model as Model_1 } from "./PatchEdit";
-import { view as view_2, update as update_2, initialModel as initialModel_2, Message as Message_1, Model as Model_2 } from "./NewPatch";
+import { view as view_2, update as update_1, initialModel as initialModel_1, Message as Message_2, Model as Model_1 } from "./PatchEdit";
+import { view as view_3, update as update_2, initialModel as initialModel_2, Message as Message_1, Model as Model_2 } from "./NewPatch";
 import { map, ofArray } from "fable-core/List";
 import { CmdModule } from "fable-elmish/elmish";
 import { map as map_1, singleton, append, delay, toList, fold, tryFind } from "fable-core/Seq";
 import { sortInPlaceBy } from "fable-core/Array";
 import { createElement } from "react";
 import { Grid, Table } from "../core/Bootstrap";
+import { view as view_1 } from "./Universes";
 export var Model = function () {
   function Model(patches, universes, availablePorts, selected, editorModel, newPatchModel) {
     _classCallCheck(this, Model);
@@ -87,7 +88,7 @@ export var Message = function () {
   return Message;
 }();
 setType("Patcher.Message", Message);
-export var initCommands = ofArray([new PatchServerRequest("PatchState", []), new PatchServerRequest("GetKinds", [])]);
+export var initCommands = ofArray([new PatchServerRequest("AvailablePorts", []), new PatchServerRequest("PatchState", []), new PatchServerRequest("GetKinds", [])]);
 export function initialModel() {
   return new Model(new Array(0), new Array(0), new Array(0), null, initialModel_1(), initialModel_2());
 }
@@ -220,13 +221,13 @@ export function viewPatchTable(dispatch, patches, selectedId) {
   }))))));
 }
 export function view(openModal, model, dispatch, dispatchServer) {
-  return Grid.layout(ofArray([[8, ofArray([viewPatchTable(dispatch, model.patches, model.selected)])], [4, ofArray([Grid.fullRow(ofArray([view_1(model.editorModel, function ($var222) {
+  return Grid.layout(ofArray([[8, ofArray([viewPatchTable(dispatch, model.patches, model.selected), view_1(model.universes, model.availablePorts, openModal, dispatchServer)])], [4, ofArray([Grid.fullRow(ofArray([view_2(model.editorModel, function ($var223) {
     return dispatch(function (arg0) {
       return new Message("Edit", [arg0]);
-    }($var222));
-  }, dispatchServer, openModal)])), Grid.fullRow(ofArray([view_2(model.newPatchModel, function ($var223) {
+    }($var223));
+  }, dispatchServer, openModal)])), Grid.fullRow(ofArray([view_3(model.newPatchModel, function ($var224) {
     return dispatch(function (arg0_1) {
       return new Message("Create", [arg0_1]);
-    }($var223));
+    }($var224));
   }, dispatchServer)]))])]]));
 }

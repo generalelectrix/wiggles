@@ -27,6 +27,13 @@ module Result =
         | Some(x) -> Ok(x)
         | None -> Error()
 
+/// Unwrap an option if it is Some or use a default instead.
+/// Needed as Fable doesn't currently provide an implementation of Option.withDefault.
+let withDefault value opt =
+    match opt with
+    | Some(v) -> v
+    | None -> value
+
 /// Stringify a option with an empty string for None.
 let emptyIfNone opt =
     match opt with
