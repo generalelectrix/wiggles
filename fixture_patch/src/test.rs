@@ -11,11 +11,11 @@ fn assert_fixture_patched_at(p: &Patch, id: FixtureId, address: Option<(Universe
 #[test]
 fn test_universe_create_and_delete() {
     let mut patch = Patch::new();
-    assert!(patch.describe_universes().is_empty());
+    assert!(patch.universes().is_empty());
 
-    let u = Universe::new_offline("test universe 0");
+    let u = Universe::new_offline();
     let uid = patch.add_universe(u);
-    assert_eq!(1, patch.describe_universes().len());
+    assert_eq!(1, patch.universes().len());
     assert!(patch.universe(uid).is_ok());
     assert_eq!(PatchError::InvalidUniverseId(uid+1), patch.universe(uid+1).unwrap_err());
     patch.remove_universe(uid, false).unwrap();
@@ -25,13 +25,13 @@ fn test_universe_create_and_delete() {
 #[test]
 fn test_no_remove_universe_with_fixtures() {
     let mut patch = Patch::new();
-    let uid = patch.add_universe(Universe::new_offline("test universe 0"));
+    let uid = patch.add_universe(Universe::new_offline());
     let fid = patch.add_at_address(&dimmer_profile, None, uid, 1).unwrap();
     assert_eq!(PatchError::NonEmptyUniverse(uid), patch.remove_universe(uid, false).unwrap_err());
     assert_fixture_patched_at(&patch, fid, Some((uid, 1)));
     // Add another universe and a fixture in it, to ensure universe removal unpatching does affect
     // others.
-    let uid_other = patch.add_universe(Universe::new_offline("test universe 1"));
+    let uid_other = patch.add_universe(Universe::new_offline());
     let fid_other = patch.add_at_address(&dimmer_profile, None, uid_other, 1).unwrap();
     assert_fixture_patched_at(&patch, fid_other, Some((uid_other, 1)));
     // Force universe removal; it should unpatch the fixture in it.
@@ -43,7 +43,7 @@ fn test_no_remove_universe_with_fixtures() {
 #[test]
 fn test_no_out_of_range_address() {
     let mut patch = Patch::new();
-    let uid = patch.add_universe(Universe::new_offline("test universe 0"));
+    let uid = patch.add_universe(Universe::new_offline());
     let bad_addr = 600;
     assert_eq!(
         PatchError::InvalidDmxAddress(bad_addr),
@@ -53,7 +53,7 @@ fn test_no_out_of_range_address() {
 #[test]
 fn test_render() {
     let mut patch = Patch::new();
-    let uid = patch.add_universe(Universe::new_offline("test universe 0"));
+    let uid = patch.add_universe(Universe::new_offline());
     let fid = patch.add_at_address(&dimmer_profile, None, uid, 1).unwrap();
     fn assert_all_zeros(patch: &Patch, uid: UniverseId) {
         assert_eq!([0; 512][..], patch.universe(uid).unwrap().buffer[..]);
@@ -79,8 +79,8 @@ fn test_render() {
 fn test_serde() {
     // make a patch with a couple of universes and a couple of different fixture types
     let mut patch = Patch::new();
-    let uid0 = patch.add_universe(Universe::new_offline("test universe 0"));
-    let uid1 = patch.add_universe(Universe::new_offline("test universe 1"));
+    let uid0 = patch.add_universe(Universe::new_offline());
+    let uid1 = patch.add_universe(Universe::new_offline());
     let fid0 = patch.add_at_address(&dimmer_profile, None, uid0, 124).unwrap();
     let fid1 = patch.add_at_address(&dimmer_profile, None, uid0, 127).unwrap();
     let fid2 = patch.add_at_address(&dimmer_profile, None, uid0, 511).unwrap();
@@ -90,15 +90,15 @@ fn test_serde() {
     
     // serialize to json
     let json_patch = serde_json::to_string(&patch).unwrap();
-    println!("{}", json_patch.len());
-    // round-trip
-    let json_round_trip_patch: Patch = serde_json::from_str(&json_patch).unwrap();
+    println!("{}", json_patch);
+    // round-trip through the reader interface to emulate reading directly from a file
+    let json_round_trip_patch: Patch = serde_json::from_reader(json_patch.as_bytes()).unwrap();
     assert_eq!(patch, json_round_trip_patch);
 
     // serialize to bincode
     let bincode_patch = bincode::serialize(&patch, bincode::Infinite).unwrap();
     println!("{}", bincode_patch.len());
-    // round-trip
-    let bincode_round_trip_patch = bincode::deserialize(&bincode_patch).unwrap();
+    // round-trip through the reader interface to emulate reading directly from a file
+    let bincode_round_trip_patch = bincode::deserialize_from(&mut bincode_patch.as_slice(), bincode::Infinite).unwrap();
     assert_eq!(patch, bincode_round_trip_patch);
 }

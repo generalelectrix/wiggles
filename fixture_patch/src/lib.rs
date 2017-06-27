@@ -343,9 +343,19 @@ impl Patch {
         let address = valid_address(address)?;
         // Use this value for indexes!
         let address_from_zero = address - 1;
-        let univ_summary = self.universe_summary(universe)?;
+        let mut univ_summary = self.universe_summary(universe)?;
         // get the relevant fixture
         let item = self.item_mut(id)?;
+
+        // If this fixture is in this universe, mark its current channels as unoccupied in the
+        // universe summary to ensure we don't find self-conflicts.
+        if Some(universe) == item.universe() {
+            for chan in univ_summary.iter_mut() {
+                if *chan == Some(id) {
+                    *chan = None;
+                }
+            }
+        }
 
         let n_chan = item.channel_count();
         if (address_from_zero + n_chan) as usize > UNIVERSE_SIZE {
