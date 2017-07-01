@@ -1,0 +1,17 @@
+[package]
+name = "wiggles_dataflow"
+version = "0.1.0"
+authors = ["general electrix <general.electrix@gmail.com>"]
+
+[dependencies]
+wiggles_value = { path = "../wiggles_value" }
+petgraph = { git = "https://github.com/generalelectrix/petgraph", features = ["serde"] }
+log = "*"
+itertools = "*"
+smallvec = "*"
+# serde = { version = "*", features = ["derive"] }
+
+[dependencies.serde]
+git = "https://github.com/jethrogb/serde"
+branch = "feature/interior_mut_types"
+features = ["derive"]
