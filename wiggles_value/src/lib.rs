@@ -5,7 +5,10 @@
 use std::cmp::{min, max};
 use std::ops::Deref;
 
+extern crate serde;
 #[macro_use] extern crate serde_derive;
+
+pub mod knob;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum DataError {
