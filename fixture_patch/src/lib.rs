@@ -392,7 +392,7 @@ impl Patch {
     }
 
     /// Render every fixture to DMX.
-    pub fn render(&mut self) -> Vec<DmxPortError> {
+    pub fn render(&mut self) -> Vec<(UniverseId, DmxPortError)> {
         // Zero out every universe buffer.
         for univ_opt in self.universes.iter_mut() {
             match *univ_opt {
@@ -417,11 +417,11 @@ impl Patch {
 
         /// Write every universe to its port, returning any errors to the caller.
         let mut write_errs = Vec::new();
-        for maybe_u in self.universes.iter_mut() {
+        for (uid, maybe_u) in self.universes.iter_mut().enumerate() {
             match *maybe_u {
                 Some(ref mut u) => {
                     if let Err(e) = u.write() {
-                        write_errs.push(e);
+                        write_errs.push((uid as UniverseId, e));
                     }
                 },
                 None => {}

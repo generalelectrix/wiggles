@@ -34,7 +34,7 @@ fn sine(
     }
 }
 
-fn triangle(
+fn sawtooth(
         Unipolar(angle): Unipolar,
         Unipolar(smoothing): Unipolar,
         Unipolar(duty_cycle): Unipolar,
@@ -52,5 +52,10 @@ fn triangle(
         }
         else {
             Bipolar(2.0 * (1.0 - angle))
+        }
+    }
+    else {
+        if angle < 0.25 {
+            Bipolar(4.0 * angle)
         }
     }

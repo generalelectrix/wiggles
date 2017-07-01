@@ -11,3 +11,4 @@ serde = "*"
 serde_derive = "*"
 log = "*"
 simple_logger = "*"
+rust_dmx = { git = "https://github.com/generalelectrix/rust-dmx" }

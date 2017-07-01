@@ -380,7 +380,7 @@ function quitItem() {
 }
 
 export function utilDropdown() {
-  return new DropdownModel("Wiggles", ofArray([new DropdownItem("Selection", [utilPageItem("New show...", new UtilPage("NewShow", []))]), new DropdownItem("Selection", [utilPageItem("Load show...", new UtilPage("ShowLoader", []))]), new DropdownItem("Separator", []), new DropdownItem("Selection", [saveShowItem()]), new DropdownItem("Selection", [utilPageItem("Save as...", new UtilPage("SaveShowAs", []))]), new DropdownItem("Selection", [utilPageItem("Rename...", new UtilPage("RenameShow", []))]), new DropdownItem("Separator", []), new DropdownItem("Selection", [quitItem()])]), false);
+  return new DropdownModel("Wiggles", ofArray([new DropdownItem("Selection", [utilPageItem("New show...", new UtilPage("NewShow", []))]), new DropdownItem("Selection", [utilPageItem("Load show...", new UtilPage("ShowLoader", []))]), new DropdownItem("Separator", []), new DropdownItem("Selection", [saveShowItem()]), new DropdownItem("Selection", [utilPageItem("Save as...", new UtilPage("SaveShowAs", []))]), new DropdownItem("Selection", [utilPageItem("Rename...", new UtilPage("RenameShow", []))])]), false);
 }
 
 function viewInner(viewShow, model, dispatch) {

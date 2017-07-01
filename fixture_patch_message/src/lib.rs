@@ -68,7 +68,7 @@ pub struct UnivWithPort {
 }
 
 impl UnivWithPort {
-    fn new<N, I>(id: UniverseId, namespace: N, port_id: I) -> Self
+    pub fn new<N, I>(id: UniverseId, namespace: N, port_id: I) -> Self
         where N: Into<String>, I: Into<String>
     {
         UnivWithPort {

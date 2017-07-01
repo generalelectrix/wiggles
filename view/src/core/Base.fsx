@@ -257,6 +257,7 @@ let private saveShowItem: Navbar.Item<_> = {
 }
 
 /// Dropdown item to quit the console (this one is of questionable utility).
+/// So much so that we'll just leave it not hooked up for now.
 let private quitItem: Navbar.Item<_> = {
     text = "Quit"
     onClick = (fun dispatch ->
@@ -276,8 +277,8 @@ let utilDropdown(): Navbar.DropdownModel<Message<_, _, _>> = {
         Navbar.Selection(saveShowItem)
         Navbar.Selection(utilPageItem "Save as..." UtilPage.SaveShowAs)
         Navbar.Selection(utilPageItem "Rename..." UtilPage.RenameShow)
-        Navbar.Separator
-        Navbar.Selection(quitItem)
+        //Navbar.Separator
+        //Navbar.Selection(quitItem)
     ]
     isOpen = false
 }

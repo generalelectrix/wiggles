@@ -178,6 +178,10 @@ impl<T> Messages<T> {
     pub fn drain(&mut self) -> smallvec::Drain<T> {
         self.0.drain()
     }
+
+    pub fn extend(&mut self, other: Messages<T>) {
+        self.0.extend(other.0);
+    }
 }
 
 impl<T> FromIterator<T> for Messages<T> {
