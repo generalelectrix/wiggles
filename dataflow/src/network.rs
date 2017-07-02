@@ -4,6 +4,7 @@ use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
 use std::mem::swap;
 use std::u32;
+use std::marker::PhantomData;
 
 // Use 32-bit ints as indices.
 // Use a 32-bit generation ID to uniquely identify a generation of a particular slot to ensure that
@@ -11,59 +12,54 @@ use std::u32;
 type NodeIndex = u32;
 type GenerationId = u32;
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct NodeId(NodeIndex, GenerationId);
-
-impl NodeId {
-    pub fn index(&self) -> NodeIndex {
-        self.0
-    }
-
-    pub fn gen_id(&self) -> GenerationId {
-        self.1
-    }
-}
-
-impl fmt::Display for NodeId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "node {}, generation {}", self.0, self.1)
-    }
+/// Trait used to index into a network.
+/// Individual network domains should create their own unique index type to ensure they cannot
+/// accidentally cross networks.
+pub trait NodeId: fmt::Debug + fmt::Display + PartialEq + Copy {
+    /// Return the index of this node.
+    fn index(&self) -> NodeIndex;
+    /// Return the generation ID of this node.
+    fn gen_id(&self) -> GenerationId;
+    /// Create a node ID from an index and a generation ID.
+    fn new(index: NodeIndex, gen_id: GenerationId) -> Self;
 }
 
 type InputId = u32;
 
 #[derive(Debug, Serialize, Deserialize)]
 /// Generation ID and a slot to hold onto a node in the network.
-struct NodeSlot<N>
-    where N: fmt::Debug + Inputs
+struct NodeSlot<N, I>
+    where N: fmt::Debug + Inputs, I: NodeId
 {
     gen_id: GenerationId,
-    node: Option<Node<N>>,
+    node: Option<Node<N, I>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Network<N>
-    where N: fmt::Debug + Inputs
+pub struct Network<N, I>
+    where N: fmt::Debug + Inputs, I: NodeId + Sized
 {
     /// Collection of node slots, indexed by their ID.
     /// Tagged internally with a generation ID.
     /// Indices are stable under insertion and deletion.
     /// Generation IDs are incremented when an empty slot is filled.
-    slots: Vec<NodeSlot<N>>,
+    slots: Vec<NodeSlot<N, I>>,
+    _index_type: PhantomData<I>,
 }
 
-impl<N> Network<N>
-    where N: fmt::Debug + Inputs
+impl<N, I> Network<N, I>
+    where N: fmt::Debug + Inputs, I: NodeId + Sized
 {
     /// Create a new, empty network.
     pub fn new() -> Self {
         Network {
             slots: Vec::new(),
+            _index_type: PhantomData,
         }
     }
 
     /// Insert a new node into this network.  Return a mutable reference to it.
-    pub fn add(&mut self, node_contents: N) -> &mut Node<N> {
+    pub fn add(&mut self, node_contents: N) -> &mut Node<N, I> {
         let node = Node::new(node_contents);
         // Find the first available slot index, if one exists.
         // Sadly we can't do this more directly because of rustlang #21906.
@@ -95,7 +91,7 @@ impl<N> Network<N>
     }
 
     /// Remove a node from this network.  Fail if it has any listeners unless we are forcing removal.
-    pub fn remove(&mut self, node_id: NodeId, force: bool) -> Result<N, NetworkError> {
+    pub fn remove(&mut self, node_id: I, force: bool) -> Result<N, NetworkError<I>> {
         // make sure this node exists
         self.exists(node_id)?;
 
@@ -140,12 +136,12 @@ impl<N> Network<N>
     }
 
     /// Return Ok if this node id corresponds to a node in this network.
-    fn exists(&self, id: NodeId) -> Result<(), NetworkError> {
+    fn exists(&self, id: I) -> Result<(), NetworkError<I>> {
         self.node(id).map(|_| ())
     }
 
     /// Get an immutable reference to a node, if it exists.
-    pub fn node(&self, id: NodeId) -> Result<&Node<N>, NetworkError> {
+    pub fn node(&self, id: I) -> Result<&Node<N, I>, NetworkError<I>> {
         match self.slots.get(id.index() as usize) {
             None => Err(nonode(id)),
             Some(slot) => {
@@ -159,12 +155,12 @@ impl<N> Network<N>
     }
 
     /// Get an immutable reference to a node without specifying a generation ID, if it exists.
-    fn node_direct(&self, index: NodeIndex) -> Result<&Node<N>, NetworkError> {
+    fn node_direct(&self, index: NodeIndex) -> Result<&Node<N, I>, NetworkError<I>> {
         match self.slots.get(index as usize) {
-            None => Err(nonode(NodeId(index, 0))),
+            None => Err(nonode(I::new(index, 0))),
             Some(slot) => {
                 match slot.node {
-                    None => Err(nonode(NodeId(index, 0))),
+                    None => Err(nonode(I::new(index, 0))),
                     Some(ref node) => Ok(node),
                 }
             }
@@ -172,7 +168,7 @@ impl<N> Network<N>
     }
 
     /// Get a mutable reference to a node, if it exists.
-    fn node_mut(&mut self, id: NodeId) -> Result<&mut Node<N>, NetworkError> {
+    fn node_mut(&mut self, id: I) -> Result<&mut Node<N, I>, NetworkError<I>> {
         match self.slots.get_mut(id.index() as usize) {
             None => Err(nonode(id)),
             Some(slot) => {
@@ -186,12 +182,12 @@ impl<N> Network<N>
     }
 
     /// Get a mutable reference to a node without specifying a generation ID, if it exists.
-    fn node_direct_mut(&mut self, index: NodeIndex) -> Result<&mut Node<N>, NetworkError> {
+    fn node_direct_mut(&mut self, index: NodeIndex) -> Result<&mut Node<N, I>, NetworkError<I>> {
         match self.slots.get_mut(index as usize) {
-            None => Err(nonode(NodeId(index, 0))),
+            None => Err(nonode(I::new(index, 0))),
             Some(slot) => {
                 match slot.node {
-                    None => Err(nonode(NodeId(index, 0))),
+                    None => Err(nonode(I::new(index, 0))),
                     Some(ref mut node) => Ok(node),
                 }
             }
@@ -203,10 +199,10 @@ impl<N> Network<N>
     /// (if not None).
     pub fn swap_input(
         &mut self,
-        node_id: NodeId,
+        node_id: I,
         input_id: InputId,
-        target: Option<NodeId>)
-        -> Result<(), NetworkError>
+        target: Option<I>)
+        -> Result<(), NetworkError<I>>
     {
         // Validate that connecting these nodes wouldn't create a cycle.
         if let Some(t) = target {
@@ -239,9 +235,9 @@ impl<N> Network<N>
     /// Return the new input ID and a potential message type returned by the node.
     pub fn push_input<M>(
             &mut self,
-            node_id: NodeId,
-            target: Option<NodeId>)
-            -> Result<(InputId, M), NetworkError>
+            node_id: I,
+            target: Option<I>)
+            -> Result<(InputId, M), NetworkError<I>>
     {
         // if a target was supplied, make sure it exists
         if let Some(t) = target {
@@ -265,8 +261,8 @@ impl<N> Network<N>
     /// Return the message type returned by the node.
     pub fn pop_input<M>(
             &mut self,
-            node_id: NodeId)
-            -> Result<M, NetworkError>
+            node_id: I)
+            -> Result<M, NetworkError<I>>
     {
         match self.node_mut(node_id)?.pop_input() {
             Ok((target, msg)) => {
@@ -297,7 +293,7 @@ impl<N> Network<N>
 
     /// Return an appropriate error if connecting source to sink would create a cycle.
     /// Also serves to validate the existence of both node IDs.
-    fn check_would_cycle(&self, source_id: NodeId, sink_id: NodeId) -> Result<(), NetworkError> {
+    fn check_would_cycle(&self, source_id: I, sink_id: I) -> Result<(), NetworkError<I>> {
         // first check some easy edge cases
         // if source and sink are the same, this would obviously cycle
         if source_id == sink_id {
@@ -428,8 +424,8 @@ pub trait Inputs {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Node<N>
-    where N: fmt::Debug + Inputs
+pub struct Node<N, I>
+    where N: fmt::Debug + Inputs, I: NodeId + Sized
 {
     /// Which other node Ids are listening to this one, and how many connections do they have?
     /// We just track node indices here rather than full node IDs with the generation ID as
@@ -437,12 +433,12 @@ pub struct Node<N>
     /// remove all listeners.
     listeners: HashMap<NodeIndex, u32, BuildHasherDefault<simple_hash::SimpleHasher>>,
     /// How many inputs does this node have, and what are they connected to (if anything).
-    inputs: Vec<Option<NodeId>>,
+    inputs: Vec<Option<I>>,
     inner: N,
 }
 
-impl<N> Node<N>
-    where N: fmt::Debug + Inputs
+impl<N, I> Node<N, I>
+    where N: fmt::Debug + Inputs, I: NodeId + Sized
 {
     pub fn new(node: N) -> Self {
         Node {
@@ -465,7 +461,7 @@ impl<N> Node<N>
     /// None.
     /// Return the data structure returned by the node, probably a message type to be passed
     /// upstack.
-    fn push_input<M>(&mut self, target: Option<NodeId>) -> Result<(InputId, M), ()> {
+    fn push_input<M>(&mut self, target: Option<I>) -> Result<(InputId, M), ()> {
         // if we can't push another input, return an error
         // allow the caller to wrap it up into a real error value
         match self.inner.try_push_input() {
@@ -482,7 +478,7 @@ impl<N> Node<N>
     /// Return the target that was assigned to this input.
     /// The caller must ensure that this node has been removed as a listener of the node that was
     /// assigned to this input, if any.
-    fn pop_input<M>(&mut self) -> Result<(Option<NodeId>, M), ()> {
+    fn pop_input<M>(&mut self) -> Result<(Option<I>, M), ()> {
         if self.inputs.is_empty() {
             return Err(());
         }
@@ -497,7 +493,7 @@ impl<N> Node<N>
     }
 
     /// Get the node ID that an input is currently connected to.
-    fn input_node(&self, id: InputId) -> Result<Option<NodeId>, NetworkError> {
+    fn input_node(&self, id: InputId) -> Result<Option<I>, NetworkError<I>> {
         match self.inputs.get(id as usize) {
             Some(target) => Ok(*target),
             None => Err(noinput(id)),
@@ -506,7 +502,7 @@ impl<N> Node<N>
 
     /// Set the target node for the provided input id.
     /// The caller must ensure correct update of relevant listeners.
-    fn set_input_node(&mut self, id: InputId, target: Option<NodeId>) -> Result<(), NetworkError> {
+    fn set_input_node(&mut self, id: InputId, target: Option<I>) -> Result<(), NetworkError<I>> {
         let node = self.inputs.get_mut(id as usize).ok_or(noinput(id))?;
         *node = target;
         Ok(())
@@ -563,7 +559,7 @@ impl<N> Node<N>
     }
 
     /// Disconnect this node's inputs from the provided listener.
-    fn disconnect_from(&mut self, target: NodeId) {
+    fn disconnect_from(&mut self, target: I) {
         for input in self.inputs.iter_mut() {
             if *input == Some(target) {
                 *input = None;
@@ -574,24 +570,24 @@ impl<N> Node<N>
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum NetworkError {
+pub enum NetworkError<I: NodeId + Sized> {
     /// A command was directed at a node using an outdated generation ID.
-    OldGenId(NodeId),
+    OldGenId(I),
     /// This node ID's index isn't present in the network.
-    NoNodeAt(NodeId),
+    NoNodeAt(I),
     /// This input ID is out of range for this node.
     InvalidInputId(InputId),
     /// Connecting source to sink would create a cycle.
-    WouldCycle{source: NodeId, sink: NodeId},
+    WouldCycle{source: I, sink: I},
     /// Cannot remove a node because it has listeners.
-    HasListeners(NodeId),
+    HasListeners(I),
     /// Cannot add an input to this node.
-    CantAddInput(NodeId),
+    CantAddInput(I),
     /// Cannot remove an input from this node.
-    CantRemoveInput(NodeId),
+    CantRemoveInput(I),
 }
 
-impl fmt::Display for NetworkError {
+impl<I: NodeId + Sized> fmt::Display for NetworkError<I> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::NetworkError::*;
         match *self {
@@ -618,17 +614,17 @@ impl fmt::Display for NetworkError {
 }
 
 /// Shorthand for NetworkError::NoNodeAt.
-fn nonode(id: NodeId) -> NetworkError {
+fn nonode<I: NodeId>(id: I) -> NetworkError<I> {
     NetworkError::NoNodeAt(id)
 }
 
 /// Shorthand for NetworkError::InvalidInputId.
-fn noinput(id: InputId) -> NetworkError {
+fn noinput<I: NodeId>(id: InputId) -> NetworkError<I> {
     NetworkError::InvalidInputId(id)
 }
 
 /// Shorthand constructor for NetworkError::OldGenId.
-fn oldgen(id: NodeId) -> NetworkError {
+fn oldgen<I: NodeId>(id: I) -> NetworkError<I> {
     NetworkError::OldGenId(id)
 }
 
