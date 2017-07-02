@@ -5,7 +5,8 @@ use std::hash::BuildHasherDefault;
 use std::mem::swap;
 use std::u32;
 use std::marker::PhantomData;
-use wiggles_value::knob::{Knobs, KnobData, KnobDescription, KnobError};
+use wiggles_value::knob::{
+    Knobs, Datatype as KnobDatatype, Data as KnobData, KnobDescription, KnobError};
 
 // Use 32-bit ints as indices.
 // Use a 32-bit generation ID to uniquely identify a generation of a particular slot to ensure that
@@ -34,6 +35,19 @@ struct NodeSlot<N, I, M>
 {
     gen_id: GenerationId,
     node: Option<Node<N, I, M>>,
+    _message_type: PhantomData<M>,
+}
+
+impl<N, I, M> NodeSlot<N, I, M>
+    where N: fmt::Debug + Inputs<M>, I: NodeId
+{
+    fn new(gen_id: GenerationId, node: Option<Node<N, I, M>>) -> Self {
+        NodeSlot {
+            gen_id: gen_id,
+            node: node,
+            _message_type: PhantomData,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -49,7 +63,7 @@ pub struct Network<N, I, M>
 }
 
 impl<N, I, M> Network<N, I, M>
-    where N: fmt::Debug + Inputs<M>, I: NodeId
+    where N: fmt::Debug + Inputs<M>, I: NodeId, M: fmt::Debug
 {
     /// Create a new, empty network.
     pub fn new() -> Self {
@@ -84,7 +98,7 @@ impl<N, I, M> Network<N, I, M>
         }
         else {
             // no available slot, push a new slot on
-            let slot = NodeSlot {gen_id: 0, node: Some(node)};
+            let slot = NodeSlot::new(0, Some(node));
             self.slots.push(slot);
             // return a reference to the node we just added
             self.slots.last_mut().unwrap().node.as_mut().unwrap()
@@ -234,7 +248,7 @@ impl<N, I, M> Network<N, I, M>
 
     /// Push a new input onto a node, if it supports this operation.
     /// Return the new input ID and a potential message type returned by the node.
-    pub fn push_input<M>(
+    pub fn push_input(
             &mut self,
             node_id: I,
             target: Option<I>)
@@ -260,7 +274,7 @@ impl<N, I, M> Network<N, I, M>
 
     /// Pop the last input off of a node, if it supports this operation.
     /// Return the message type returned by the node.
-    pub fn pop_input<M>(
+    pub fn pop_input(
             &mut self,
             node_id: I)
             -> Result<M, NetworkError<I>>
@@ -360,11 +374,11 @@ impl<N, I, M> Network<N, I, M>
 
 /// Blanket impl for a network whose nodes are knob-controlled.
 /// Wrapper the inner knob address with the address of the node in the network.
-impl<N, I, M, D> Knobs<D> for Network<N, I, M>
-    where N: Knobs<D> + fmt::Debug + Inputs<M>, D: KnobData, I: NodeId
+impl<N, I, M> Knobs for Network<N, I, M>
+    where N: Knobs + fmt::Debug + Inputs<M>, I: NodeId, M: fmt::Debug
 {
     type Addr = (I, (N::Addr));
-    fn knobs(&self) -> Vec<(Self::Addr, KnobDescription<D::Datatype>)> {
+    fn knobs(&self) -> Vec<(Self::Addr, KnobDescription)> {
         let mut descriptions = Vec::new();
         for (index, slot) in self.slots.iter().enumerate() {
             if let Some(ref node) = slot.node {
@@ -377,7 +391,7 @@ impl<N, I, M, D> Knobs<D> for Network<N, I, M>
         descriptions
     }
 
-    fn set_knob(&mut self, addr: Self::Addr, value: D) -> Result<(), KnobError<Self::Addr, D>> {
+    fn set_knob(&mut self, addr: Self::Addr, value: KnobData) -> Result<(), KnobError<Self::Addr>> {
         let (node_addr, knob_addr) = addr;
         match self.node_mut(node_addr) {
             Err(_) => Err(KnobError::InvalidAddress(addr)),
@@ -467,18 +481,20 @@ pub struct Node<N, I, M>
     /// How many inputs does this node have, and what are they connected to (if anything).
     inputs: Vec<Option<I>>,
     inner: N,
+    _message_type: PhantomData<M>,
 }
 
 impl<N, I, M> Node<N, I, M>
-    where N: fmt::Debug + Inputs<M>, I: NodeId
+    where N: fmt::Debug + Inputs<M>, I: NodeId, M: fmt::Debug
 {
     pub fn new(node: N) -> Self {
-        let inputs = vec![None; node.default_input_count()];
+        let inputs = vec![None; node.default_input_count() as usize];
         Node {
             listeners: HashMap::<NodeIndex, u32, _>::with_hasher(
                 BuildHasherDefault::<simple_hash::SimpleHasher>::default()),
             inputs: inputs,
             inner: node,
+            _message_type: PhantomData,
         }
     }
 
@@ -489,12 +505,22 @@ impl<N, I, M> Node<N, I, M>
         self.listeners.is_empty()
     }
 
+    /// Return an immutable reference to this node's inner payload.
+    pub fn inner(&self) -> &N {
+        &self.inner
+    }
+
+    /// Return an immutable slice of this node's inputs.
+    pub fn inputs(&self) -> &[Option<I>] {
+        self.inputs.as_slice()
+    }
+
     /// Push another input onto this node, if it can support it.
     /// The caller must ensure this node has been added a listener of the target node if it is not
     /// None.
     /// Return the data structure returned by the node, probably a message type to be passed
     /// upstack.
-    fn push_input<M>(&mut self, target: Option<I>) -> Result<(InputId, M), ()> {
+    fn push_input(&mut self, target: Option<I>) -> Result<(InputId, M), ()> {
         // if we can't push another input, return an error
         // allow the caller to wrap it up into a real error value
         match self.inner.try_push_input() {
@@ -511,7 +537,7 @@ impl<N, I, M> Node<N, I, M>
     /// Return the target that was assigned to this input.
     /// The caller must ensure that this node has been removed as a listener of the node that was
     /// assigned to this input, if any.
-    fn pop_input<M>(&mut self) -> Result<(Option<I>, M), ()> {
+    fn pop_input(&mut self) -> Result<(Option<I>, M), ()> {
         if self.inputs.is_empty() {
             return Err(());
         }

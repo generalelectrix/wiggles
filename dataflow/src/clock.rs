@@ -2,6 +2,7 @@
 //! Implementors will be wrapped up as trait objects and injected into a dataflow network.
 use super::util::{modulo_one, almost_eq};
 use super::network::{Network, NodeIndex, GenerationId, NodeId, Inputs};
+use wiggles_value::knob::{Knobs};
 use std::time::Duration;
 use std::fmt;
 
@@ -44,11 +45,23 @@ impl ClockValue {
     }
 }
 
+impl Default for ClockValue {
+    /// Placeholder default for ClockValue.
+    fn default() -> Self {
+        ClockValue {
+            phase: 0.0,
+            tick_count: 0,
+            ticked: false,
+        }
+    }
+}
+
 trait ClockProvider {
     fn get_value(&self, clock_id: ClockId) -> ClockValue;
 }
 
-pub trait Clock<Message>: Inputs<Message> + fmt::Debug
+pub trait Clock<Message>: Inputs<Message> + Knobs<Addr=u32>
+    where Message: fmt::Debug
 {
     /// A string name for this class of clock.
     /// This string will be used during serialization and deserialization to uniquely identify
@@ -88,4 +101,20 @@ impl NodeId for ClockId {
     }
 }
 
-type ClockNetwork<M> = Network<Box<Clock<M>>, ClockId, M>;
+impl<N, M> ClockProvider for Network<N, ClockId, M>
+    where N: Clock<M> + fmt::Debug, M: fmt::Debug
+{
+    /// Get the value of the requested clock.
+    /// If it is missing, log an error and return a default.
+    fn get_value(&self, clock_id: ClockId) -> ClockValue {
+        match self.node(clock_id) {
+            Err(e) => {
+                error!("Error while trying to get clock value from {}: {}.", clock_id, e);
+                ClockValue::default()
+            }
+            Ok(node) => {
+                node.inner().render(node.inputs(), self)
+            }
+        }
+    }
+}
