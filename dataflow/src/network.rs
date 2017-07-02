@@ -6,6 +6,7 @@ use std::mem::swap;
 use std::u32;
 
 // Use 32-bit ints as indices to keep things compact.
+// TODO: use a generation ID to ensure we don't reference an old version of a node.
 type NodeId = u32;
 type InputId = u32;
 
@@ -120,14 +121,16 @@ impl<N> Network<N>
     /// Ensure we disconnect from the current node (if not None) and connect to the new one
     /// (if not None).
     pub fn swap_input(
-        &mut self, node_id: NodeId, input_id: InputId, target: Option<NodeId>) -> Result<(), NetworkError>
+        &mut self,
+        node_id: NodeId,
+        input_id: InputId,
+        target: Option<NodeId>)
+        -> Result<(), NetworkError>
     {
-        // Make sure the target node exists before we alter anything.
+        // Validate that connecting these nodes wouldn't create a cycle.
         if let Some(t) = target {
-            self.exists(t)?;
+            self.check_would_cycle(t, node_id)?;
         }
-
-        // FIXME: check for cycle creation.
 
         if let Some(current_input_node_id) = self.node_mut(node_id)?.input_node(input_id)? {
             // Unregister this node as a listener if this input was already connected.
@@ -149,6 +152,70 @@ impl<N> Network<N>
         self.node_mut(node_id)?.set_input_node(input_id, target)?;
 
         Ok(())
+    }
+
+    /// Return an appropriate error if connecting source to sink would create a cycle.
+    /// Also serves to validate the existence of both node IDs.
+    fn check_would_cycle(&self, source_id: NodeId, sink_id: NodeId) -> Result<(), NetworkError> {
+        // first check some easy edge cases
+        // if source and sink are the same, this would obviously cycle
+        if source_id == sink_id {
+            return Err(NetworkError::WouldCycle {source: source_id, sink: sink_id });
+        }
+        // if sink has no listeners, impossible to cycle
+        // if source has no inputs, impossible to cycle
+        let sink = self.node(sink_id)?;
+        let source = self.node(source_id)?;
+        if ! sink.has_listeners() {
+            return Ok(());
+        }
+        if source.inputs.iter().all(|input| input.is_none()) {
+            return Ok(());
+        }
+
+        // Checked the easy cases, now search for a cycle.
+        // Dumb algorithm: starting at sink, iterate through all listeners, then those listeners'
+        // listeners, until we hit bottom.  If we come across source_id among any of them, we would
+        // create a cycle.
+        // Since non-cyclic is an invariant of this graph, we know that any cycle created by
+        // connecting these nodes must involve both of them, so we don't need to do full DFS.
+        if self.node_among_listeners(sink_id, source_id) {
+            return Err(NetworkError::WouldCycle {source: source_id, sink: sink_id });
+        }
+        Ok(())
+    }
+
+    // TODO: determine if we want to keep track of visited nodes and skip them.
+    /// Return True if this node ID is among this node's listeners, recursing down until we've
+    /// plumbed the entire downstream graph.  Return early if we find the provided node.
+    fn node_among_listeners(&self, node_to_check: NodeId, node_to_find: NodeId) -> bool {
+        // log an error if we come across a node that should exist but doesn't.
+        match self.node(node_to_check) {
+            Err(_) => {
+                error!(
+                    "Node {} should exist but was not found in the graph during cycle check.",
+                    node_to_check,
+                );
+                false
+            }
+            Ok(node) => {
+                // first just iterate over all of the listeners and check if any of them are the
+                // node we're checking for (faster to check them all before recursing).
+                for listener in node.listeners.keys() {
+                    if *listener == node_to_find {
+                        return true;
+                    }
+                }
+                // we didn't find it, so now recurse into these listeners
+                for listener in node.listeners.keys() {
+                    if self.node_among_listeners(*listener, node_to_check) {
+                        return true;
+                    }
+                }
+                // we didn't find it among any listeners
+                false
+            }
+        }
     }
 }
 
@@ -355,6 +422,7 @@ impl<N> Node<N>
             }
         }
     }
+
 }
 
 pub enum NetworkError {
