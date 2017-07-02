@@ -24,22 +24,38 @@ pub trait KnobData: Sized {
 /// Generic over the type of data used to address an individual knob, enabling resuse of this
 /// trait across multiple nested layers of knob-based subsystems.
 /// Also generic over the particular datatype used.
-pub trait Knobs<A, D>
+pub trait Knobs<D>
     where D: KnobData
-{
+{   
+    type Addr: Copy;
     /// List every knob available and the address at which it can be found.
-    fn list_all(&self) -> Vec<(A, KnobDescription<D::Datatype>)>;
+    fn knobs(&self) -> Vec<(Self::Addr, KnobDescription<D::Datatype>)>;
 
     /// Return the native datatype for the knob at this address or an error if it doesn't exist.
-    fn native_datatype_for(&self, addr: A) -> Result<D::Datatype, KnobError<A, D>>;
+    //fn native_datatype_for(&self, addr: Self::Addr) -> Result<D::Datatype, KnobError<Self::Addr, D>>;
 
     /// Attempt to set a value on the knob at this address.
-    fn try_set(&mut self, addr: A, value: D) -> Result<(), KnobError<A, D>>;
+    fn set_knob(&mut self, addr: Self::Addr, value: D) -> Result<(), KnobError<Self::Addr, D>>;
 }
 
 pub enum KnobError<A, D>
-    where D: KnobData
+    where D: KnobData, A: Copy
 {
     InvalidAddress(A),
     InvalidDatatype{expected: D::Datatype, provided: D::Datatype},
+}
+
+impl<A, D> KnobError<A, D>
+    where D: KnobData, A: Copy
+{
+    /// Use the provided function to lift this knob error into a higher address space.
+    pub fn lift_address<NewAddr, F>(self, lifter: F) -> KnobError<NewAddr, D>
+        where F: FnOnce(A) -> NewAddr, NewAddr: Copy
+    {
+        use self::KnobError::*;
+        match self {
+            InvalidAddress(a) => InvalidAddress(lifter(a)),
+            InvalidDatatype{expected: e, provided: p} => InvalidDatatype{expected: e, provided: p},
+        }
+    }
 }

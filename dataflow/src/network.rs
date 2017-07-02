@@ -5,6 +5,7 @@ use std::hash::BuildHasherDefault;
 use std::mem::swap;
 use std::u32;
 use std::marker::PhantomData;
+use wiggles_value::knob::{Knobs, KnobData, KnobDescription, KnobError};
 
 // Use 32-bit ints as indices.
 // Use a 32-bit generation ID to uniquely identify a generation of a particular slot to ensure that
@@ -37,7 +38,7 @@ struct NodeSlot<N, I>
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Network<N, I>
-    where N: fmt::Debug + Inputs, I: NodeId + Sized
+    where N: fmt::Debug + Inputs, I: NodeId
 {
     /// Collection of node slots, indexed by their ID.
     /// Tagged internally with a generation ID.
@@ -48,7 +49,7 @@ pub struct Network<N, I>
 }
 
 impl<N, I> Network<N, I>
-    where N: fmt::Debug + Inputs, I: NodeId + Sized
+    where N: fmt::Debug + Inputs, I: NodeId
 {
     /// Create a new, empty network.
     pub fn new() -> Self {
@@ -357,6 +358,36 @@ impl<N, I> Network<N, I>
     }
 }
 
+/// Blanket impl for a network whose nodes are knob-controlled.
+/// Wrapper the inner knob address with the address of the node in the network.
+impl<N, I, D> Knobs<D> for Network<N, I>
+    where N: Knobs<D> + fmt::Debug + Inputs, D: KnobData, I: NodeId
+{
+    type Addr = (I, (N::Addr));
+    fn knobs(&self) -> Vec<(Self::Addr, KnobDescription<D::Datatype>)> {
+        let mut descriptions = Vec::new();
+        for (index, slot) in self.slots.iter().enumerate() {
+            if let Some(ref node) = slot.node {
+                let node_addr = I::new(index as NodeIndex, slot.gen_id);
+                for (addr, desc) in node.inner.knobs() {
+                    descriptions.push(((node_addr, addr), desc));
+                }
+            }
+        }
+        descriptions
+    }
+
+    fn set_knob(&mut self, addr: Self::Addr, value: D) -> Result<(), KnobError<Self::Addr, D>> {
+        let (node_addr, knob_addr) = addr;
+        match self.node_mut(node_addr) {
+            Err(_) => Err(KnobError::InvalidAddress(addr)),
+            Ok(node) => {
+                node.inner.set_knob(knob_addr, value).map_err(|e| e.lift_address(|a| (node_addr, a)))
+            }
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 /// What are this node's requirements on its count of inputs?
 pub struct InputCount {
@@ -425,7 +456,7 @@ pub trait Inputs {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Node<N, I>
-    where N: fmt::Debug + Inputs, I: NodeId + Sized
+    where N: fmt::Debug + Inputs, I: NodeId
 {
     /// Which other node Ids are listening to this one, and how many connections do they have?
     /// We just track node indices here rather than full node IDs with the generation ID as
@@ -438,7 +469,7 @@ pub struct Node<N, I>
 }
 
 impl<N, I> Node<N, I>
-    where N: fmt::Debug + Inputs, I: NodeId + Sized
+    where N: fmt::Debug + Inputs, I: NodeId
 {
     pub fn new(node: N) -> Self {
         Node {
@@ -570,7 +601,7 @@ impl<N, I> Node<N, I>
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum NetworkError<I: NodeId + Sized> {
+pub enum NetworkError<I: NodeId> {
     /// A command was directed at a node using an outdated generation ID.
     OldGenId(I),
     /// This node ID's index isn't present in the network.
@@ -587,7 +618,7 @@ pub enum NetworkError<I: NodeId + Sized> {
     CantRemoveInput(I),
 }
 
-impl<I: NodeId + Sized> fmt::Display for NetworkError<I> {
+impl<I: NodeId> fmt::Display for NetworkError<I> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::NetworkError::*;
         match *self {
