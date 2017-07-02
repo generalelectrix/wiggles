@@ -382,7 +382,8 @@ impl<N, I, D> Knobs<D> for Network<N, I>
         match self.node_mut(node_addr) {
             Err(_) => Err(KnobError::InvalidAddress(addr)),
             Ok(node) => {
-                node.inner.set_knob(knob_addr, value).map_err(|e| e.lift_address(|a| (node_addr, a)))
+                node.inner.set_knob(knob_addr, value)
+                    .map_err(|e| e.lift_address(|a| (node_addr, a)))
             }
         }
     }
