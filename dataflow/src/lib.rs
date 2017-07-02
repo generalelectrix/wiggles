@@ -3,7 +3,9 @@ extern crate ordermap;
 extern crate serde;
 #[macro_use] extern crate serde_derive;
 extern crate wiggles_value;
+extern crate console_server;
+#[macro_use] extern crate lazy_static;
 
 pub mod network;
-pub mod clock;
+pub mod clocks;
 mod util;

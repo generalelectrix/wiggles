@@ -6,7 +6,13 @@ use std::mem::swap;
 use std::u32;
 use std::marker::PhantomData;
 use wiggles_value::knob::{
-    Knobs, Datatype as KnobDatatype, Data as KnobData, KnobDescription, KnobError};
+    Knobs,
+    Datatype as KnobDatatype,
+    Data as KnobData,
+    KnobDescription,
+    KnobError,
+    badaddr,
+};
 
 // Use 32-bit ints as indices.
 // Use a 32-bit generation ID to uniquely identify a generation of a particular slot to ensure that
@@ -394,9 +400,32 @@ impl<N, I, M> Knobs for Network<N, I, M>
     fn set_knob(&mut self, addr: Self::Addr, value: KnobData) -> Result<(), KnobError<Self::Addr>> {
         let (node_addr, knob_addr) = addr;
         match self.node_mut(node_addr) {
-            Err(_) => Err(KnobError::InvalidAddress(addr)),
+            Err(_) => Err(badaddr(addr)),
             Ok(node) => {
                 node.inner.set_knob(knob_addr, value)
+                    .map_err(|e| e.lift_address(|a| (node_addr, a)))
+            }
+        }
+    }
+
+    /// Return this knob's current data payload or an error if it doesn't exist.
+    fn knob_value(&self, addr: Self::Addr) -> Result<KnobData, KnobError<Self::Addr>> {
+        let (node_addr, knob_addr) = addr;
+        match self.node(node_addr) {
+            Err(_) => Err(badaddr(addr)),
+            Ok(node) => {
+                node.inner.knob_value(knob_addr)
+                    .map_err(|e| e.lift_address(|a| (node_addr, a)))
+            }
+        }
+    }
+
+    fn knob_datatype(&self, addr: Self::Addr) -> Result<KnobDatatype, KnobError<Self::Addr>> {
+        let (node_addr, knob_addr) = addr;
+        match self.node(node_addr) {
+            Err(_) => Err(badaddr(addr)),
+            Ok(node) => {
+                node.inner.knob_datatype(knob_addr)
                     .map_err(|e| e.lift_address(|a| (node_addr, a)))
             }
         }

@@ -8,6 +8,7 @@ use std::ops::Deref;
 extern crate serde;
 #[macro_use] extern crate serde_derive;
 
+pub mod knob_types;
 pub mod knob;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

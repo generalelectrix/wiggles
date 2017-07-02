@@ -5,7 +5,10 @@ authors = ["general electrix <general.electrix@gmail.com>"]
 
 [dependencies]
 wiggles_value = { path = "../wiggles_value" }
+# this is only here to import the Messages type, should probably refactor.
+console_server = { path = "../console_server" }
 ordermap = "*"
 log = "*"
 serde = "*"
 serde_derive = "*"
+lazy_static = "*"
