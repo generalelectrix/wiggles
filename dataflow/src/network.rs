@@ -92,7 +92,6 @@ impl<N> Network<N>
             // return a reference to the node we just added
             self.slots.last_mut().unwrap().node.as_mut().unwrap()
         }
-
     }
 
     /// Remove a node from this network.  Fail if it has any listeners unless we are forcing removal.
@@ -236,6 +235,66 @@ impl<N> Network<N>
         Ok(())
     }
 
+    /// Push a new input onto a node, if it supports this operation.
+    /// Return the new input ID and a potential message type returned by the node.
+    pub fn push_input<M>(
+            &mut self,
+            node_id: NodeId,
+            target: Option<NodeId>)
+            -> Result<(InputId, M), NetworkError>
+    {
+        // if a target was supplied, make sure it exists
+        if let Some(t) = target {
+            self.exists(t)?;
+        }
+        match self.node_mut(node_id)?.push_input(target) {
+            Ok(x) => {
+                // if we had a target, add this node as a listener of it
+                if let Some(t) = target {
+                    // We know this node exists so this should never fail.
+                    let target_node = self.node_mut(t).expect("We just checked that this node exists.");
+                    target_node.add_listener(node_id.index());
+                }
+                Ok(x)
+            }
+            Err(()) => Err(NetworkError::CantAddInput(node_id)),
+        }
+    }
+
+    /// Pop the last input off of a node, if it supports this operation.
+    /// Return the message type returned by the node.
+    pub fn pop_input<M>(
+            &mut self,
+            node_id: NodeId)
+            -> Result<M, NetworkError>
+    {
+        match self.node_mut(node_id)?.pop_input() {
+            Ok((target, msg)) => {
+                // if this input had a target, remove this node as a listener.
+                if let Some(t) = target {
+                    // If this node doesn't exist, log an error.
+                    match self.node_mut(t) {
+                        Ok(target_node) => {
+                            target_node.remove_listener(node_id.index());
+                        }
+                        Err(e) => {
+                            error!(
+                                "Popped an input off of node {}, but its target (node {}) could \
+                                not be retrieved due to an error: {}.",
+                                node_id.index(),
+                                t,
+                                e,
+                            );
+                        }
+                    }
+                    
+                }
+                Ok(msg)
+            }
+            Err(()) => Err(NetworkError::CantRemoveInput(node_id)),
+        }
+    }
+
     /// Return an appropriate error if connecting source to sink would create a cycle.
     /// Also serves to validate the existence of both node IDs.
     fn check_would_cycle(&self, source_id: NodeId, sink_id: NodeId) -> Result<(), NetworkError> {
@@ -358,13 +417,14 @@ pub trait Inputs {
     fn default_input_count() -> u32;
     /// Tell this node we're pushing another input.
     /// It should return Ok if this is allowed and must have done any work it needs to do to
-    /// accomodate the new input.
-    fn try_push_input(&mut self) -> Result<(), ()>;
+    /// accomodate the new input.  The node is free to return an arbitrary data structure to the
+    /// caller, which should probably hand it off to someone else for processing.
+    fn try_push_input<M>(&mut self) -> Result<M, ()>;
 
     /// Tell this node we want to pop the last input.
     /// It should return Ok if this is allowed and must have done any work to ready itself for the
     /// change.
-    fn try_pop_input(&mut self) -> Result<(), ()>;
+    fn try_pop_input<M>(&mut self) -> Result<M, ()>;
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -403,14 +463,16 @@ impl<N> Node<N>
     /// Push another input onto this node, if it can support it.
     /// The caller must ensure this node has been added a listener of the target node if it is not
     /// None.
-    fn push_input(&mut self, target: Option<NodeId>) -> Result<InputId, ()> {
+    /// Return the data structure returned by the node, probably a message type to be passed
+    /// upstack.
+    fn push_input<M>(&mut self, target: Option<NodeId>) -> Result<(InputId, M), ()> {
         // if we can't push another input, return an error
         // allow the caller to wrap it up into a real error value
         match self.inner.try_push_input() {
-            Ok(()) => {
+            Ok(msg) => {
                 // go ahead and add it
                 self.inputs.push(target);
-                Ok((self.inputs.len() - 1) as InputId)
+                Ok((((self.inputs.len() - 1) as InputId), msg))
             }
             Err(()) => Err(()),
         }
@@ -420,15 +482,15 @@ impl<N> Node<N>
     /// Return the target that was assigned to this input.
     /// The caller must ensure that this node has been removed as a listener of the node that was
     /// assigned to this input, if any.
-    fn pop_input(&mut self) -> Result<Option<NodeId>, ()> {
+    fn pop_input<M>(&mut self) -> Result<(Option<NodeId>, M), ()> {
         if self.inputs.is_empty() {
             return Err(());
         }
         match self.inner.try_pop_input() {
-            Ok(()) => {
+            Ok(msg) => {
                 // go ahead and remove
                 let target = self.inputs.pop().expect("Pop on a list we know to not be empty failed.");
-                Ok(target)
+                Ok((target, msg))
             }
             Err(()) => Err(()),
         }
@@ -511,6 +573,7 @@ impl<N> Node<N>
 
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum NetworkError {
     /// A command was directed at a node using an outdated generation ID.
     OldGenId(NodeId),
@@ -526,6 +589,32 @@ pub enum NetworkError {
     CantAddInput(NodeId),
     /// Cannot remove an input from this node.
     CantRemoveInput(NodeId),
+}
+
+impl fmt::Display for NetworkError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::NetworkError::*;
+        match *self {
+            OldGenId(id) =>
+                write!(f, "Outdated generation id ({}) for node {}.", id.gen_id(), id.index()),
+            NoNodeAt(id) =>
+                write!(f, "No node at index {}.", id.index()),
+            InvalidInputId(id) =>
+                write!(f, "Input id {} is out of range.", id),
+            WouldCycle{source, sink} =>
+                write!(
+                    f,
+                    "Connecting source {} to sink {} would create a cycle.",
+                    source.index(),
+                    sink.index()),
+            HasListeners(id) =>
+                write!(f, "Node {} has listeners.", id.index()),
+            CantAddInput(id) =>
+                write!(f, "Cannot add an input to node {}.", id.index()),
+            CantRemoveInput(id) =>
+                write!(f, "Cannot remove an input from node {}.", id.index()),
+        }
+    }
 }
 
 /// Shorthand for NetworkError::NoNodeAt.
