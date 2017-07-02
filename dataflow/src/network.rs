@@ -1,8 +1,9 @@
 use std::fmt;
 use std::collections::HashMap;
-use std::collections::hash_map::{Entry, Keys};
+use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
 use std::mem::swap;
+use std::u32;
 
 // Use 32-bit ints as indices to keep things compact.
 type NodeId = u32;
@@ -50,15 +51,20 @@ impl<N> Network<N>
         }
     }
 
-    /// Remove a node from this network.  Fail if it has any listeners.
-    pub fn remove(&mut self, node_id: NodeId) -> Result<N, NetworkError> {
-        if self.node(node_id)?.has_listeners() {
+    /// Remove a node from this network.  Fail if it has any listeners unless we are forcing removal.
+    pub fn remove(&mut self, node_id: NodeId, force: bool) -> Result<N, NetworkError> {
+        // make sure this node exists
+        self.exists(node_id)?;
+
+        // fail if there are listeners unless we're forcing removal
+        if !force && self.node(node_id)?.has_listeners() {
             return Err(NetworkError::HasListeners(node_id));
         }
+
         // Move the node out of the collection.
         let mut node = None;
         swap(&mut node, &mut self.nodes[node_id as usize]);
-        let node = node.unwrap(); // cannot fail as we just checked for node existence above.
+        let node = node.expect("Could not get a node whose existence we just verified.");
 
         // Safe to remove; iterate over its inputs and disconnect it, logging any errors.
         for input_node_id in node.inputs.iter().filter_map(|x| *x) {
@@ -68,6 +74,23 @@ impl<N> Network<N>
                     "Found an invalid input node {} while removing node {}.",
                     input_node_id,
                     node_id),
+            }
+        }
+        // Now iterate over all of its listeners and disconnect them.
+        for listener in node.listeners.keys() {
+            match self.node_mut(*listener) {
+                Ok(node) => {
+                    node.disconnect_from(node_id);
+                }
+                Err(_) => {
+                    // log an error if one of this node's listeners didn't exist
+                    error!(
+                        "The node {} was registered as a listener of node {} (undergoing removal) \
+                        but it is missing from the node collection.",
+                        listener,
+                        node_id,
+                    );
+                }
             }
         }
         Ok(node.inner)
@@ -131,17 +154,67 @@ impl<N> Network<N>
 
 #[derive(Debug, Copy, Clone)]
 /// What are this node's requirements on its count of inputs?
-pub enum InputCount {
-    Fixed(u32),
-    Variable,
-    Range{min: u32, max: u32},
+pub struct InputCount {
+    min: u32,
+    max: u32,
 }
 
-/// Trait expressing options that a node can express about its inputs, such as whether the number
-/// should be fixed or variable.
+impl InputCount {
+    pub fn new(min: u32, max: u32) -> Self {
+        InputCount {
+            min: min,
+            max: max,
+        }
+    }
+    /// No inputs allowed.
+    pub fn none() -> Self {
+        InputCount::fixed(0)
+    }
+
+    /// A fixed number of inputs.
+    pub fn fixed(n: u32) -> Self {
+        InputCount::new(n, n)
+    }
+
+    /// 0 to N.
+    pub fn up_to(n: u32) -> Self {
+        InputCount::new(0, n)
+    }
+
+    /// At least this many.
+    pub fn at_least(n: u32) -> Self {
+        InputCount::new(n, u32::MAX)
+    }
+
+    /// Any number of inputs.
+    pub fn any() -> Self {
+        InputCount::new(0, u32::MAX)
+    }
+
+    /// Return true if this input count specifies that it is safe to push another input.
+    pub fn can_push(&self, current_input_count: u32) -> bool {
+        current_input_count < self.max
+    }
+
+    /// Return true if this input count specifies that it is safe to pop the last input.
+    pub fn can_pop(&self, current_input_count: u32) -> bool {
+        current_input_count > self.min
+    }
+}
+
+/// Trait expressing options that a node can express about its inputs.
 pub trait Inputs {
-    /// What count of allowed inputs does this node work with?
-    fn allowed_count(&self) -> InputCount;
+    /// How many inputs this node should default to when initialized.
+    fn default_input_count() -> u32;
+    /// Tell this node we're pushing another input.
+    /// It should return Ok if this is allowed and must have done any work it needs to do to
+    /// accomodate the new input.
+    fn try_push_input(&mut self) -> Result<(), ()>;
+
+    /// Tell this node we want to pop the last input.
+    /// It should return Ok if this is allowed and must have done any work to ready itself for the
+    /// change.
+    fn try_pop_input(&mut self) -> Result<(), ()>;
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -174,9 +247,38 @@ impl<N> Node<N>
         self.listeners.is_empty()
     }
 
-    /// Get an iterator over the node ids that are listening to this node.
-    pub fn listeners(&self) -> Keys<NodeId, u32> {
-        self.listeners.keys()
+    /// Push another input onto this node, if it can support it.
+    /// The caller must ensure this node has been added a listener of the target node if it is not
+    /// None.
+    fn push_input(&mut self, target: Option<NodeId>) -> Result<InputId, ()> {
+        // if we can't push another input, return an error
+        // allow the caller to wrap it up into a real error value
+        match self.inner.try_push_input() {
+            Ok(()) => {
+                // go ahead and add it
+                self.inputs.push(target);
+                Ok((self.inputs.len() - 1) as InputId)
+            }
+            Err(()) => Err(()),
+        }
+    }
+
+    /// Pop the last input off this node, if it allows it.
+    /// Return the target that was assigned to this input.
+    /// The caller must ensure that this node has been removed as a listener of the node that was
+    /// assigned to this input, if any.
+    fn pop_input(&mut self) -> Result<Option<NodeId>, ()> {
+        if self.inputs.is_empty() {
+            return Err(());
+        }
+        match self.inner.try_pop_input() {
+            Ok(()) => {
+                // go ahead and remove
+                let target = self.inputs.pop().expect("Pop on a list we know to not be empty failed.");
+                Ok(target)
+            }
+            Err(()) => Err(()),
+        }
     }
 
     /// Get the node ID that an input is currently connected to.
@@ -188,6 +290,7 @@ impl<N> Node<N>
     }
 
     /// Set the target node for the provided input id.
+    /// The caller must ensure correct update of relevant listeners.
     fn set_input_node(&mut self, id: InputId, target: Option<NodeId>) -> Result<(), NetworkError> {
         let node = self.inputs.get_mut(id as usize).ok_or(noinput(id))?;
         *node = target;
@@ -241,6 +344,15 @@ impl<N> Node<N>
                 self,
                 err_reason,
             );
+        }
+    }
+
+    /// Disconnect this node's inputs from the provided listener.
+    fn disconnect_from(&mut self, target: NodeId) {
+        for input in self.inputs.iter_mut() {
+            if *input == Some(target) {
+                *input = None;
+            }
         }
     }
 }
