@@ -10,8 +10,8 @@ use wiggles_value::knob::{Knobs, KnobData, KnobDescription, KnobError};
 // Use 32-bit ints as indices.
 // Use a 32-bit generation ID to uniquely identify a generation of a particular slot to ensure that
 // we don't try to mess with an old version of a node if it has been removed and re-used later.
-type NodeIndex = u32;
-type GenerationId = u32;
+pub type NodeIndex = u32;
+pub type GenerationId = u32;
 
 /// Trait used to index into a network.
 /// Individual network domains should create their own unique index type to ensure they cannot
@@ -29,27 +29,27 @@ type InputId = u32;
 
 #[derive(Debug, Serialize, Deserialize)]
 /// Generation ID and a slot to hold onto a node in the network.
-struct NodeSlot<N, I>
-    where N: fmt::Debug + Inputs, I: NodeId
+struct NodeSlot<N, I, M>
+    where N: fmt::Debug + Inputs<M>, I: NodeId
 {
     gen_id: GenerationId,
-    node: Option<Node<N, I>>,
+    node: Option<Node<N, I, M>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Network<N, I>
-    where N: fmt::Debug + Inputs, I: NodeId
+pub struct Network<N, I, M>
+    where N: fmt::Debug + Inputs<M>, I: NodeId
 {
     /// Collection of node slots, indexed by their ID.
     /// Tagged internally with a generation ID.
     /// Indices are stable under insertion and deletion.
     /// Generation IDs are incremented when an empty slot is filled.
-    slots: Vec<NodeSlot<N, I>>,
+    slots: Vec<NodeSlot<N, I, M>>,
     _index_type: PhantomData<I>,
 }
 
-impl<N, I> Network<N, I>
-    where N: fmt::Debug + Inputs, I: NodeId
+impl<N, I, M> Network<N, I, M>
+    where N: fmt::Debug + Inputs<M>, I: NodeId
 {
     /// Create a new, empty network.
     pub fn new() -> Self {
@@ -60,7 +60,7 @@ impl<N, I> Network<N, I>
     }
 
     /// Insert a new node into this network.  Return a mutable reference to it.
-    pub fn add(&mut self, node_contents: N) -> &mut Node<N, I> {
+    pub fn add(&mut self, node_contents: N) -> &mut Node<N, I, M> {
         let node = Node::new(node_contents);
         // Find the first available slot index, if one exists.
         // Sadly we can't do this more directly because of rustlang #21906.
@@ -142,7 +142,7 @@ impl<N, I> Network<N, I>
     }
 
     /// Get an immutable reference to a node, if it exists.
-    pub fn node(&self, id: I) -> Result<&Node<N, I>, NetworkError<I>> {
+    pub fn node(&self, id: I) -> Result<&Node<N, I, M>, NetworkError<I>> {
         match self.slots.get(id.index() as usize) {
             None => Err(nonode(id)),
             Some(slot) => {
@@ -156,7 +156,7 @@ impl<N, I> Network<N, I>
     }
 
     /// Get an immutable reference to a node without specifying a generation ID, if it exists.
-    fn node_direct(&self, index: NodeIndex) -> Result<&Node<N, I>, NetworkError<I>> {
+    fn node_direct(&self, index: NodeIndex) -> Result<&Node<N, I, M>, NetworkError<I>> {
         match self.slots.get(index as usize) {
             None => Err(nonode(I::new(index, 0))),
             Some(slot) => {
@@ -169,7 +169,7 @@ impl<N, I> Network<N, I>
     }
 
     /// Get a mutable reference to a node, if it exists.
-    fn node_mut(&mut self, id: I) -> Result<&mut Node<N, I>, NetworkError<I>> {
+    fn node_mut(&mut self, id: I) -> Result<&mut Node<N, I, M>, NetworkError<I>> {
         match self.slots.get_mut(id.index() as usize) {
             None => Err(nonode(id)),
             Some(slot) => {
@@ -183,7 +183,7 @@ impl<N, I> Network<N, I>
     }
 
     /// Get a mutable reference to a node without specifying a generation ID, if it exists.
-    fn node_direct_mut(&mut self, index: NodeIndex) -> Result<&mut Node<N, I>, NetworkError<I>> {
+    fn node_direct_mut(&mut self, index: NodeIndex) -> Result<&mut Node<N, I, M>, NetworkError<I>> {
         match self.slots.get_mut(index as usize) {
             None => Err(nonode(I::new(index, 0))),
             Some(slot) => {
@@ -360,8 +360,8 @@ impl<N, I> Network<N, I>
 
 /// Blanket impl for a network whose nodes are knob-controlled.
 /// Wrapper the inner knob address with the address of the node in the network.
-impl<N, I, D> Knobs<D> for Network<N, I>
-    where N: Knobs<D> + fmt::Debug + Inputs, D: KnobData, I: NodeId
+impl<N, I, M, D> Knobs<D> for Network<N, I, M>
+    where N: Knobs<D> + fmt::Debug + Inputs<M>, D: KnobData, I: NodeId
 {
     type Addr = (I, (N::Addr));
     fn knobs(&self) -> Vec<(Self::Addr, KnobDescription<D::Datatype>)> {
@@ -440,24 +440,24 @@ impl InputCount {
 }
 
 /// Trait expressing options that a node can express about its inputs.
-pub trait Inputs {
+pub trait Inputs<M> {
     /// How many inputs this node should default to when initialized.
-    fn default_input_count() -> u32;
+    fn default_input_count(&self) -> u32;
     /// Tell this node we're pushing another input.
     /// It should return Ok if this is allowed and must have done any work it needs to do to
     /// accomodate the new input.  The node is free to return an arbitrary data structure to the
     /// caller, which should probably hand it off to someone else for processing.
-    fn try_push_input<M>(&mut self) -> Result<M, ()>;
+    fn try_push_input(&mut self) -> Result<M, ()>;
 
     /// Tell this node we want to pop the last input.
     /// It should return Ok if this is allowed and must have done any work to ready itself for the
     /// change.
-    fn try_pop_input<M>(&mut self) -> Result<M, ()>;
+    fn try_pop_input(&mut self) -> Result<M, ()>;
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Node<N, I>
-    where N: fmt::Debug + Inputs, I: NodeId
+pub struct Node<N, I, M>
+    where N: fmt::Debug + Inputs<M>, I: NodeId
 {
     /// Which other node Ids are listening to this one, and how many connections do they have?
     /// We just track node indices here rather than full node IDs with the generation ID as
@@ -469,14 +469,15 @@ pub struct Node<N, I>
     inner: N,
 }
 
-impl<N, I> Node<N, I>
-    where N: fmt::Debug + Inputs, I: NodeId
+impl<N, I, M> Node<N, I, M>
+    where N: fmt::Debug + Inputs<M>, I: NodeId
 {
     pub fn new(node: N) -> Self {
+        let inputs = vec![None; node.default_input_count()];
         Node {
             listeners: HashMap::<NodeIndex, u32, _>::with_hasher(
                 BuildHasherDefault::<simple_hash::SimpleHasher>::default()),
-            inputs: Vec::new(),
+            inputs: inputs,
             inner: node,
         }
     }
