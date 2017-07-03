@@ -1,10 +1,18 @@
 //! A basic clock that runs at a rate set by a knob.
 //! Also provides a reset button.
+use std::fmt;
 use std::sync::Arc;
-use super::{Clock, ClockValue};
+use std::time::Duration;
+use console_server::reactor::Messages;
+use ::util::{secs, modulo_one};
+use super::{Clock, ClockValue, ClockId, ClockProvider};
 use ::network::Inputs;
 use wiggles_value::knob::{Knobs, Datatype, Data, KnobDescription, KnobError, badaddr};
 use wiggles_value::knob_types::Rate;
+
+pub const INIT_CLOCK_VAL: ClockValue = ClockValue { phase: 0.0, tick_count: 0, ticked: true };
+// Run at 1 Hz by default.
+pub const INIT_RATE: f64 = 1.0;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SimpleClock {
@@ -14,6 +22,17 @@ pub struct SimpleClock {
     rate: f64, 
     /// If True, this clock will reset on the next update cycle and swap this value back to false.
     should_reset: bool,
+}
+
+impl SimpleClock {
+    pub fn new<N: Into<String>>(name: N) -> Self {
+        SimpleClock {
+            name: name.into(),
+            value: INIT_CLOCK_VAL,
+            rate: INIT_RATE,
+            should_reset: false,
+        }
+    }
 }
 
 const CLASS: &'static str = "simple";
@@ -98,24 +117,50 @@ impl Knobs for SimpleClock {
     }
 }
 
-// impl<M> Clock<M> for SimpleClock {
-//     /// A string name for this class of clock.
-//     /// This string will be used during serialization and deserialization to uniquely identify
-//     /// how to reconstruct this clock from a serialized form.
-//     fn class(&self) -> &'static str {
-//         CLASS
-//     }
+impl<M> Clock<M> for SimpleClock
+    where M: fmt::Debug
+{
+    /// A string name for this class of clock.
+    /// This string will be used during serialization and deserialization to uniquely identify
+    /// how to reconstruct this clock from a serialized form.
+    fn class(&self) -> &'static str {
+        CLASS
+    }
 
-//     /// Return the name that has been assigned to this clock.
-//     fn name(&self) -> &str {
-//         &self.name
-//     }
+    /// Return the name that has been assigned to this clock.
+    fn name(&self) -> &str {
+        &self.name
+    }
 
-//     /// Update the state of this clock using the provided update interval.
-//     /// Return a message collection of some kind.
-//     fn update(&mut self, dt: Duration) -> Messages<M>;
+    /// Update the state of this clock using the provided update interval.
+    /// Return a message collection of some kind.
+    fn update(&mut self, dt: Duration) -> Messages<M> {
+        // if the reset knob was pushed, reset the clock value
+        if self.should_reset {
+            self.value = INIT_CLOCK_VAL;
+            self.should_reset = false;
+            // TODO: emit a message that we changed this knob value.
+            Messages::none()
+        }
+        else {
+            // determine how much phase has elapsed
+            let elapsed_phase = self.rate * secs(dt);
+            let phase_unwrapped = self.value.phase + elapsed_phase;
 
-//     /// Render the state of this clock, providing its currently-assigned inputs as well as a
-//     /// function that can be used to retrieve the current value of one of those inputs.
-//     fn render(&self, inputs: &[Option<ClockId>], network: &ClockProvider) -> ClockValue;
-// }
+            // Determine how many ticks have actually elapsed.  It may be more than 1.
+            // It may also be negative if this clock has a negative rate.
+            let accumulated_ticks = phase_unwrapped.floor() as i64;
+
+            // This clock ticked if we accumulated +-1 or more ticks.
+            self.value.ticked = accumulated_ticks.abs() > 0;
+            self.value.tick_count += accumulated_ticks;
+
+            self.value.phase = modulo_one(phase_unwrapped);
+            Messages::none()
+        }
+    }
+
+    fn render(&self, _: &[Option<ClockId>], _: &ClockProvider) -> ClockValue {
+        self.value
+    }
+}

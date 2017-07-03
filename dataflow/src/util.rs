@@ -1,4 +1,10 @@
 //! Utility functions.
+use std::time::Duration;
+
+/// Convert a duration into a floating-point number of seconds.
+pub fn secs(d: Duration) -> f64 {
+    (d.as_secs() as f64) + 1e-9 * (d.subsec_nanos() as f64)
+}
 
 const ALMOST_EQ_TOLERANCE: f64 = 0.000_000_1;
 
