@@ -498,6 +498,22 @@ pub trait Inputs<M> {
     fn try_pop_input(&mut self) -> Result<M, ()>;
 }
 
+impl<M, T> Inputs<M> for Box<T>
+    where T: Inputs<M>
+{
+    fn default_input_count(&self) -> u32 {
+        self.default_input_count()
+    }
+
+    fn try_push_input(&mut self) -> Result<M, ()> {
+        self.try_push_input()
+    }
+
+    fn try_pop_input(&mut self) -> Result<M, ()> {
+        self.try_pop_input()
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Node<N, I, M>
     where N: fmt::Debug + Inputs<M>, I: NodeId

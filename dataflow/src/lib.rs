@@ -9,3 +9,4 @@ extern crate console_server;
 pub mod network;
 pub mod clocks;
 mod util;
+mod test;
