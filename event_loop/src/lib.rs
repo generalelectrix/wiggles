@@ -131,28 +131,19 @@ fn next_event(now: Instant, settings: &Settings, last: &mut LastEvents) -> Event
     let ns_until_next = cmp::min(cmp::min(ns_until_update, ns_until_render), ns_until_autosave);
     if ns_until_next <= 0 {
         if ns_until_next == ns_until_update {
-            // Always update in exactly deterministic timesteps; if we're running low on
-            // computational resources and we are behind on updates, "batch" several updates by
-            // running one update step with an integer multiple of update interval.
-            // This is really not ideal, so log it as a warning if we're doing this.
-            // We only do this if we're more than two updates behind.
+            // Always update in exactly deterministic timesteps.
+            // If we're lagging by more than 3 timesteps, drop one update by advancing the last
+            // update time by one update before we perform this one.
             let updates_needed = 1 + (ns_until_update.abs() as u64 / nanoseconds(settings.update_interval)) as u32;
-            if updates_needed > 2 {
-                // if we're three steps behind, run 2x; four steps -> 3x, etc. 
-                let updates_to_run = updates_needed - 1;
-                warn!(
-                    "Event loop is {} updates behind, batching {} updates to try to catch up.",
-                    updates_needed,
-                    updates_to_run);
-                let fat_update_interval = settings.update_interval * updates_to_run;
-                last.update += fat_update_interval;
-                Event::Update(fat_update_interval)
-            }
-            else {
-                // garden variety update
+            if updates_needed > 3 {
+                // skip an update
+                warn!("Event loop is {} updates behind.", updates_needed);
                 last.update += settings.update_interval;
-                Event::Update(settings.update_interval)
             }
+
+            // advance the last update by one step and perform an update action
+            last.update += settings.update_interval;
+            Event::Update(settings.update_interval)
         }
         else if ns_until_next == ns_until_render {
             if settings.report_fps {
@@ -194,6 +185,7 @@ mod test {
             update_interval: update_interval,
             render_interval: millis(13),
             autosave_interval: None,
+            report_fps: false,
         };
 
         let mut assert_event = |time, event| {
@@ -219,12 +211,13 @@ mod test {
         // Get through the next render, then wait long enough that we should batch updates.
         now += millis(3);
         assert_event(now, Render);
-        // Delay more than 2 update cycles, make sure we get a fat update.
+        // Delay more than 2 update cycles; we should skip one update.
         now += millis(35);
-        assert_event(now, Update(update_interval * 3));
+        assert_event(now, Update(update_interval));
         // We should get a render next, which we're late on as well.
         assert_event(now, Render);
-        // We're still behind on updates, so we should get another.
+        // We're still behind on updates, so we should get another two of them.
+        assert_event(now, update_event);
         assert_event(now, update_event);
         assert_event(now, Idle(millis(9)));
     }
@@ -238,6 +231,7 @@ mod test {
             update_interval: update_interval,
             render_interval: millis(13),
             autosave_interval: Some(millis(17)),
+            report_fps: false,
         };
 
         let mut assert_event = |time, event| {
