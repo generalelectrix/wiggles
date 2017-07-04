@@ -429,56 +429,6 @@ impl<N, I, M, A> Knobs<(I, A)> for Network<N, I, M>
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-/// What are this node's requirements on its count of inputs?
-pub struct InputCount {
-    min: u32,
-    max: u32,
-}
-
-impl InputCount {
-    pub fn new(min: u32, max: u32) -> Self {
-        InputCount {
-            min: min,
-            max: max,
-        }
-    }
-    /// No inputs allowed.
-    pub fn none() -> Self {
-        InputCount::fixed(0)
-    }
-
-    /// A fixed number of inputs.
-    pub fn fixed(n: u32) -> Self {
-        InputCount::new(n, n)
-    }
-
-    /// 0 to N.
-    pub fn up_to(n: u32) -> Self {
-        InputCount::new(0, n)
-    }
-
-    /// At least this many.
-    pub fn at_least(n: u32) -> Self {
-        InputCount::new(n, u32::MAX)
-    }
-
-    /// Any number of inputs.
-    pub fn any() -> Self {
-        InputCount::new(0, u32::MAX)
-    }
-
-    /// Return true if this input count specifies that it is safe to push another input.
-    pub fn can_push(&self, current_input_count: u32) -> bool {
-        current_input_count < self.max
-    }
-
-    /// Return true if this input count specifies that it is safe to pop the last input.
-    pub fn can_pop(&self, current_input_count: u32) -> bool {
-        current_input_count > self.min
-    }
-}
-
 /// Trait expressing options that a node can express about its inputs.
 pub trait Inputs<M> {
     /// How many inputs this node should default to when initialized.

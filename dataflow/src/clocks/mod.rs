@@ -7,6 +7,7 @@ use serde::de::Error;
 
 pub mod clock;
 pub mod simple;
+pub mod multiplier;
 mod serde;
 
 // Gather every clock declaration up here.
@@ -19,6 +20,7 @@ mod serde;
 lazy_static! {
     static ref CLOCKS: Vec<&'static str> = vec!(
         simple::CLASS,
+        multiplier::CLASS,
     );
 }
 
@@ -27,6 +29,7 @@ lazy_static! {
 pub fn new_clock<N: Into<String>>(class: &str, name: N) -> Option<Box<CompleteClock>> {
     match class {
         simple::CLASS => Some(Box::new(simple::SimpleClock::new(name))),
+        multipler::CLASS => Some(Box::new(multiplier::ClockMultiplier::new(name))),
         _ => None,
     }
 }
@@ -37,6 +40,10 @@ pub fn deserialize(clock: SerializableClock) -> Result<Box<CompleteClock>, Serde
     match clock.class.as_str() {
         simple::CLASS => {
             let result: Result<simple::SimpleClock, _> = serde_json::from_str(&clock.serialized); 
+            handle_deserialize_result(result)
+        }
+        multiplier::CLASS => {
+            let result: Result<multiplier::ClockMultiplier, _> = serde_json::from_str(&clock.serialized); 
             handle_deserialize_result(result)
         }
         _ => Err(SerdeJsonError::custom(format!("Unknown clock class: '{}'.", clock.class))),

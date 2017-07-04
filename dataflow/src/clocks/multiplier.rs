@@ -1,7 +1,7 @@
-//! A basic clock that runs at a rate set by a knob.
-//! Also provides a reset button.
+//! A clock that performs quasi-stateless clock multiplication and division.
 use std::sync::Arc;
 use std::time::Duration;
+use std::cell::Cell;
 use console_server::reactor::Messages;
 use ::util::{secs, modulo_one};
 use super::clock::{Clock, ClockValue, ClockId, ClockProvider, Message, KnobAddr};
@@ -11,75 +11,83 @@ use wiggles_value::knob::{
 use wiggles_value::knob_types::Rate;
 use serde_json::{Error as SerdeJsonError, self};
 
-pub const INIT_CLOCK_VAL: ClockValue = ClockValue { phase: 0.0, tick_count: 0, ticked: true };
-// Run at 1 Hz by default.
-pub const INIT_RATE: f64 = 1.0;
+pub const MULT_KNOB_ADDR: u32 = 0;
+pub const INIT_MULT_FACTOR: f64 = 1.0;
+pub const RESET_KNOB_ADDR: u32 = 1;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct SimpleClock {
+pub struct ClockMultiplier {
     name: String,
-    value: ClockValue,
-    /// Floating-point rate in units of Hz.
-    rate: f64, 
-    /// If True, this clock will reset on the next update cycle and swap this value back to false.
+    multiplier: f64,
     should_reset: bool,
+    // Implementation note: these values are Cells because a clock multiplier
+    // must update its internal state lazily when it is called to produce a value,
+    // as it is based solely on the upstream state which is not available during
+    // timestep updates.
+
+    /// The last value we read from the upstream clock.
+    prev_upstream: Cell<Option<f64>>,
+    /// Previous floating-point value of time; if None, it implies this clock has not been
+    /// initialized via a first call to update.
+    prev_value: Cell<Option<f64>>,
+    /// How many updates have gone by since we last computed a value?
+    prev_value_age: Cell<i64>,
 }
 
-impl SimpleClock {
+impl ClockMultiplier {
     pub fn new<N: Into<String>>(name: N) -> Self {
-        SimpleClock {
+        ClockMultiplier {
             name: name.into(),
-            value: INIT_CLOCK_VAL,
-            rate: INIT_RATE,
+            multiplier: INIT_MULT_FACTOR,
             should_reset: false,
+            prev_upstream: Cell::new(None),
+            prev_value: Cell::new(None),
+            prev_value_age: Cell::new(0),
         }
     }
 }
 
-pub const CLASS: &'static str = "simple";
+pub const CLASS: &'static str = "multiplier";
 
-impl<M> Inputs<M> for SimpleClock {
-    /// Simple clock always has no inputs.
+impl<M> Inputs<M> for ClockMultiplier {
+    /// Multiplier always multiplies a single input.
     fn default_input_count(&self) -> u32 {
-        0
+        1
     }
-    /// Simple clock always has no inputs.
+    /// Simple clock always has 1 input.
     fn try_push_input(&mut self) -> Result<M, ()> {
         Err(())
     }
 
-    /// Simple clock always has no inputs.
+    /// Simple clock always has 1 input.
     fn try_pop_input(&mut self) -> Result<M, ()> {
         Err(())
     }
 }
 
-const RATE_KNOB_ADDR: u32 = 0;
-const RESET_KNOB_ADDR: u32 = 1;
-
-// Since SimpleClock always has the same number of knobs, use a static for its knob descriptions.
+// Since ClockMultiplier always has the same number of knobs, use a static for its knob descriptions.
 lazy_static! {
     static ref KNOB_DESC: Vec<(KnobAddr, KnobDescription)> = {
-        let rate_desc = KnobDescription {
-            name: Arc::new("rate".to_string()),
-            datatype: Datatype::Rate,
+        let mult_desc = KnobDescription {
+            name: Arc::new("factor".to_string()),
+            datatype: Datatype::UFloat,
         };
         let reset_desc = KnobDescription {
             name: Arc::new("reset".to_string()),
             datatype: Datatype::Button,
         };
-        vec!((RATE_KNOB_ADDR, rate_desc), (RESET_KNOB_ADDR, reset_desc))
+        vec!((MULT_KNOB_ADDR, mult_desc), (RESET_KNOB_ADDR, reset_desc))
     };
 }
 
-impl Knobs<KnobAddr> for SimpleClock {
+impl Knobs<KnobAddr> for ClockMultiplier {
     fn knobs(&self) -> Vec<(KnobAddr, KnobDescription)> {
         KNOB_DESC.clone()
     }
 
     fn knob_datatype(&self, addr: KnobAddr) -> Result<Datatype, KnobError<KnobAddr>> {
         match addr {
-            RATE_KNOB_ADDR => Ok(Datatype::Rate),
+            MULT_KNOB_ADDR => Ok(Datatype::UFloat),
             RESET_KNOB_ADDR => Ok(Datatype::Button),
             _ => Err(badaddr(addr)),
         }
@@ -88,7 +96,7 @@ impl Knobs<KnobAddr> for SimpleClock {
     /// Return this knob's current data payload or an error if it doesn't exist.
     fn knob_value(&self, addr: KnobAddr) -> Result<Data, KnobError<KnobAddr>> {
         match addr {
-            RATE_KNOB_ADDR => Ok(Data::Rate(Rate::Hz(self.rate))),
+            MULT_KNOB_ADDR => Ok(Data::UFloat(self.multiplier)),
             RESET_KNOB_ADDR => Ok(Data::Button(self.should_reset)),
             _ => Err(badaddr(addr)),
         }
@@ -96,8 +104,8 @@ impl Knobs<KnobAddr> for SimpleClock {
 
     fn set_knob(&mut self, addr: KnobAddr, value: Data) -> Result<(), KnobError<KnobAddr>> {
         match addr {
-            RATE_KNOB_ADDR => {
-                self.rate = value.as_rate()?.in_hz();
+            MULT_KNOB_ADDR => {
+                self.multiplier = value.as_ufloat()?;
                 Ok(())
             }
             RESET_KNOB_ADDR => {
@@ -106,7 +114,7 @@ impl Knobs<KnobAddr> for SimpleClock {
                     self.should_reset = true;
                 }
                 else {
-                    debug!("Simple clock ignored a button-up knob message.");
+                    debug!("Clock multiplier ignored a button-up knob message.");
                 }
                 Ok(())
             }
@@ -117,7 +125,7 @@ impl Knobs<KnobAddr> for SimpleClock {
     }
 }
 
-impl Clock for SimpleClock {
+impl Clock for ClockMultiplier {
     /// A string name for this class of clock.
     /// This string will be used during serialization and deserialization to uniquely identify
     /// how to reconstruct this clock from a serialized form.
@@ -135,26 +143,18 @@ impl Clock for SimpleClock {
     fn update(&mut self, dt: Duration) -> Messages<Message<KnobAddr>> {
         // if the reset knob was pushed, reset the clock value
         if self.should_reset {
-            self.value = INIT_CLOCK_VAL;
+            self.prev_upstream.set(None);
+            self.prev_value.set(None);
+            self.prev_value_age.set(0);
             self.should_reset = false;
             // emit a message that we changed this knob value.
             Messages::one(Message::Knob(
                 KnobMessage::ValueChange{addr: RESET_KNOB_ADDR, value: Data::Button(false)}))
         }
         else {
-            // determine how much phase has elapsed
-            let elapsed_phase = self.rate * secs(dt);
-            let phase_unwrapped = self.value.phase + elapsed_phase;
-
-            // Determine how many ticks have actually elapsed.  It may be more than 1.
-            // It may also be negative if this clock has a negative rate.
-            let accumulated_ticks = phase_unwrapped.floor() as i64;
-
-            // This clock ticked if we accumulated +-1 or more ticks.
-            self.value.ticked = accumulated_ticks.abs() > 0;
-            self.value.tick_count += accumulated_ticks;
-
-            self.value.phase = modulo_one(phase_unwrapped);
+            // age our stored previous value by one
+            let new_age = self.prev_value_age.get() + 1;
+            self.prev_value_age.set(new_age);
             Messages::none()
         }
     }

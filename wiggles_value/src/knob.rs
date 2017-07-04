@@ -5,7 +5,7 @@
 //! this conversion may fail and the knob control action could return an error rather than setting
 //! a value.
 use std::sync::Arc;
-use super::{Datatype as WiggleDatatype, Data as WiggleData};
+use super::{Datatype as WiggleDatatype, Data as WiggleData, Unipolar};
 use super::knob_types::Rate;
 
 // For now, knob data types will not be extensible but will instead be limited to Wiggles values
@@ -16,6 +16,7 @@ pub enum Datatype {
     Wiggle(WiggleDatatype),
     Rate,
     Button,
+    UFloat, // floating point number >= 0.0
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -23,6 +24,7 @@ pub enum Data {
     Wiggle(WiggleData),
     Rate(Rate),
     Button(bool),
+    UFloat(f64),
 }
 
 // Helper conversion functions for standard allowed conversions.
@@ -36,6 +38,7 @@ impl Data {
             Data::Wiggle(ref v) => Datatype::Wiggle(v.datatype()),
             Data::Rate(_) => Datatype::Rate,
             Data::Button(_) => Datatype::Button,
+            Data::UFloat(_) => Datatype::UFloat,
         }
     }
     /// Attempt to express this value as a rate.
@@ -52,6 +55,18 @@ impl Data {
         match self {
             Data::Button(b) => Ok(b),
             _ => Err(badtype(Datatype::Button, self)),
+        }
+    }
+    /// Attempt to express this value as "unsigned float".
+    /// If a wiggle is provided, convert it to a unipolar float.
+    pub fn as_ufloat<A>(self) -> Result<f64, Error<A>> {
+        match self {
+            Data::UFloat(u) => Ok(u),
+            Data::Wiggle(d) => {
+                let Unipolar(u) = d.coerce().into();
+                Ok(u)
+            }
+            _ => Err(badtype(Datatype::UFloat, self)),
         }
     }
 }
