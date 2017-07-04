@@ -29,7 +29,7 @@ lazy_static! {
 pub fn new_clock<N: Into<String>>(class: &str, name: N) -> Option<Box<CompleteClock>> {
     match class {
         simple::CLASS => Some(Box::new(simple::SimpleClock::new(name))),
-        multipler::CLASS => Some(Box::new(multiplier::ClockMultiplier::new(name))),
+        multiplier::CLASS => Some(Box::new(multiplier::ClockMultiplier::new(name))),
         _ => None,
     }
 }

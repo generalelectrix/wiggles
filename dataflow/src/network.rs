@@ -79,7 +79,7 @@ impl<N, I, M> Network<N, I, M>
     }
 
     /// Insert a new node into this network.  Return a mutable reference to it.
-    pub fn add(&mut self, node_contents: N) -> &mut Node<N, I, M> {
+    pub fn add(&mut self, node_contents: N) -> (I, &mut Node<N, I, M>) {
         let node = Node::new(node_contents);
         // Find the first available slot index, if one exists.
         // Sadly we can't do this more directly because of rustlang #21906.
@@ -98,14 +98,15 @@ impl<N, I, M> Network<N, I, M>
             // slip the node in
             slot.node = Some(node);
             // return a reference to it
-            slot.node.as_mut().unwrap()
+            (I::new(index as NodeIndex, slot.gen_id), slot.node.as_mut().unwrap())
         }
         else {
             // no available slot, push a new slot on
             let slot = NodeSlot::new(0, Some(node));
             self.slots.push(slot);
-            // return a reference to the node we just added
-            self.slots.last_mut().unwrap().node.as_mut().unwrap()
+            // return a reference to the node we just added along with its ID
+            let index = self.slots.len()-1;
+            (I::new(index as NodeIndex, 0), self.slots.last_mut().unwrap().node.as_mut().unwrap())
         }
     }
 

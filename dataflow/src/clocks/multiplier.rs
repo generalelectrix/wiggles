@@ -1,7 +1,10 @@
 //! A clock that performs quasi-stateless clock multiplication and division.
+//! This implementation fundamentally relies on receiving deterministic, equally-sized timesteps
+//! during the state update.
 use std::sync::Arc;
 use std::time::Duration;
 use std::cell::Cell;
+use std::cmp::max;
 use console_server::reactor::Messages;
 use ::util::{secs, modulo_one};
 use super::clock::{Clock, ClockValue, ClockId, ClockProvider, Message, KnobAddr};
@@ -159,8 +162,52 @@ impl Clock for ClockMultiplier {
         }
     }
 
-    fn render(&self, _: &[Option<ClockId>], _: &ClockProvider) -> ClockValue {
-        self.value
+    fn render(&self, inputs: &[Option<ClockId>], clock_network: &ClockProvider) -> ClockValue {
+        // If our inputs are the wrong shape, log an error and return the zero value.
+        match inputs.get(0) {
+            None => {
+                error!("Multiplier {} was passed 0 inputs.", self.name);
+                return ClockValue::default();
+            }
+            Some(&None) => {
+                // input is disconnected, return 0
+                return ClockValue::default();
+            }
+            Some(&Some(id)) => {
+                let upstream_val = clock_network.get_value(id);
+
+                let upstream_float_val = upstream_val.float_value();
+
+                let prev_upstream_val = self.prev_upstream.get().unwrap_or(0.0);
+                let prev_val = self.prev_value.get().unwrap_or(0.0);
+
+                let upstream_dt = upstream_float_val - prev_upstream_val;
+                let mult_dt = upstream_dt * self.multiplier;
+
+                let new_time = prev_val + mult_dt;
+
+                // determine if we should tick on this update
+                let ticked = {
+                    // depending on the age of the previous value, crudely calculate how
+                    // much of the total delta_t accumulated this frame.  We need to do this max check
+                    // in case we render two frames in a row without an update.
+                    let age = max(self.prev_value_age.get(), 1);
+
+                    let delta_t_this_frame = mult_dt / age as f64;
+                    // if the integer portion of the approximate value one update ago
+                    // and the current value are different, this multiplier ticked.
+                    let current_tick_number = new_time.trunc();
+                    let approximate_prev_tick_number = (new_time - delta_t_this_frame).trunc();
+
+                    current_tick_number != approximate_prev_tick_number
+                };
+                self.prev_upstream.set(Some(upstream_float_val));
+                self.prev_value.set(Some(new_time));
+                self.prev_value_age.set(0);
+                ClockValue::from_float_value(new_time, ticked)
+            }
+        }
+
     }
 
     fn as_json(&self) -> Result<String, SerdeJsonError> {

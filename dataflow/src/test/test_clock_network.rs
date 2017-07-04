@@ -3,6 +3,7 @@
 use std::fmt;
 use network::Network;
 use clocks::simple::SimpleClock;
+use clocks::multiplier::ClockMultiplier;
 use clocks::clock::{CompleteClock, ClockId, KnobAddr, Message, ClockKnobAddr};
 use serde_json;
 
@@ -17,7 +18,22 @@ fn test_construct_network() {
     let mut network: ClockNetwork = Network::new();
     let clock = SimpleClock::new("test");
     let boxed = box_clock(clock);
-    network.add(boxed);
+    let simple_id = {
+        let (id, _) = network.add(boxed);
+        id
+    };
+    
+
+    // Add a multiplier linked to the simple clock we just added.
+    let mult = ClockMultiplier::new("test mult");
+    let boxed = box_clock(mult);
+    let mult_id = {
+        let (id, _) = network.add(boxed);
+        id
+    };
+
+    // connect the multiplier's input
+    network.swap_input(mult_id, 0, Some(simple_id)).unwrap();
 
     // make sure we can serialize and deserialize
     let ser_net = serde_json::to_string(&network).unwrap();
