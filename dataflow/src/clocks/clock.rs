@@ -7,6 +7,7 @@ use wiggles_value::knob::{Knobs, Message as KnobMessage};
 use std::collections::HashMap;
 use std::time::Duration;
 use std::fmt;
+use std::any::Any;
 use serde::{Serialize, Serializer};
 use serde::de::DeserializeOwned;
 use serde_json::{Error as SerdeJsonError, self};
@@ -18,7 +19,7 @@ pub type KnobAddr = u32;
 // We need to qualify the knob's address with the clock's address to go up into the network.
 pub type ClockKnobAddr = (ClockId, KnobAddr);
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 /// Represent the complete value of the current state of a clock.
 pub struct ClockValue {
     pub phase: f64,
@@ -149,9 +150,27 @@ pub enum Message<A> {
 }
 
 
-pub trait CompleteClock: Clock + Inputs<Message<ClockKnobAddr>> + Knobs<KnobAddr> + fmt::Debug {}
+pub trait CompleteClock: Clock + Inputs<Message<ClockKnobAddr>> + Knobs<KnobAddr> + fmt::Debug {
+    fn eq(&self, other: &CompleteClock) -> bool;
+    fn as_any(&self) -> &Any;
+}
 
 impl<T> CompleteClock for T
-    where T: Clock + Inputs<Message<ClockKnobAddr>> + Knobs<KnobAddr> + fmt::Debug {}
+    where T: 'static + Clock + Inputs<Message<ClockKnobAddr>> + Knobs<KnobAddr> + fmt::Debug + PartialEq
+{
+    fn eq(&self, other: &CompleteClock) -> bool {
+        other.as_any().downcast_ref::<T>().map_or(false, |x| x == self)
+    }
 
+    fn as_any(&self) -> &Any {
+        self
+    }
+
+}
+
+impl<'a, 'b> PartialEq<CompleteClock+'b> for CompleteClock + 'a {
+    fn eq(&self, other: &(CompleteClock+'b)) -> bool {
+        CompleteClock::eq(self, other)
+    }
+}
 

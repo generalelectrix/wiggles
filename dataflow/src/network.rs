@@ -22,7 +22,7 @@ pub type GenerationId = u32;
 /// Trait used to index into a network.
 /// Individual network domains should create their own unique index type to ensure they cannot
 /// accidentally cross networks.
-pub trait NodeId: fmt::Debug + fmt::Display + PartialEq + Copy {
+pub trait NodeId: fmt::Debug + fmt::Display + Copy + PartialEq {
     /// Return the index of this node.
     fn index(&self) -> NodeIndex;
     /// Return the generation ID of this node.
@@ -33,7 +33,7 @@ pub trait NodeId: fmt::Debug + fmt::Display + PartialEq + Copy {
 
 type InputId = u32;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 /// Generation ID and a slot to hold onto a node in the network.
 struct NodeSlot<N, I, M>
     where N: fmt::Debug + Inputs<M> + Sized, I: NodeId
@@ -55,7 +55,7 @@ impl<N, I, M> NodeSlot<N, I, M>
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Network<N, I, M>
     where N: fmt::Debug + Inputs<M> + Sized, I: NodeId
 {
@@ -507,7 +507,7 @@ impl<T, M> Inputs<M> for Box<T> where T: Inputs<M> + ?Sized {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Node<N, I, M>
     where N: fmt::Debug + Inputs<M> + Sized, I: NodeId
 {

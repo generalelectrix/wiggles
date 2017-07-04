@@ -20,6 +20,7 @@ fn test_construct_network() {
     network.add(boxed);
 
     // make sure we can serialize and deserialize
-    //let ser_net = serde_json::to_string(&network).unwrap();
-    //let de_net: ClockNetwork = serde_json::from_str(&ser_net).unwrap();
+    let ser_net = serde_json::to_string(&network).unwrap();
+    let de_net: ClockNetwork = serde_json::from_str(&ser_net).unwrap();
+    assert_eq!(network, de_net);
 }

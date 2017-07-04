@@ -16,7 +16,7 @@ pub const INIT_CLOCK_VAL: ClockValue = ClockValue { phase: 0.0, tick_count: 0, t
 // Run at 1 Hz by default.
 pub const INIT_RATE: f64 = 1.0;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct SimpleClock {
     name: String,
     value: ClockValue,
