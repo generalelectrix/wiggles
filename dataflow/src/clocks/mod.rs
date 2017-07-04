@@ -1,123 +1,54 @@
-//! Clock abstraction for Wiggles.
-//! Implementors will be wrapped up as trait objects and injected into a dataflow network.
-use super::util::{modulo_one, almost_eq};
-use super::network::{Network, NodeIndex, GenerationId, NodeId, Inputs};
-use console_server::reactor::Messages;
-use wiggles_value::knob::{Knobs};
-use std::time::Duration;
-use std::fmt;
+use std::collections::HashMap;
+use self::clock::CompleteClock;
+use serde::Deserializer;
+use serde_json::{self, Error as SerdeJsonError};
+use self::serde::SerializableClock;
+use serde::de::Error;
 
+pub mod clock;
 pub mod simple;
+mod serde;
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-/// Represent the complete value of the current state of a clock.
-pub struct ClockValue {
-    pub phase: f64,
-    pub tick_count: i64,
-    pub ticked: bool,
+// Gather every clock declaration up here.
+// We could potentially make this mutable and provide a registration function if we want to be able
+// to load clock defintions after compile time.  For now, we'll just keep it static.
+// This collection serves as both a registry to every class of clock and how it is created, and
+// enables serialization and deserialization of those clocks once they are hidden behind trait
+// objects.
+
+lazy_static! {
+    static ref CLOCKS: Vec<&'static str> = vec!(
+        simple::CLASS,
+    );
 }
 
-impl ClockValue {
-    /// Construct a clock value from a float and whether or not it just ticked.
-    pub fn from_float_value(val: f64, ticked: bool) -> Self {
-        ClockValue { phase: modulo_one(val), tick_count: val.trunc() as i64, ticked: ticked }
-    }
-    pub fn float_value(&self) -> f64 { self.tick_count as f64 + self.phase }
-
-    /// Assert that this clock value is equivalent to another.
-    /// Used for testing clock operations.
-    pub fn assert_almost_eq_to(&self, other: ClockValue) {
-        let clock_info_dump = format!("clock a: {:?}, clock b: {:?}", *self, other);
-        assert!(almost_eq(self.phase, other.phase),
-                "clock a phase = {} but clock b phase = {}\n{}",
-                self.phase,
-                other.phase,
-                clock_info_dump);
-        assert_eq!(self.tick_count,
-                   other.tick_count,
-                   "clock a ticks = {} but clock b ticks = {}\n{}",
-                   self.tick_count,
-                   other.tick_count,
-                   clock_info_dump);
-        assert_eq!(self.ticked,
-                   other.ticked,
-                   "clock a ticked: {} but clock b ticked: {}\n{}",
-                   self.ticked,
-                   other.ticked,
-                   clock_info_dump);
+/// Return an initialized clock with the provieded name, if the class matches a registered one.
+/// Return None if the class is unknown.
+pub fn new_clock<N: Into<String>>(class: &str, name: N) -> Option<Box<CompleteClock>> {
+    match class {
+        simple::CLASS => Some(Box::new(simple::SimpleClock::new(name))),
+        _ => None,
     }
 }
 
-impl Default for ClockValue {
-    /// Placeholder default for ClockValue.
-    fn default() -> Self {
-        ClockValue {
-            phase: 0.0,
-            tick_count: 0,
-            ticked: false,
-        }
-    }
-}
-
-pub trait ClockProvider {
-    fn get_value(&self, clock_id: ClockId) -> ClockValue;
-}
-
-pub trait Clock<M>: Inputs<M> + Knobs<Addr=u32>
-    where M: fmt::Debug
+/// Deserialize a clock that has been serialized using our janky mechanism.
+pub fn deserialize(clock: SerializableClock) -> Result<Box<CompleteClock>, SerdeJsonError>
 {
-    /// A string name for this class of clock.
-    /// This string will be used during serialization and deserialization to uniquely identify
-    /// how to reconstruct this clock from a serialized form.
-    fn class(&self) -> &'static str;
-
-    /// Return the name that has been assigned to this clock.
-    fn name(&self) -> &str;
-
-    /// Update the state of this clock using the provided update interval.
-    /// Return a message collection of some kind.
-    fn update(&mut self, dt: Duration) -> Messages<M>;
-
-    /// Render the state of this clock, providing its currently-assigned inputs as well as a
-    /// function that can be used to retrieve the current value of one of those inputs.
-    fn render(&self, inputs: &[Option<ClockId>], network: &ClockProvider) -> ClockValue;
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ClockId(NodeIndex, GenerationId);
-
-impl fmt::Display for ClockId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "clock node {}, generation {}", self.0, self.1)
-    }
-}
-
-impl NodeId for ClockId {
-    fn new(idx: NodeIndex, gen_id: GenerationId) -> Self {
-        ClockId(idx, gen_id)
-    }
-    fn index(&self) -> NodeIndex {
-        self.0
-    }
-    fn gen_id(&self) -> GenerationId {
-        self.1
-    }
-}
-
-impl<N, M> ClockProvider for Network<N, ClockId, M>
-    where N: Clock<M> + fmt::Debug, M: fmt::Debug
-{
-    /// Get the value of the requested clock.
-    /// If it is missing, log an error and return a default.
-    fn get_value(&self, clock_id: ClockId) -> ClockValue {
-        match self.node(clock_id) {
-            Err(e) => {
-                error!("Error while trying to get clock value from {}: {}.", clock_id, e);
-                ClockValue::default()
-            }
-            Ok(node) => {
-                node.inner().render(node.inputs(), self)
-            }
+    match clock.class.as_str() {
+        simple::CLASS => {
+            let result: Result<simple::SimpleClock, _> = serde_json::from_str(&clock.serialized); 
+            handle_deserialize_result(result)
         }
+        _ => Err(SerdeJsonError::custom(format!("Unknown clock class: '{}'.", clock.class))),
+    }
+}
+
+fn handle_deserialize_result<T>(
+    result: Result<T, SerdeJsonError>) -> Result<Box<CompleteClock>, SerdeJsonError>
+    where T: 'static + CompleteClock
+{
+    match result {
+        Ok(deserialized) => Ok(Box::new(deserialized)),
+        Err(e) => Err(SerdeJsonError::custom(e)),
     }
 }

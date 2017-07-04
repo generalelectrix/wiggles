@@ -1,7 +1,6 @@
 use std::fmt;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
-use std::hash::BuildHasherDefault;
 use std::mem::swap;
 use std::u32;
 use std::marker::PhantomData;
@@ -10,7 +9,7 @@ use wiggles_value::knob::{
     Datatype as KnobDatatype,
     Data as KnobData,
     KnobDescription,
-    KnobError,
+    Error as KnobError,
     badaddr,
 };
 
@@ -37,7 +36,7 @@ type InputId = u32;
 #[derive(Debug, Serialize, Deserialize)]
 /// Generation ID and a slot to hold onto a node in the network.
 struct NodeSlot<N, I, M>
-    where N: fmt::Debug + Inputs<M>, I: NodeId
+    where N: fmt::Debug + Inputs<M> + Sized, I: NodeId
 {
     gen_id: GenerationId,
     node: Option<Node<N, I, M>>,
@@ -45,7 +44,7 @@ struct NodeSlot<N, I, M>
 }
 
 impl<N, I, M> NodeSlot<N, I, M>
-    where N: fmt::Debug + Inputs<M>, I: NodeId
+    where N: fmt::Debug + Inputs<M> + Sized, I: NodeId
 {
     fn new(gen_id: GenerationId, node: Option<Node<N, I, M>>) -> Self {
         NodeSlot {
@@ -58,7 +57,7 @@ impl<N, I, M> NodeSlot<N, I, M>
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Network<N, I, M>
-    where N: fmt::Debug + Inputs<M>, I: NodeId
+    where N: fmt::Debug + Inputs<M> + Sized, I: NodeId
 {
     /// Collection of node slots, indexed by their ID.
     /// Tagged internally with a generation ID.
@@ -69,7 +68,7 @@ pub struct Network<N, I, M>
 }
 
 impl<N, I, M> Network<N, I, M>
-    where N: fmt::Debug + Inputs<M>, I: NodeId, M: fmt::Debug
+    where N: fmt::Debug + Inputs<M> + Sized, I: NodeId, M: fmt::Debug
 {
     /// Create a new, empty network.
     pub fn new() -> Self {
@@ -92,7 +91,6 @@ impl<N, I, M> Network<N, I, M>
                 break;
             }
         }
-
         if let Some(index) = slot_idx {
             let slot = self.slots.get_mut(index).expect("We just got this index, it must be live.");
             // increment the generation ID
@@ -380,11 +378,10 @@ impl<N, I, M> Network<N, I, M>
 
 /// Blanket impl for a network whose nodes are knob-controlled.
 /// Wrapper the inner knob address with the address of the node in the network.
-impl<N, I, M> Knobs for Network<N, I, M>
-    where N: Knobs + fmt::Debug + Inputs<M>, I: NodeId, M: fmt::Debug
+impl<N, I, M, A> Knobs<(I, A)> for Network<N, I, M>
+    where N: Knobs<A> + fmt::Debug + Inputs<M>, I: NodeId, M: fmt::Debug, A: Copy
 {
-    type Addr = (I, (N::Addr));
-    fn knobs(&self) -> Vec<(Self::Addr, KnobDescription)> {
+    fn knobs(&self) -> Vec<((I, A), KnobDescription)> {
         let mut descriptions = Vec::new();
         for (index, slot) in self.slots.iter().enumerate() {
             if let Some(ref node) = slot.node {
@@ -397,7 +394,7 @@ impl<N, I, M> Knobs for Network<N, I, M>
         descriptions
     }
 
-    fn set_knob(&mut self, addr: Self::Addr, value: KnobData) -> Result<(), KnobError<Self::Addr>> {
+    fn set_knob(&mut self, addr: (I, A), value: KnobData) -> Result<(), KnobError<(I, A)>> {
         let (node_addr, knob_addr) = addr;
         match self.node_mut(node_addr) {
             Err(_) => Err(badaddr(addr)),
@@ -409,7 +406,7 @@ impl<N, I, M> Knobs for Network<N, I, M>
     }
 
     /// Return this knob's current data payload or an error if it doesn't exist.
-    fn knob_value(&self, addr: Self::Addr) -> Result<KnobData, KnobError<Self::Addr>> {
+    fn knob_value(&self, addr: (I, A)) -> Result<KnobData, KnobError<(I, A)>> {
         let (node_addr, knob_addr) = addr;
         match self.node(node_addr) {
             Err(_) => Err(badaddr(addr)),
@@ -420,7 +417,7 @@ impl<N, I, M> Knobs for Network<N, I, M>
         }
     }
 
-    fn knob_datatype(&self, addr: Self::Addr) -> Result<KnobDatatype, KnobError<Self::Addr>> {
+    fn knob_datatype(&self, addr: (I, A)) -> Result<KnobDatatype, KnobError<(I, A)>> {
         let (node_addr, knob_addr) = addr;
         match self.node(node_addr) {
             Err(_) => Err(badaddr(addr)),
@@ -498,31 +495,27 @@ pub trait Inputs<M> {
     fn try_pop_input(&mut self) -> Result<M, ()>;
 }
 
-impl<M, T> Inputs<M> for Box<T>
-    where T: Inputs<M>
-{
+impl<T, M> Inputs<M> for Box<T> where T: Inputs<M> + ?Sized {
     fn default_input_count(&self) -> u32 {
-        self.default_input_count()
+        (**self).default_input_count()
     }
-
     fn try_push_input(&mut self) -> Result<M, ()> {
-        self.try_push_input()
+        (**self).try_push_input()
     }
-
     fn try_pop_input(&mut self) -> Result<M, ()> {
-        self.try_pop_input()
+        (**self).try_pop_input()
     }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Node<N, I, M>
-    where N: fmt::Debug + Inputs<M>, I: NodeId
+    where N: fmt::Debug + Inputs<M> + Sized, I: NodeId
 {
     /// Which other node Ids are listening to this one, and how many connections do they have?
     /// We just track node indices here rather than full node IDs with the generation ID as
     /// we should internally hold the invariant that removal of a node always ensures that we
     /// remove all listeners.
-    listeners: HashMap<NodeIndex, u32, BuildHasherDefault<simple_hash::SimpleHasher>>,
+    listeners: HashMap<NodeIndex, u32>,
     /// How many inputs does this node have, and what are they connected to (if anything).
     inputs: Vec<Option<I>>,
     inner: N,
@@ -530,13 +523,12 @@ pub struct Node<N, I, M>
 }
 
 impl<N, I, M> Node<N, I, M>
-    where N: fmt::Debug + Inputs<M>, I: NodeId, M: fmt::Debug
+    where N: fmt::Debug + Inputs<M> + Sized, I: NodeId, M: fmt::Debug
 {
     pub fn new(node: N) -> Self {
         let inputs = vec![None; node.default_input_count() as usize];
         Node {
-            listeners: HashMap::<NodeIndex, u32, _>::with_hasher(
-                BuildHasherDefault::<simple_hash::SimpleHasher>::default()),
+            listeners: HashMap::new(),
             inputs: inputs,
             inner: node,
             _message_type: PhantomData,
@@ -730,44 +722,4 @@ fn noinput<I: NodeId>(id: InputId) -> NetworkError<I> {
 /// Shorthand constructor for NetworkError::OldGenId.
 fn oldgen<I: NodeId>(id: I) -> NetworkError<I> {
     NetworkError::OldGenId(id)
-}
-
-/// Implement dirt-simple hash function that just uses the integer you've given it as the hash key.
-/// Taken from https://gist.github.com/arthurprs/88eef0b57b9f8341c54e2d82ec775698
-mod simple_hash {
-    use std::hash::Hasher;
-    pub struct SimpleHasher(u64);
-
-    #[inline]
-    fn load_u64_le(buf: &[u8], len: usize) -> u64 {
-        use std::ptr;
-        debug_assert!(len <= buf.len());
-        let mut data = 0u64;
-        unsafe {
-            ptr::copy_nonoverlapping(buf.as_ptr(), &mut data as *mut _ as *mut u8, len);
-        }
-        data.to_le()
-    }
-
-
-    impl Default for SimpleHasher {
-
-        #[inline]
-        fn default() -> SimpleHasher {
-            SimpleHasher(0)
-        }
-    }
-
-    impl Hasher for SimpleHasher {
-
-        #[inline]
-        fn finish(&self) -> u64 {
-            self.0
-        }
-
-        #[inline]
-        fn write(&mut self, bytes: &[u8]) {
-            *self = SimpleHasher(load_u64_le(bytes, bytes.len()));
-        }
-    }
 }

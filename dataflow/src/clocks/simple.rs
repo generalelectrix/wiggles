@@ -5,10 +5,12 @@ use std::sync::Arc;
 use std::time::Duration;
 use console_server::reactor::Messages;
 use ::util::{secs, modulo_one};
-use super::{Clock, ClockValue, ClockId, ClockProvider};
+use super::clock::{Clock, ClockValue, ClockId, ClockProvider, Message, KnobAddr};
 use ::network::Inputs;
-use wiggles_value::knob::{Knobs, Datatype, Data, KnobDescription, KnobError, badaddr};
+use wiggles_value::knob::{
+    Knobs, Datatype, Data, KnobDescription, Error as KnobError, badaddr, Message as KnobMessage};
 use wiggles_value::knob_types::Rate;
+use serde_json::{Error as SerdeJsonError, self};
 
 pub const INIT_CLOCK_VAL: ClockValue = ClockValue { phase: 0.0, tick_count: 0, ticked: true };
 // Run at 1 Hz by default.
@@ -35,7 +37,7 @@ impl SimpleClock {
     }
 }
 
-const CLASS: &'static str = "simple";
+pub const CLASS: &'static str = "simple";
 
 impl<M> Inputs<M> for SimpleClock {
     /// Simple clock always has no inputs.
@@ -58,7 +60,7 @@ const RESET_KNOB_ADDR: u32 = 1;
 
 // Since SimpleClock always has the same number of knobs, use a static for its knob descriptions.
 lazy_static! {
-    static ref KNOB_DESC: Vec<(u32, KnobDescription)> = {
+    static ref KNOB_DESC: Vec<(KnobAddr, KnobDescription)> = {
         let rate_desc = KnobDescription {
             name: Arc::new("rate".to_string()),
             datatype: Datatype::Rate,
@@ -71,13 +73,12 @@ lazy_static! {
     };
 }
 
-impl Knobs for SimpleClock {
-    type Addr = u32;
-    fn knobs(&self) -> Vec<(Self::Addr, KnobDescription)> {
+impl Knobs<KnobAddr> for SimpleClock {
+    fn knobs(&self) -> Vec<(KnobAddr, KnobDescription)> {
         KNOB_DESC.clone()
     }
 
-    fn knob_datatype(&self, addr: Self::Addr) -> Result<Datatype, KnobError<Self::Addr>> {
+    fn knob_datatype(&self, addr: KnobAddr) -> Result<Datatype, KnobError<KnobAddr>> {
         match addr {
             RATE_KNOB_ADDR => Ok(Datatype::Rate),
             RESET_KNOB_ADDR => Ok(Datatype::Button),
@@ -86,7 +87,7 @@ impl Knobs for SimpleClock {
     }
 
     /// Return this knob's current data payload or an error if it doesn't exist.
-    fn knob_value(&self, addr: Self::Addr) -> Result<Data, KnobError<Self::Addr>> {
+    fn knob_value(&self, addr: KnobAddr) -> Result<Data, KnobError<KnobAddr>> {
         match addr {
             RATE_KNOB_ADDR => Ok(Data::Rate(Rate::Hz(self.rate))),
             RESET_KNOB_ADDR => Ok(Data::Button(self.should_reset)),
@@ -94,7 +95,7 @@ impl Knobs for SimpleClock {
         }
     }
 
-    fn set_knob(&mut self, addr: Self::Addr, value: Data) -> Result<(), KnobError<Self::Addr>> {
+    fn set_knob(&mut self, addr: KnobAddr, value: Data) -> Result<(), KnobError<KnobAddr>> {
         match addr {
             RATE_KNOB_ADDR => {
                 self.rate = value.as_rate()?.in_hz();
@@ -117,9 +118,7 @@ impl Knobs for SimpleClock {
     }
 }
 
-impl<M> Clock<M> for SimpleClock
-    where M: fmt::Debug
-{
+impl Clock for SimpleClock {
     /// A string name for this class of clock.
     /// This string will be used during serialization and deserialization to uniquely identify
     /// how to reconstruct this clock from a serialized form.
@@ -134,13 +133,14 @@ impl<M> Clock<M> for SimpleClock
 
     /// Update the state of this clock using the provided update interval.
     /// Return a message collection of some kind.
-    fn update(&mut self, dt: Duration) -> Messages<M> {
+    fn update(&mut self, dt: Duration) -> Messages<Message<KnobAddr>> {
         // if the reset knob was pushed, reset the clock value
         if self.should_reset {
             self.value = INIT_CLOCK_VAL;
             self.should_reset = false;
             // TODO: emit a message that we changed this knob value.
-            Messages::none()
+            Messages::one(Message::Knob(
+                KnobMessage::ValueChange{addr: RESET_KNOB_ADDR, value: Data::Button(false)}))
         }
         else {
             // determine how much phase has elapsed
@@ -162,5 +162,9 @@ impl<M> Clock<M> for SimpleClock
 
     fn render(&self, _: &[Option<ClockId>], _: &ClockProvider) -> ClockValue {
         self.value
+    }
+
+    fn as_json(&self) -> Result<String, SerdeJsonError> {
+        serde_json::to_string(self)
     }
 }
