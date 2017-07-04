@@ -1,6 +1,5 @@
 //! A basic clock that runs at a rate set by a knob.
 //! Also provides a reset button.
-use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
 use console_server::reactor::Messages;
