@@ -4,14 +4,12 @@ use std::fmt;
 use network::Network;
 use clocks::simple::SimpleClock;
 use clocks::multiplier::ClockMultiplier;
-use clocks::clock::{CompleteClock, ClockId, KnobAddr, Message, ClockKnobAddr};
+use clocks::clock::{ClockNetwork, CompleteClock, ClockId, KnobAddr, Message, ClockKnobAddr};
 use serde_json;
 
 fn box_clock<T: 'static + CompleteClock>(t: T) -> Box<CompleteClock> {
     Box::new(t)
 }
-
-type ClockNetwork = Network<Box<CompleteClock>, ClockId, Message<ClockKnobAddr>>;
 
 #[test]
 fn test_construct_network() {

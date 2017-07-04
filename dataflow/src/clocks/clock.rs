@@ -124,9 +124,10 @@ impl NodeId for ClockId {
     }
 }
 
-impl<N> ClockProvider for Network<N, ClockId, Message<ClockKnobAddr>>
-    where N: Clock + fmt::Debug + Inputs<Message<ClockKnobAddr>>
-{
+/// Type alias for a network of clocks.
+pub type ClockNetwork = Network<Box<CompleteClock>, ClockId, Message<ClockKnobAddr>>;
+
+impl ClockProvider for ClockNetwork {
     /// Get the value of the requested clock.
     /// If it is missing, log an error and return a default.
     fn get_value(&self, clock_id: ClockId) -> ClockValue {
@@ -142,11 +143,24 @@ impl<N> ClockProvider for Network<N, ClockId, Message<ClockKnobAddr>>
     }
 }
 
+// TODO: refactor to eliminate this?  Unclear if we need other messages at this layer of the stack.
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 /// Concrete message type used by the clock network.
 /// Includes messages related to the knob system.
 pub enum Message<A> {
     Knob(KnobMessage<A>),
+}
+
+impl<A> Message<A> {
+    /// Use the provided function to lift this clock message into a higher address space.
+    pub fn lift_address<NewAddr, F>(self, lifter: F) -> Message<NewAddr>
+        where F: FnOnce(A) -> NewAddr, NewAddr: Copy
+    {
+        use self::Message::*;
+        match self {
+            Knob(ka) => Knob(ka.lift_address(lifter)),
+        }
+    }
 }
 
 
@@ -174,3 +188,27 @@ impl<'a, 'b> PartialEq<CompleteClock+'b> for CompleteClock + 'a {
     }
 }
 
+// TODO: consider generalizing Update and/or Render as traits.
+/// Wrapper trait for a clock network.
+pub trait ClockCollection {
+    fn update(&mut self, dt: Duration) -> Messages<Message<ClockKnobAddr>>;
+}
+
+impl ClockCollection for ClockNetwork {
+    fn update(&mut self, dt: Duration) -> Messages<Message<ClockKnobAddr>> {
+        let mut update_messages = Messages::none();
+        {
+            let update = |node_id: ClockId, clock: &mut Box<CompleteClock>| {
+                // lift the address of this message up into the network address space
+                let address_lifter = |knob_num| (node_id, knob_num);
+                let mut messages = clock.update(dt);
+                for message in messages.drain() {
+                    let lifted_message = message.lift_address(&address_lifter);
+                    (&mut update_messages).push(lifted_message);
+                }
+            };
+            self.map_inner(update);
+        }
+        update_messages
+    }
+}

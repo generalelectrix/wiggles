@@ -214,6 +214,27 @@ impl<N, I, M> Network<N, I, M>
         }
     }
 
+    /// Map a mutating function over all inner nodes, passing in the node index and the inner node.
+    pub fn map_inner<F>(&mut self, mut func: F)
+        where F: FnMut(I, &mut N)
+    {
+        let node_iter = self.slots.iter_mut()
+            .enumerate()
+            .filter_map(|(i, slot)| {
+                match slot.node {
+                    Some(ref mut node) => {
+                        let node_id = I::new(i as NodeIndex, slot.gen_id);
+                        Some((node_id, node))
+                    }
+                    None => None,
+                }
+            });
+
+        for (node_id, ref mut node) in node_iter {
+            func(node_id, &mut node.inner);
+        }
+    }
+
     /// Swap an input on a particular node.
     /// Ensure we disconnect from the current node (if not None) and connect to the new one
     /// (if not None).
