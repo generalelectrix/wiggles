@@ -1,0 +1,1 @@
+//! Dataflow node that generates/propagates/mutates a wiggle.

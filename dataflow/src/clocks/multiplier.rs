@@ -6,12 +6,11 @@ use std::time::Duration;
 use std::cell::Cell;
 use std::cmp::max;
 use console_server::reactor::Messages;
-use ::util::{secs, modulo_one, almost_eq};
+use ::util::{modulo_one, almost_eq};
 use super::clock::{Clock, ClockValue, ClockId, ClockProvider, Message, KnobAddr};
 use ::network::Inputs;
 use wiggles_value::knob::{
     Knobs, Datatype, Data, KnobDescription, Error as KnobError, badaddr, Message as KnobMessage};
-use wiggles_value::knob_types::Rate;
 use serde_json::{Error as SerdeJsonError, self};
 
 pub const MULT_KNOB_ADDR: u32 = 0;
@@ -162,7 +161,7 @@ impl Clock for ClockMultiplier {
 
     /// Update the state of this clock using the provided update interval.
     /// Return a message collection of some kind.
-    fn update(&mut self, dt: Duration) -> Messages<Message<KnobAddr>> {
+    fn update(&mut self, _: Duration) -> Messages<Message<KnobAddr>> {
         // if the reset knob was pushed, reset the clock value
         if self.should_reset {
             self.prev_upstream.set(None);

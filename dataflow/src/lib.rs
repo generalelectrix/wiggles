@@ -9,5 +9,6 @@ extern crate serde_json;
 
 pub mod network;
 pub mod clocks;
+pub mod wiggles;
 mod util;
 mod test;
