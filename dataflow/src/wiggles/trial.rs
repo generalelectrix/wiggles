@@ -122,6 +122,7 @@ impl Wiggle for TestWiggle {
     fn render(
         &self,
         phase_offset: Unipolar,
+        type_hint: Option<Datatype>,
         _: &[Option<WiggleId>],
         _: &WiggleProvider,
         clocks: &ClockProvider)
@@ -131,6 +132,7 @@ impl Wiggle for TestWiggle {
             Some(cid) => clocks.get_value(cid),
             None => ClockValue::default(),
         };
+        // TODO: pass type hint into waveform generator so it can be as clever as possible.
         let value = sine(clock_val.phase_shift(phase_offset), Unipolar(1.0), false);
         Data::Bipolar(value)
     }

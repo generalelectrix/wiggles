@@ -75,8 +75,9 @@ impl Unipolar {
 
 
 impl From<Bipolar> for Unipolar {
+    /// Convert to unipolar by taking the absolute value.
     fn from(bp: Bipolar) -> Self {
-        Unipolar((bp.0 + 1.0) / 2.0)
+        Unipolar(bp.0.abs())
     }
 }
 
@@ -100,6 +101,12 @@ impl Unipolar {
     fn into_uint(self, size: EnumSize) -> IntegerEnum {
         let val = (self.0 * (size.0 - 1) as f64) as EnumValue;
         IntegerEnum {value: val, size: size}
+    }
+}
+
+impl Default for Unipolar {
+    fn default() -> Self {
+        Unipolar(0.0)
     }
 }
 
@@ -128,8 +135,9 @@ impl Bipolar {
 }
 
 impl From<Unipolar> for Bipolar {
+    /// We just take the value and interpret it as bipolar.
     fn from(up: Unipolar) -> Self {
-        Bipolar((up.0 * 2.0) - 1.0)
+        Bipolar(up.0)
     }
 }
 
@@ -158,6 +166,12 @@ impl From<Data> for Bipolar {
     }
 }
 
+impl Default for Bipolar {
+    fn default() -> Self {
+        Bipolar(0.0)
+    }
+}
+
 impl Deref for Bipolar {
     type Target = f64;
     fn deref(&self) -> &Self::Target {
@@ -180,6 +194,13 @@ impl IntegerEnum {
         else {
             let as_unipolar: Unipolar = self.into();
             as_unipolar.into_uint(size)
+        }
+    }
+
+    pub fn default(size: EnumSize) -> IntegerEnum {
+        IntegerEnum {
+            value: 0,
+            size: size,
         }
     }
 }
@@ -225,6 +246,16 @@ impl Data {
             Datatype::Bipolar => Data::Bipolar((*self).into()),
             Datatype::Unipolar => Data::Unipolar((*self).into()),
             Datatype::UInt(size) => Data::UInt((*self).into_uint(size)),
+        }
+    }
+
+    /// Provide a default value based on an optional type hint.
+    /// Provide unipolar if no type hint is provided.
+    pub fn default_with_type_hint(type_hint: Option<Datatype>) -> Self {
+        match type_hint {
+            Some(Datatype::Unipolar) | None => Data::Unipolar(Unipolar::default()),
+            Some(Datatype::Bipolar) => Data::Bipolar(Bipolar::default()),
+            Some(Datatype::UInt(size)) => Data::UInt(IntegerEnum::default(size)),
         }
     }
 }

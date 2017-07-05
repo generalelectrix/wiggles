@@ -2,7 +2,7 @@
 use util::{modulo_one, almost_eq, angle_almost_eq};
 use network::{Network, NodeIndex, GenerationId, NodeId, Inputs};
 use console_server::reactor::Messages;
-use wiggles_value::{Data, Unipolar};
+use wiggles_value::{Data, Unipolar, Datatype};
 use wiggles_value::knob::{Knobs, Message as KnobMessage};
 use std::collections::HashMap;
 use std::time::Duration;
@@ -20,7 +20,13 @@ pub type KnobAddr = u32;
 pub type WiggleKnobAddr = (WiggleId, KnobAddr);
 
 pub trait WiggleProvider {
-    //fn get_value(&self, wiggle_id: WiggleId) -> WiggleValue;
+    fn get_value(
+        &self,
+        wiggle_id: WiggleId,
+        phase_offset: Unipolar,
+        type_hint: Option<Datatype>,
+        clocks: &ClockProvider)
+        -> Data;
 }
 
 pub trait Wiggle {
@@ -42,6 +48,7 @@ pub trait Wiggle {
     fn render(
         &self,
         phase_offset: Unipolar,
+        type_hint: Option<Datatype>,
         inputs: &[Option<WiggleId>],
         network: &WiggleProvider,
         clocks: &ClockProvider)
@@ -89,9 +96,30 @@ impl NodeId for WiggleId {
     }
 }
 
-
 /// Type alias for a network of wiggles.
 pub type WiggleNetwork = Network<Box<CompleteWiggle>, WiggleId, Message<WiggleKnobAddr>>;
+
+impl WiggleProvider for WiggleNetwork {
+    fn get_value(
+        &self,
+        wiggle_id: WiggleId,
+        phase_offset: Unipolar,
+        type_hint: Option<Datatype>,
+        clocks: &ClockProvider)
+        -> Data
+    {
+        // if we don't have this node, return a default
+        match self.node(wiggle_id) {
+            Err(e) => {
+                error!("Error while trying to get wiggle from {}: {}.", wiggle_id, e);
+                Data::default_with_type_hint(type_hint)
+            }
+            Ok(node) => {
+                node.inner().render(phase_offset, type_hint, node.inputs(), self, clocks)
+            }
+        }
+    }
+}
 
 // TODO: refactor to eliminate this?  Unclear if we need other messages at this layer of the stack.
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
