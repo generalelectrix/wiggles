@@ -1,6 +1,6 @@
 //! Clock abstraction for Wiggles.
 //! Implementors will be wrapped up as trait objects and injected into a dataflow network.
-use util::{modulo_one, almost_eq};
+use util::{modulo_one, almost_eq, angle_almost_eq};
 use network::{Network, NodeIndex, GenerationId, NodeId, Inputs};
 use console_server::reactor::Messages;
 use wiggles_value::knob::{Knobs, Message as KnobMessage};
@@ -19,7 +19,7 @@ pub type KnobAddr = u32;
 // We need to qualify the knob's address with the clock's address to go up into the network.
 pub type ClockKnobAddr = (ClockId, KnobAddr);
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 /// Represent the complete value of the current state of a clock.
 pub struct ClockValue {
     pub phase: f64,
@@ -66,6 +66,14 @@ impl Default for ClockValue {
             tick_count: 0,
             ticked: false,
         }
+    }
+}
+
+impl PartialEq for ClockValue {
+    fn eq(&self, other: &ClockValue) -> bool {
+        angle_almost_eq(self.phase, other.phase)
+        && self.tick_count == other.tick_count
+        && self.ticked == other.ticked
     }
 }
 
@@ -212,3 +220,4 @@ impl ClockCollection for ClockNetwork {
         update_messages
     }
 }
+

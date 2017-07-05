@@ -148,6 +148,10 @@ pub type ResponseMessage<T> = ResponseWrapper<Response<T>>;
 pub struct Messages<T>(SmallVec<[T; 1]>);
 
 impl<T> Messages<T> {
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
     pub fn one(m: T) -> Self {
         let mut msgs = SmallVec::new();
         msgs.push(m);
