@@ -11,14 +11,15 @@ use super::knob_types::Rate;
 // For now, knob data types will not be extensible but will instead be limited to Wiggles values
 // and a few additional types we've defined here, otherwise the generic types get oppressively 
 // complex (and we only expect to have one type of knob anyway).
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Datatype {
     Wiggle(WiggleDatatype),
     Rate,
     Button,
     UFloat, // floating point number >= 0.0
     // Pick a value from a finite set of named items.
-    // Picker(&'static [&'static str]),
+    // Would be better if this were a simpler impl but we'll roll with it and see how it pans out.
+    Picker(Vec<String>),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -70,6 +71,15 @@ impl Data {
         match self {
             Data::Wiggle(d) => Ok(d.coerce().into()),
             _ => Err(badtype(Datatype::Wiggle(WiggleDatatype::Unipolar), self)),
+        }
+    }
+    /// Unpack this knob data as a picker variant.
+    /// Since we don't have access to the expected variants here, return an empty error and allow
+    /// the client to decide what to do.
+    pub fn as_picker(self, ) -> Result<String, ()> {
+        match self {
+            Data::Picker(p) => Ok(p),
+            _ => Err(()),
         }
     }
 }

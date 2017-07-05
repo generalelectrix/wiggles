@@ -3,7 +3,7 @@
 //! flexibility.  We may want to use abs() or rescale to go from bipolar to
 //! unipolar, for example.
 use std::cmp::{min, max};
-use std::ops::Deref;
+use std::ops::{Deref, Mul};
 
 extern crate serde;
 #[macro_use] extern crate serde_derive;
@@ -117,6 +117,13 @@ impl Deref for Unipolar {
     }
 }
 
+impl Mul for Unipolar {
+    type Output = Unipolar;
+    fn mul(self, rhs: Unipolar) -> Self::Output {
+        Unipolar(self.0 * rhs.0)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialOrd, Serialize, Deserialize)]
 pub struct Bipolar(pub f64);
 
@@ -179,6 +186,14 @@ impl Deref for Bipolar {
     }
 }
 
+// Allow scaling a bipolar with a unipolar value.
+impl Mul<Unipolar> for Bipolar {
+    type Output = Bipolar;
+    fn mul(self, rhs: Unipolar) -> Self::Output {
+        Bipolar(self.0 * rhs.0)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Serialize, Deserialize)]
 pub struct IntegerEnum {pub value: EnumValue, pub size: EnumSize}
 
@@ -202,6 +217,15 @@ impl IntegerEnum {
             value: 0,
             size: size,
         }
+    }
+}
+
+impl Mul<Unipolar> for IntegerEnum {
+    type Output = IntegerEnum;
+    fn mul(self, rhs: Unipolar) -> Self::Output {
+        let as_unipolar: Unipolar = self.into();
+        let scaled = as_unipolar * rhs;
+        scaled.into_uint(self.size)
     }
 }
 

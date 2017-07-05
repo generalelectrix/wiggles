@@ -8,6 +8,7 @@ use serde::de::Error;
 pub mod wiggle;
 mod serde;
 pub mod trial;
+pub mod blender;
 
 // Gather every wiggle declaration up here.
 // We could potentially make this mutable and provide a registration function if we want to be able

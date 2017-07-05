@@ -18,7 +18,7 @@ use super::wiggle::{Wiggle, CompleteWiggle, WiggleId, KnobAddr, WiggleProvider};
 use wiggles_value::{Unipolar, Datatype, Data};
 use waveforms::sine;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct TestWiggle {
     name: String,
     clock: Option<ClockId>,
@@ -32,14 +32,6 @@ impl TestWiggle {
             clock: None,
             duty_cycle: Unipolar(1.0),
         }
-    }
-}
-
-impl PartialEq for TestWiggle {
-    fn eq(&self, other: &TestWiggle) -> bool {
-        self.name == other.name
-        && self.clock == other.clock
-        && self.duty_cycle == other.duty_cycle
     }
 }
 
