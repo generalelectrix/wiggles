@@ -4,7 +4,7 @@
 //! creation of a fixture editor.
 use std::cmp::min;
 use std::collections::HashMap;
-use wiggles_value::{Data, Datatype, Unipolar, Bipolar, IntegerEnum};
+use wiggles_value::{Data, Datatype, Unipolar, Bipolar};
 use fixture::{DmxFixture, FixtureControl, DmxValue, RenderFunc, DmxChannelCount};
 
 // Helper functions for converting wiggles values into DMX.

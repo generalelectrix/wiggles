@@ -218,31 +218,5 @@ impl Wiggle for Blender {
     }
 }
 
-/// Generic add blender, abstracting over accumulation type.
-fn blend_add<T: Add, D: Into<T>>(accum: T, next: D) -> <T as Add>::Output {
-    accum + next.into()
-}
-
-/// Generic multiply blender, abstracting over accumulation type.
-fn blend_mul<T: Mul, D: Into<T>>(accum: T, next: D) -> <T as Mul>::Output {
-    accum * next.into()
-}
-
-/// Generic max blender, abstracting over accumulation type.
-/// Bipolar max blending should use the special-cased version below.
-fn blend_max<T, D: Into<T>>(accum: T, next: D) -> T {
-    max(accum, next.into())
-}
-
-/// Max blender, special-cased for blending Bipolars by comparing using absolute value.
-fn blend_max_bipolar<D: Into<Bipolar>>(accum: Bipolar, next: D) -> Bipolar {
-    let next = next.into();
-    if accum.0.abs() > next.0.abs() {
-        accum
-    }
-    else {
-        next
-    }
-}
 
 
