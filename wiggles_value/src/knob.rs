@@ -17,6 +17,8 @@ pub enum Datatype {
     Rate,
     Button,
     UFloat, // floating point number >= 0.0
+    // Pick a value from a finite set of named items.
+    // Picker(&'static [&'static str]),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -25,6 +27,7 @@ pub enum Data {
     Rate(Rate),
     Button(bool),
     UFloat(f64),
+    Picker(String),
 }
 
 // Helper conversion functions for standard allowed conversions.
@@ -32,15 +35,6 @@ pub enum Data {
 // If we allow implicit conversions, then we should probably explicitly pass a message back up
 // containing the exact data we used to set the knob.  This may not end up being important, though.
 impl Data {
-    // Return the datatype matching this data's current value.
-    pub fn datatype(&self) -> Datatype {
-        match *self {
-            Data::Wiggle(ref v) => Datatype::Wiggle(v.datatype()),
-            Data::Rate(_) => Datatype::Rate,
-            Data::Button(_) => Datatype::Button,
-            Data::UFloat(_) => Datatype::UFloat,
-        }
-    }
     /// Attempt to express this value as a rate.
     /// Do not convert any other datatype into a rate.
     pub fn as_rate<A>(self) -> Result<Rate, Error<A>> {
@@ -130,10 +124,10 @@ impl<A> Message<A> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Error<A> {
     InvalidAddress(A),
-    InvalidDatatype{expected: Datatype, provided: Datatype},
+    InvalidDatatype{expected: Datatype, provided: Data},
 }
 
 impl<A> Error<A> {
@@ -154,7 +148,7 @@ impl<A> Error<A> {
 pub fn badtype<A>(expected: Datatype, provided: Data) -> Error<A> {
     Error::InvalidDatatype {
         expected: expected,
-        provided: provided.datatype(),
+        provided: provided,
     }
 }
 

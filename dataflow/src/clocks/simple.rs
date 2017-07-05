@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use console_server::reactor::Messages;
 use ::util::{secs, modulo_one};
-use super::clock::{Clock, ClockValue, ClockId, ClockProvider, Message, KnobAddr};
+use super::clock::{Clock, ClockValue, ClockId, ClockProvider, KnobAddr};
 use ::network::Inputs;
 use wiggles_value::knob::{
     Knobs, Datatype, Data, KnobDescription, Error as KnobError, badaddr, Message as KnobMessage};
@@ -134,14 +134,14 @@ impl Clock for SimpleClock {
 
     /// Update the state of this clock using the provided update interval.
     /// Return a message collection of some kind.
-    fn update(&mut self, dt: Duration) -> Messages<Message<KnobAddr>> {
+    fn update(&mut self, dt: Duration) -> Messages<KnobMessage<KnobAddr>> {
         // if the reset knob was pushed, reset the clock value
         if self.should_reset {
             self.value = init_clock_val();
             self.should_reset = false;
             // emit a message that we changed this knob value.
-            Messages::one(Message::Knob(
-                KnobMessage::ValueChange{addr: RESET_KNOB_ADDR, value: Data::Button(false)}))
+            Messages::one(
+                KnobMessage::ValueChange{addr: RESET_KNOB_ADDR, value: Data::Button(false)})
         }
         else {
             // determine how much phase has elapsed

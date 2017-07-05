@@ -10,7 +10,6 @@ use clocks::clock::{
     CompleteClock,
     ClockId,
     KnobAddr,
-    Message,
     ClockKnobAddr,
     ClockValue,
     ClockProvider,

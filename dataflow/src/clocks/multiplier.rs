@@ -7,7 +7,7 @@ use std::cell::Cell;
 use std::cmp::max;
 use console_server::reactor::Messages;
 use ::util::{modulo_one, almost_eq};
-use super::clock::{Clock, ClockValue, ClockId, ClockProvider, Message, KnobAddr};
+use super::clock::{Clock, ClockValue, ClockId, ClockProvider, KnobAddr};
 use ::network::Inputs;
 use wiggles_value::knob::{
     Knobs, Datatype, Data, KnobDescription, Error as KnobError, badaddr, Message as KnobMessage};
@@ -161,7 +161,7 @@ impl Clock for ClockMultiplier {
 
     /// Update the state of this clock using the provided update interval.
     /// Return a message collection of some kind.
-    fn update(&mut self, _: Duration) -> Messages<Message<KnobAddr>> {
+    fn update(&mut self, _: Duration) -> Messages<KnobMessage<KnobAddr>> {
         // if the reset knob was pushed, reset the clock value
         if self.should_reset {
             self.prev_upstream.set(None);
@@ -169,8 +169,8 @@ impl Clock for ClockMultiplier {
             self.prev_value_age.set(0);
             self.should_reset = false;
             // emit a message that we changed this knob value.
-            Messages::one(Message::Knob(
-                KnobMessage::ValueChange{addr: RESET_KNOB_ADDR, value: Data::Button(false)}))
+            Messages::one(
+                KnobMessage::ValueChange{addr: RESET_KNOB_ADDR, value: Data::Button(false)})
         }
         else {
             // age our stored previous value by one

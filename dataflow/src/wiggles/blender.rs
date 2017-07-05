@@ -1,4 +1,5 @@
-//! A wiggle that just produces a sin wave, as a proof of principle.
+//! A wiggles node that agglomerates multiple inputs and blends them together using a selected
+//! blend mode.
 use std::sync::Arc;
 use std::time::Duration;
 use console_server::reactor::Messages;
@@ -14,15 +15,16 @@ use wiggles_value::knob::{
 };
 use serde_json::{Error as SerdeJsonError, self};
 use clocks::clock::{ClockId, ClockProvider, ClockValue};
-use super::wiggle::{Wiggle, CompleteWiggle, WiggleId, KnobAddr, WiggleProvider};
+use super::wiggle::{Wiggle, CompleteWiggle, WiggleId, KnobAddr, Message, WiggleProvider};
 use wiggles_value::{Unipolar, Datatype, Data};
 use waveforms::sine;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct TestWiggle {
+pub struct Blender {
     name: String,
-    clock: Option<ClockId>,
-    duty_cycle: Unipolar,
+    /// Channel fader levels.
+    levels: Vec<Unipolar>,
+    ///
 }
 
 impl TestWiggle {
@@ -114,7 +116,8 @@ impl Wiggle for TestWiggle {
     }
 
     /// Update the state of this wiggle using the provided update interval.
-    fn update(&mut self, _: Duration) -> Messages<KnobMessage<KnobAddr>> {
+    /// Return a message collection of some kind.
+    fn update(&mut self, dt: Duration) -> Messages<Message<KnobAddr>> {
         Messages::none()
     }
 

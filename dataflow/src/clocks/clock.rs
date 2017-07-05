@@ -111,7 +111,7 @@ pub trait Clock {
 
     /// Update the state of this clock using the provided update interval.
     /// Return a message collection of some kind.
-    fn update(&mut self, dt: Duration) -> Messages<Message<KnobAddr>>;
+    fn update(&mut self, dt: Duration) -> Messages<KnobMessage<KnobAddr>>;
 
     /// Render the state of this clock, providing its currently-assigned inputs as well as a
     /// function that can be used to retrieve the current value of one of those inputs.
@@ -152,7 +152,7 @@ impl NodeId for ClockId {
 }
 
 /// Type alias for a network of clocks.
-pub type ClockNetwork = Network<Box<CompleteClock>, ClockId, Message<ClockKnobAddr>>;
+pub type ClockNetwork = Network<Box<CompleteClock>, ClockId, KnobMessage<ClockKnobAddr>>;
 
 impl ClockProvider for ClockNetwork {
     /// Get the value of the requested clock.
@@ -170,34 +170,13 @@ impl ClockProvider for ClockNetwork {
     }
 }
 
-// TODO: refactor to eliminate this?  Unclear if we need other messages at this layer of the stack.
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-/// Concrete message type used by the clock network.
-/// Includes messages related to the knob system.
-pub enum Message<A> {
-    Knob(KnobMessage<A>),
-}
-
-impl<A> Message<A> {
-    /// Use the provided function to lift this clock message into a higher address space.
-    pub fn lift_address<NewAddr, F>(self, lifter: F) -> Message<NewAddr>
-        where F: FnOnce(A) -> NewAddr, NewAddr: Copy
-    {
-        use self::Message::*;
-        match self {
-            Knob(ka) => Knob(ka.lift_address(lifter)),
-        }
-    }
-}
-
-
-pub trait CompleteClock: Clock + Inputs<Message<ClockKnobAddr>> + Knobs<KnobAddr> + fmt::Debug {
+pub trait CompleteClock: Clock + Inputs<KnobMessage<ClockKnobAddr>> + Knobs<KnobAddr> + fmt::Debug {
     fn eq(&self, other: &CompleteClock) -> bool;
     fn as_any(&self) -> &Any;
 }
 
 impl<T> CompleteClock for T
-    where T: 'static + Clock + Inputs<Message<ClockKnobAddr>> + Knobs<KnobAddr> + fmt::Debug + PartialEq
+    where T: 'static + Clock + Inputs<KnobMessage<ClockKnobAddr>> + Knobs<KnobAddr> + fmt::Debug + PartialEq
 {
     fn eq(&self, other: &CompleteClock) -> bool {
         other.as_any().downcast_ref::<T>().map_or(false, |x| x == self)
@@ -218,11 +197,11 @@ impl<'a, 'b> PartialEq<CompleteClock+'b> for CompleteClock + 'a {
 // TODO: consider generalizing Update and/or Render as traits.
 /// Wrapper trait for a clock network.
 pub trait ClockCollection {
-    fn update(&mut self, dt: Duration) -> Messages<Message<ClockKnobAddr>>;
+    fn update(&mut self, dt: Duration) -> Messages<KnobMessage<ClockKnobAddr>>;
 }
 
 impl ClockCollection for ClockNetwork {
-    fn update(&mut self, dt: Duration) -> Messages<Message<ClockKnobAddr>> {
+    fn update(&mut self, dt: Duration) -> Messages<KnobMessage<ClockKnobAddr>> {
         let mut update_messages = Messages::none();
         {
             let update = |node_id: ClockId, clock: &mut Box<CompleteClock>| {
