@@ -14,9 +14,8 @@ fn sin(x: f64) -> f64 { x.sin() }
 // This is especially important in pulse mode.
 
 /// Generate a unit-amplitude sine wave on the interval [-1.0, 1.0].
-fn sine(
+pub fn sine(
         Unipolar(angle): Unipolar,
-        Unipolar(smoothing): Unipolar,
         Unipolar(duty_cycle): Unipolar,
         pulse: bool)
         -> Bipolar
@@ -34,28 +33,28 @@ fn sine(
     }
 }
 
-fn sawtooth(
-        Unipolar(angle): Unipolar,
-        Unipolar(smoothing): Unipolar,
-        Unipolar(duty_cycle): Unipolar,
-        pulse: bool)
-        -> Bipolar
-{
-    if angle > duty_cycle || duty_cycle == 0.0 {
-        return Bipolar(0.0);
-    }
+// fn sawtooth(
+//         Unipolar(angle): Unipolar,
+//         Unipolar(smoothing): Unipolar,
+//         Unipolar(duty_cycle): Unipolar,
+//         pulse: bool)
+//         -> Bipolar
+// {
+//     if angle > duty_cycle || duty_cycle == 0.0 {
+//         return Bipolar(0.0);
+//     }
 
-    let angle = angle / duty_cycle;
-    if pulse {
-        if angle < 0.5 {
-            Bipolar(2.0 * angle)
-        }
-        else {
-            Bipolar(2.0 * (1.0 - angle))
-        }
-    }
-    else {
-        if angle < 0.25 {
-            Bipolar(4.0 * angle)
-        }
-    }
+//     let angle = angle / duty_cycle;
+//     if pulse {
+//         if angle < 0.5 {
+//             Bipolar(2.0 * angle)
+//         }
+//         else {
+//             Bipolar(2.0 * (1.0 - angle))
+//         }
+//     }
+//     else {
+//         if angle < 0.25 {
+//             Bipolar(4.0 * angle)
+//         }
+//     }

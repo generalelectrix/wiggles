@@ -1,11 +1,13 @@
-pub mod wiggle;
-mod serde;
 use std::collections::HashMap;
 use self::wiggle::CompleteWiggle;
 use serde::Deserializer;
 use serde_json::{self, Error as SerdeJsonError};
 use self::serde::SerializableWiggle;
 use serde::de::Error;
+
+pub mod wiggle;
+mod serde;
+mod trial;
 
 // Gather every wiggle declaration up here.
 // We could potentially make this mutable and provide a registration function if we want to be able
@@ -16,6 +18,7 @@ use serde::de::Error;
 
 lazy_static! {
     static ref WIGGLES: Vec<&'static str> = vec!(
+        trial::CLASS,
     );
 }
 
@@ -23,6 +26,9 @@ lazy_static! {
 /// Return None if the class is unknown.
 pub fn new_wiggle<N: Into<String>>(class: &str, name: N) -> Option<Box<CompleteWiggle>> {
     match class {
+        trial::CLASS => {
+            Some(Box::new(trial::TestWiggle::new(name)))
+        }
         _ => None,
     }
 }

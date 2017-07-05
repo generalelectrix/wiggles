@@ -3,6 +3,7 @@
 use util::{modulo_one, almost_eq, angle_almost_eq};
 use network::{Network, NodeIndex, GenerationId, NodeId, Inputs};
 use console_server::reactor::Messages;
+use wiggles_value::Unipolar;
 use wiggles_value::knob::{Knobs, Message as KnobMessage};
 use std::collections::HashMap;
 use std::time::Duration;
@@ -22,7 +23,9 @@ pub type ClockKnobAddr = (ClockId, KnobAddr);
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 /// Represent the complete value of the current state of a clock.
 pub struct ClockValue {
-    pub phase: f64,
+    /// Floating-point phase.  Setter method always ensures this is wrapped, so clients creating
+    /// a clock value do not need to ensure it is wrapped as that is handled internally.
+    phase: f64,
     pub tick_count: i64,
     pub ticked: bool,
 }
@@ -55,6 +58,22 @@ impl ClockValue {
                    self.ticked,
                    other.ticked,
                    clock_info_dump);
+    }
+
+    /// Get the phase of this clock.
+    pub fn phase(&self) -> Unipolar {
+        Unipolar(self.phase)
+    }
+
+    /// Set the phase of this clock value, wrapping the value to be unit.
+    pub fn set_phase(&mut self, phase: f64) {
+        self.phase = modulo_one(phase);
+    }
+
+    /// Return this clock value's phase, shifted by the provided amount.
+    /// The output is always in range.
+    pub fn phase_shift(&self, Unipolar(offset): Unipolar) -> Unipolar {
+        Unipolar(modulo_one(self.phase + offset))
     }
 }
 

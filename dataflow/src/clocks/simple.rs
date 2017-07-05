@@ -11,7 +11,9 @@ use wiggles_value::knob::{
 use wiggles_value::knob_types::Rate;
 use serde_json::{Error as SerdeJsonError, self};
 
-pub const INIT_CLOCK_VAL: ClockValue = ClockValue { phase: 0.0, tick_count: 0, ticked: true };
+fn init_clock_val() -> ClockValue {
+    ClockValue::from_float_value(0.0, true)
+}
 // Run at 1 Hz by default.
 pub const INIT_RATE: f64 = 1.0;
 
@@ -29,7 +31,7 @@ impl SimpleClock {
     pub fn new<N: Into<String>>(name: N) -> Self {
         SimpleClock {
             name: name.into(),
-            value: INIT_CLOCK_VAL,
+            value: init_clock_val(),
             rate: INIT_RATE,
             should_reset: false,
         }
@@ -135,7 +137,7 @@ impl Clock for SimpleClock {
     fn update(&mut self, dt: Duration) -> Messages<Message<KnobAddr>> {
         // if the reset knob was pushed, reset the clock value
         if self.should_reset {
-            self.value = INIT_CLOCK_VAL;
+            self.value = init_clock_val();
             self.should_reset = false;
             // emit a message that we changed this knob value.
             Messages::one(Message::Knob(
@@ -144,7 +146,7 @@ impl Clock for SimpleClock {
         else {
             // determine how much phase has elapsed
             let elapsed_phase = self.rate * secs(dt);
-            let phase_unwrapped = self.value.phase + elapsed_phase;
+            let phase_unwrapped = *self.value.phase() + elapsed_phase;
 
             // Determine how many ticks have actually elapsed.  It may be more than 1.
             // It may also be negative if this clock has a negative rate.
@@ -154,7 +156,7 @@ impl Clock for SimpleClock {
             self.value.ticked = accumulated_ticks.abs() > 0;
             self.value.tick_count += accumulated_ticks;
 
-            self.value.phase = modulo_one(phase_unwrapped);
+            self.value.set_phase(phase_unwrapped);
             Messages::none()
         }
     }

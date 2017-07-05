@@ -6,6 +6,7 @@ extern crate wiggles_value;
 extern crate console_server;
 #[macro_use] extern crate lazy_static;
 extern crate serde_json;
+extern crate waveforms;
 
 pub mod network;
 pub mod clocks;

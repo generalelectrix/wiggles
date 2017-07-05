@@ -69,6 +69,15 @@ impl Data {
             _ => Err(badtype(Datatype::UFloat, self)),
         }
     }
+    /// Unpack this knob data as a unipolar.
+    /// Convert a Wiggle and ensure it is coerced.
+    /// All other types are an error.
+    pub fn as_unipolar<A>(self) -> Result<Unipolar, Error<A>> {
+        match self {
+            Data::Wiggle(d) => Ok(d.coerce().into()),
+            _ => Err(badtype(Datatype::Wiggle(WiggleDatatype::Unipolar), self)),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

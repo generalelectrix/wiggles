@@ -11,6 +11,14 @@ extern crate serde;
 pub mod knob_types;
 pub mod knob;
 
+/// Return True if two f64 are within 10^-6 of each other.
+/// This is OK because all of our floats are on the unit range, so even though
+/// this comparison is absolute it should be good enough for art.
+#[inline(always)]
+fn almost_eq(a: f64, b: f64) -> bool {
+    (a - b).abs() < 1e-6
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum DataError {
     EnumSizeLessThanTwo,
@@ -48,8 +56,14 @@ pub enum Datatype {
     UInt(EnumSize),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialOrd, Serialize, Deserialize)]
 pub struct Unipolar(pub f64);
+
+impl PartialEq for Unipolar {
+    fn eq(&self, other: &Unipolar) -> bool {
+        almost_eq(self.0, other.0)
+    }
+}
 
 impl Eq for Unipolar {}
 
@@ -58,6 +72,7 @@ impl Unipolar {
         Unipolar(self.0.min(1.0).max(0.0))
     }
 }
+
 
 impl From<Bipolar> for Unipolar {
     fn from(bp: Bipolar) -> Self {
@@ -88,8 +103,21 @@ impl Unipolar {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+impl Deref for Unipolar {
+    type Target = f64;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialOrd, Serialize, Deserialize)]
 pub struct Bipolar(pub f64);
+
+impl PartialEq for Bipolar {
+    fn eq(&self, other: &Bipolar) -> bool {
+        almost_eq(self.0, other.0)
+    }
+}
 
 impl Eq for Bipolar {}
 
@@ -127,6 +155,13 @@ impl From<Data> for Bipolar {
             Data::Bipolar(bp) => bp,
             Data::UInt(ie) => ie.into(),
         }
+    }
+}
+
+impl Deref for Bipolar {
+    type Target = f64;
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
