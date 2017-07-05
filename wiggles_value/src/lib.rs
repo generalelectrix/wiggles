@@ -3,11 +3,12 @@
 //! flexibility.  We may want to use abs() or rescale to go from bipolar to
 //! unipolar, for example.
 use std::cmp::{min, max};
-use std::ops::{Deref, Mul};
+use std::ops::{Deref, Mul, Add};
 
 extern crate serde;
 #[macro_use] extern crate serde_derive;
 
+pub mod blend;
 pub mod knob_types;
 pub mod knob;
 
@@ -124,6 +125,13 @@ impl Mul for Unipolar {
     }
 }
 
+impl Add for Unipolar {
+    type Output = Unipolar;
+    fn add(self, rhs: Unipolar) -> Self::Output {
+        Unipolar(self.0 + rhs.0)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialOrd, Serialize, Deserialize)]
 pub struct Bipolar(pub f64);
 
@@ -191,6 +199,20 @@ impl Mul<Unipolar> for Bipolar {
     type Output = Bipolar;
     fn mul(self, rhs: Unipolar) -> Self::Output {
         Bipolar(self.0 * rhs.0)
+    }
+}
+
+impl Mul for Bipolar {
+    type Output = Bipolar;
+    fn mul(self, rhs: Bipolar) -> Self::Output {
+        Bipolar(self.0 * rhs.0)
+    }
+}
+
+impl Add for Bipolar {
+    type Output = Bipolar;
+    fn add(self, rhs: Bipolar) -> Self::Output {
+        Bipolar(self.0 + rhs.0)
     }
 }
 

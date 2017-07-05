@@ -2,6 +2,8 @@
 //! blend mode.
 use std::sync::Arc;
 use std::time::Duration;
+use std::ops::{Add, Mul};
+use std::cmp::max;
 use std::fmt;
 use console_server::reactor::Messages;
 use ::network::Inputs;
@@ -18,7 +20,7 @@ use wiggles_value::knob::{
 use serde_json::{Error as SerdeJsonError, self};
 use clocks::clock::{ClockId, ClockProvider, ClockValue};
 use super::wiggle::{Wiggle, CompleteWiggle, WiggleId, KnobAddr, WiggleProvider};
-use wiggles_value::{Unipolar, Datatype, Data};
+use wiggles_value::{Unipolar, Bipolar, Datatype, Data};
 use waveforms::sine;
 
 lazy_static! {
@@ -189,7 +191,7 @@ impl Wiggle for Blender {
         Messages::none()
     }
 
-    /// Multiply ever input by its level and then blend them all.
+    /// Multiply every input by its level and then blend them all.
     fn render(
         &self,
         phase_offset: Unipolar,
@@ -199,7 +201,8 @@ impl Wiggle for Blender {
         _: &ClockProvider)
         -> Data
     {
-        
+        // this could probably be refactored to avoid the repetition, but for now just grind out
+        // all of the possible combinations.
     }
 
     fn clock_source(&self) -> Result<Option<ClockId>, ()> {
@@ -214,3 +217,32 @@ impl Wiggle for Blender {
         serde_json::to_string(self)
     }
 }
+
+/// Generic add blender, abstracting over accumulation type.
+fn blend_add<T: Add, D: Into<T>>(accum: T, next: D) -> <T as Add>::Output {
+    accum + next.into()
+}
+
+/// Generic multiply blender, abstracting over accumulation type.
+fn blend_mul<T: Mul, D: Into<T>>(accum: T, next: D) -> <T as Mul>::Output {
+    accum * next.into()
+}
+
+/// Generic max blender, abstracting over accumulation type.
+/// Bipolar max blending should use the special-cased version below.
+fn blend_max<T, D: Into<T>>(accum: T, next: D) -> T {
+    max(accum, next.into())
+}
+
+/// Max blender, special-cased for blending Bipolars by comparing using absolute value.
+fn blend_max_bipolar<D: Into<Bipolar>>(accum: Bipolar, next: D) -> Bipolar {
+    let next = next.into();
+    if accum.0.abs() > next.0.abs() {
+        accum
+    }
+    else {
+        next
+    }
+}
+
+
