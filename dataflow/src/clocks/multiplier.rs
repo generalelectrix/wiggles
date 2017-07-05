@@ -6,7 +6,7 @@ use std::time::Duration;
 use std::cell::Cell;
 use std::cmp::max;
 use console_server::reactor::Messages;
-use ::util::{secs, modulo_one};
+use ::util::{secs, modulo_one, almost_eq};
 use super::clock::{Clock, ClockValue, ClockId, ClockProvider, Message, KnobAddr};
 use ::network::Inputs;
 use wiggles_value::knob::{
@@ -18,7 +18,7 @@ pub const MULT_KNOB_ADDR: u32 = 0;
 pub const INIT_MULT_FACTOR: f64 = 1.0;
 pub const RESET_KNOB_ADDR: u32 = 1;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ClockMultiplier {
     name: String,
     multiplier: f64,
@@ -47,6 +47,25 @@ impl ClockMultiplier {
             prev_value: Cell::new(None),
             prev_value_age: Cell::new(0),
         }
+    }
+}
+
+fn same_optional_float(f0: &Option<f64>, f1: &Option<f64>) -> bool {
+    match (*f0, *f1) {
+        (Some(f0i), Some(f1i)) => almost_eq(f0i, f1i),
+        (None, None) => true,
+        _ => false,
+    }
+}
+
+impl PartialEq for ClockMultiplier {
+    fn eq(&self, other: &ClockMultiplier) -> bool {
+        self.name == other.name
+        && almost_eq(self.multiplier, other.multiplier)
+        && self.should_reset == other.should_reset
+        && same_optional_float(&self.prev_upstream.get(), &other.prev_upstream.get())
+        && same_optional_float(&self.prev_value.get(), &other.prev_value.get())
+        && self.prev_value_age == other.prev_value_age
     }
 }
 

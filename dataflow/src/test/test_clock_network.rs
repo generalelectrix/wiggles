@@ -53,6 +53,9 @@ fn test_construct_network() {
     let simple_val = network.get_value(simple_id);
     assert_eq!(ClockValue::from_float_value(0.1, false), simple_val);
 
+    let mult_val = network.get_value(mult_id);
+    assert_eq!(ClockValue::from_float_value(0.1, false), mult_val);
+
     // make sure we can serialize and deserialize
     let ser_net = serde_json::to_string(&network).unwrap();
     let de_net: ClockNetwork = serde_json::from_str(&ser_net).unwrap();
