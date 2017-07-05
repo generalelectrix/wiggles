@@ -21,6 +21,7 @@ use serde_json::{Error as SerdeJsonError, self};
 use clocks::clock::{ClockId, ClockProvider, ClockValue};
 use super::wiggle::{Wiggle, CompleteWiggle, WiggleId, KnobAddr, WiggleProvider};
 use wiggles_value::{Unipolar, Bipolar, Datatype, Data};
+use wiggles_value::blend::Blend;
 use waveforms::sine;
 
 lazy_static! {
@@ -198,11 +199,51 @@ impl Wiggle for Blender {
         type_hint: Option<Datatype>,
         inputs: &[Option<WiggleId>],
         wiggles: &WiggleProvider,
-        _: &ClockProvider)
+        clocks: &ClockProvider)
         -> Data
     {
-        // this could probably be refactored to avoid the repetition, but for now just grind out
-        // all of the possible combinations.
+        let blender = match type_hint {
+            Some(Datatype::Unipolar) | None => {
+                match self.blend_mode {
+                    BlendMode::Add => <Unipolar as Blend>::add,
+                    BlendMode::Multiply => <Unipolar as Blend>::mult,
+                    BlendMode::Max => <Unipolar as Blend>::max,
+                }
+            }
+            Some(Datatype::Bipolar) => {
+                match self.blend_mode {
+                    BlendMode::Add => <Bipolar as Blend>::add,
+                    BlendMode::Multiply => <Bipolar as Blend>::mult,
+                    BlendMode::Max => <Bipolar as Blend>::max,
+                }
+            }
+        };
+        let base_layer = match self.blend_mode {
+            BlendMode::Add => Data::unipolar(0.0),
+            BlendMode::Multiply => Data::unipolar(1.0),
+            BlendMode::Max => Data::unipolar(0.0),
+        };
+
+        // log an error if we didn't get the right number of inputs, but don't panic
+        if inputs.len() != self.levels.len() {
+            error!(
+                "Blender {} has {} level controls but received {} inputs.",
+                self.name,
+                self.levels.len(),
+                inputs.len());
+        }
+        // Use the selected blend function to fold over the inputs.
+        inputs.iter()
+            .zip(self.levels.iter())
+            .map(|(input_id_opt, level)| {
+                let input_val = match *input_id_opt {
+                    Some(id) => wiggles.get_value(id, phase_offset, type_hint, clocks),
+                    None => Data::default_with_type_hint(type_hint),
+                };
+                // scale the input value by its level
+                input_val * (*level)
+            })
+            .fold(base_layer, blender)
     }
 
     fn clock_source(&self) -> Result<Option<ClockId>, ()> {

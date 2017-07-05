@@ -76,9 +76,9 @@ impl Data {
     /// Unpack this knob data as a picker variant.
     /// Since we don't have access to the expected variants here, return an empty error and allow
     /// the client to decide what to do.
-    pub fn as_picker(self, ) -> Result<String, ()> {
-        match self {
-            Data::Picker(p) => Ok(p),
+    pub fn as_picker(&self, ) -> Result<&str, ()> {
+        match *self {
+            Data::Picker(ref p) => Ok(p),
             _ => Err(()),
         }
     }

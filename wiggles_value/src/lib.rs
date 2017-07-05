@@ -195,4 +195,25 @@ impl Data {
             Some(Datatype::Bipolar) => Data::Bipolar(Bipolar::default()),
         }
     }
+
+    // Convenience functions for constructing data from raw values.
+    /// Construct a unipolar data from a float.
+    pub fn unipolar(val: f64) -> Self {
+        Data::Unipolar(Unipolar(val))
+    }
+
+    /// Construct a bipolar data from a float.
+    pub fn bipolar(val: f64) -> Self {
+        Data::Bipolar(Bipolar(val))
+    }
+}
+
+impl Mul<Unipolar> for Data {
+    type Output = Self;
+    fn mul(self, rhs: Unipolar) -> Self::Output {
+        match self {
+            Data::Unipolar(u) => Data::Unipolar(u * rhs),
+            Data::Bipolar(b) => Data::Bipolar(b * rhs),
+        }
+    }
 }
