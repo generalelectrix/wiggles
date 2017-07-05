@@ -20,41 +20,11 @@ fn almost_eq(a: f64, b: f64) -> bool {
     (a - b).abs() < 1e-6
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum DataError {
-    EnumSizeLessThanTwo,
-}
-
-pub type EnumValue = u32;
-
-// must be greater than 1 to make sense
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Serialize, Deserialize)]
-pub struct EnumSize(EnumValue);
-
-impl EnumSize {
-    pub fn create(size: EnumValue) -> Result<Self,DataError> {
-        if size < 2 {
-            Err(DataError::EnumSizeLessThanTwo)
-        }
-        else {
-            Ok(EnumSize(size))
-        }
-    }
-}
-
-impl Deref for EnumSize {
-    type Target = u32;
-    fn deref(&self) -> &u32 {
-        &self.0
-    }
-}
-
 /// Tag for describing datatypes in requests or other data structures.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Serialize, Deserialize)]
 pub enum Datatype {
     Unipolar,
     Bipolar,
-    UInt(EnumSize),
 }
 
 #[derive(Clone, Copy, Debug, PartialOrd, Serialize, Deserialize)]
@@ -82,26 +52,12 @@ impl From<Bipolar> for Unipolar {
     }
 }
 
-impl From<IntegerEnum> for Unipolar {
-    fn from(IntegerEnum {value, size}: IntegerEnum) -> Self {
-        Unipolar(value as f64 / (size.0 - 1) as f64)
-    }
-}
-
 impl From<Data> for Unipolar {
     fn from(d: Data) -> Self {
         match d {
             Data::Unipolar(up) => up,
             Data::Bipolar(bp) => bp.into(),
-            Data::UInt(ie) => ie.into(),
         }
-    }
-}
-
-impl Unipolar {
-    fn into_uint(self, size: EnumSize) -> IntegerEnum {
-        let val = (self.0 * (size.0 - 1) as f64) as EnumValue;
-        IntegerEnum {value: val, size: size}
     }
 }
 
@@ -156,27 +112,11 @@ impl From<Unipolar> for Bipolar {
     }
 }
 
-impl From<IntegerEnum> for Bipolar {
-    fn from(ie: IntegerEnum) -> Self {
-        // use our unipolar conversion
-        let as_unipolar: Unipolar = ie.into();
-        as_unipolar.into()
-    }
-}
-
-impl Bipolar {
-    fn into_uint(self, size: EnumSize) -> IntegerEnum {
-        let as_unipolar: Unipolar = self.into();
-        as_unipolar.into_uint(size)
-    }
-}
-
 impl From<Data> for Bipolar {
     fn from(d: Data) -> Self {
         match d {
             Data::Unipolar(up) => up.into(),
             Data::Bipolar(bp) => bp,
-            Data::UInt(ie) => ie.into(),
         }
     }
 }
@@ -216,66 +156,20 @@ impl Add for Bipolar {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Serialize, Deserialize)]
-pub struct IntegerEnum {pub value: EnumValue, pub size: EnumSize}
-
-impl IntegerEnum {
-    pub fn coerce(self) -> Self {
-        IntegerEnum{value: max(min(self.value, self.size.0-1), 0), size: self.size}
-    }
-
-    pub fn into_uint(self, size: EnumSize) -> IntegerEnum {
-        if size == self.size {
-            self
-        }
-        else {
-            let as_unipolar: Unipolar = self.into();
-            as_unipolar.into_uint(size)
-        }
-    }
-
-    pub fn default(size: EnumSize) -> IntegerEnum {
-        IntegerEnum {
-            value: 0,
-            size: size,
-        }
-    }
-}
-
-impl Mul<Unipolar> for IntegerEnum {
-    type Output = IntegerEnum;
-    fn mul(self, rhs: Unipolar) -> Self::Output {
-        let as_unipolar: Unipolar = self.into();
-        let scaled = as_unipolar * rhs;
-        scaled.into_uint(self.size)
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Data {
     /// A float on the range [0.0, 1.0].
     Unipolar(Unipolar),
     /// A float on the range [-1.0, 1.0].
     Bipolar(Bipolar),
-    /// An integer on some finite-size range.
-    UInt(IntegerEnum),
 }
 
 impl Data {
-    pub fn into_uint(self, size: EnumSize) -> IntegerEnum {
-        match self {
-            Data::Unipolar(up) => up.into_uint(size),
-            Data::Bipolar(bp) => bp.into_uint(size),
-            Data::UInt(ie) => ie.into_uint(size),
-        }
-    }
-
     /// Get a copy of this data with its value clipped to be inside the valid range.
     pub fn coerce(&self) -> Self {
         match *self {
             Data::Unipolar(up) => Data::Unipolar(up.coerce()),
             Data::Bipolar(bp) => Data::Bipolar(bp.coerce()),
-            Data::UInt(ie) => Data::UInt(ie.coerce()),
         }
     }
 
@@ -283,7 +177,6 @@ impl Data {
         match *self {
             Data::Unipolar(_) => Datatype::Unipolar,
             Data::Bipolar(_) => Datatype::Bipolar,
-            Data::UInt(ie) => Datatype::UInt(ie.size),
         }
     }
 
@@ -291,7 +184,6 @@ impl Data {
         match datatype {
             Datatype::Bipolar => Data::Bipolar((*self).into()),
             Datatype::Unipolar => Data::Unipolar((*self).into()),
-            Datatype::UInt(size) => Data::UInt((*self).into_uint(size)),
         }
     }
 
@@ -301,7 +193,6 @@ impl Data {
         match type_hint {
             Some(Datatype::Unipolar) | None => Data::Unipolar(Unipolar::default()),
             Some(Datatype::Bipolar) => Data::Bipolar(Bipolar::default()),
-            Some(Datatype::UInt(size)) => Data::UInt(IntegerEnum::default(size)),
         }
     }
 }
