@@ -76,41 +76,15 @@ type KnobDescription = {
     datatype: Datatype
 }
 
-type ValueChange<'a> = {
-    addr: 'a
-    value: Data
-}
-
-type KnobAdded<'a> = {
-    addr: 'a
-    desc: KnobDescription
-}
-
-[<RequireQualifiedAccess>]
-type KnobServerCommand<'a> =
-    | Get of 'a
-    | Set of ValueChange<'a>
-
-/// Create a server command to change the value of this knob, requesting no talkback.
-let createSetCommand addr wrapper value =
-    let v = wrapper value
-    (AllButSelf, KnobServerCommand.Set({addr = addr; value = v}))
-
-[<RequireQualifiedAccess>]
-type KnobServerResponse<'a> =
-    | ValueChange of ValueChange<'a>
-    | KnobAdded of KnobAdded<'a>
-    | KnobRemoved of 'a
-
 // Flat modules for each type of knob to keep things simple.
 
 /// View a knob whose model is a slide.
 /// Partially apply the function that wraps the outgoing data message with the appropriate variant.
-let viewSlider dataWrapper name addr model dispatchLocal dispatchServer =
+let viewSlider dataWrapper name addr model dispatchLocal dispatchChange =
     // When we move the slider, emit a server command.
     let onValueChange v =
-        createSetCommand addr dataWrapper v
-        |> dispatchServer
+        dataWrapper v
+        |> dispatchChange
     R.div [] [
         R.str name
         Slider.view onValueChange model dispatchLocal
@@ -118,27 +92,27 @@ let viewSlider dataWrapper name addr model dispatchLocal dispatchServer =
 
 module Unipolar =
     let initModel() = Slider.initModel 0.0 0.0 1.0 0.0001 [0.0; 1.0]
-    let view name addr model dispatchLocal dispatchServer =
-        viewSlider (Wiggle.Data.Unipolar >> Wiggle) name addr model dispatchLocal dispatchServer
+    let view name model dispatchLocal dispatchChange =
+        viewSlider (Wiggle.Data.Unipolar >> Wiggle) name model dispatchLocal dispatchChange
 
 module Bipolar =
     let initModel() = Slider.initModel 0.0 -1.0 1.0 0.0001 [-1.0; 0.0; 1.0]
-    let view name addr model dispatchLocal dispatchServer =
-        viewSlider (Wiggle.Data.Bipolar >> Wiggle) name addr model dispatchLocal dispatchServer
+    let view name model dispatchLocal dispatchChange =
+        viewSlider (Wiggle.Data.Bipolar >> Wiggle) name model dispatchLocal dispatchChange
 
 module Rate =
     // Use BPM for rate for the time being.
     let initModel() = Slider.initModel 60.0 0.0 200.0 0.01 []
-    let view name addr model dispatchLocal dispatchServer =
-        viewSlider (Bpm >> Rate) name addr model dispatchLocal dispatchServer
+    let view name model dispatchLocal dispatchChange =
+        viewSlider (Bpm >> Rate) name model dispatchLocal dispatchChange
 
 module UFloat =
     // Positive float is a rather general-purpose knob.
     // The only current use is clock multiplication.
     // For now, go from 0 to 4 and provide some logarithmic detents.
     let initModel() = Slider.initModel 1.0 0.0 4.0 0.001 [0.0; 0.25; 0.5; 1.0; 2.0; 4.0]
-    let view name addr model dispatchLocal dispatchServer =
-        viewSlider UFloat name addr model dispatchLocal dispatchServer
+    let view name model dispatchLocal dispatchChange =
+        viewSlider UFloat name model dispatchLocal dispatchChange
 
 module Button =
     // Button just stores state as a bool, which eagerly updates.
@@ -146,13 +120,13 @@ module Button =
     let initModel() = false
     type Message = bool
     let update message _ = message
-    let view name addr state dispatchLocal dispatchServer =
+    let view name state dispatchLocal dispatchChange =
         R.button [
             (if state then Bootstrap.Button.Info else Bootstrap.Button.Default)
             // Toggle state on click.
             OnClick (fun _ ->
                 (not state) |> dispatchLocal
-                createSetCommand addr Button (not state) |> dispatchServer)
+                (not state) |> Button |> dispatchChange)
         ] [ R.str name ]
             
 module Picker =
@@ -182,7 +156,7 @@ module Picker =
                 "Picker knob got a bad value: '%s', expected one of %O." message model.options)
             model
     /// Render this picker as a select.
-    let view name addr model dispatchLocal dispatchServer =
+    let view name model dispatchLocal dispatchChange =
         R.div [] [
             R.str name
             R.select [
@@ -190,7 +164,7 @@ module Picker =
                 OnChange (fun e ->
                     let selected: string = !!e.target?value
                     selected |> dispatchLocal
-                    createSetCommand addr Picker selected |> dispatchServer)
+                    selected |> Picker |> dispatchChange)
                 Value (Case1 model.selected)
             ] (model.options |> List.map (fun s -> R.option [ Value (Case1 s) ] [ R.str s ]))
         ]
@@ -226,8 +200,6 @@ let fromDesc (d: KnobDescription) : Model =
 
 [<RequireQualifiedAccess>]
 type Message =
-    /// External value change event coming from server.
-    | ValueChange of Data
     /// Internal slider event, shared among all knob types that are glorified sliders.
     | Slider of Slider.Message
     /// Internal button event.
@@ -235,35 +207,39 @@ type Message =
     /// Internal picker event.
     | Picker of Picker.Message
 
+/// Update the state of this knob using the provided data.
+/// This is directly called by a parent collection when it handles a server response to update the
+/// state of a knob.
+let updateFromValueChange data model =
+    // Ensure that this value change matches the type of knob we have.  If this is a mismatch,
+    // ignore it and log an error.
+    match (d, model.data) with
+    | Wiggle(Wiggle.Unipolar(u)), ViewModel.Unipolar(vm) ->
+        let newDat = {vm with value = u}
+        {model with data = ViewModel.Unipolar(newDat)}
+    | Wiggle(Wiggle.Bipolar(b)), ViewModel.Bipolar(vm) ->
+        let newDat = {vm with value = b}
+        {model with data = ViewModel.Bipolar(newDat)}
+    | Rate(r), ViewModel.Rate(vm) ->
+        let newDat = {vm with value = r.inBpm()}
+        {model with data = ViewModel.Rate(newDat)}
+    | Button(b), ViewModel.Button(_) ->
+        {model with data = ViewModel.Button(b)}
+    | UFloat(u), ViewModel.UFloat(vm) ->
+        // TODO: consider rescaling slider min/max?
+        let newDat = {vm with value = u}
+        {model with data = ViewModel.UFloat(newDat)}
+    | Picker(p), ViewModel.Picker(picker) ->
+        {model with data = Picker.update p picker |> ViewModel.Picker}
+    | _ ->
+        logError (sprintf
+            "Invalid knob value change message for knob %s.  Current data: %+A"
+            model.name
+            model.data)
+        model
+
 let update message model =
     match message with
-    | Message.ValueChange(d) ->
-        // Ensure that this value change matches the type of knob we have.  If this is a mismatch,
-        // ignore it and log an error.
-        match (d, model.data) with
-        | Wiggle(Wiggle.Unipolar(u)), ViewModel.Unipolar(vm) ->
-            let newDat = {vm with value = u}
-            {model with data = ViewModel.Unipolar(newDat)}
-        | Wiggle(Wiggle.Bipolar(b)), ViewModel.Bipolar(vm) ->
-            let newDat = {vm with value = b}
-            {model with data = ViewModel.Bipolar(newDat)}
-        | Rate(r), ViewModel.Rate(vm) ->
-            let newDat = {vm with value = r.inBpm()}
-            {model with data = ViewModel.Rate(newDat)}
-        | Button(b), ViewModel.Button(_) ->
-            {model with data = ViewModel.Button(b)}
-        | UFloat(u), ViewModel.UFloat(vm) ->
-            // TODO: consider rescaling slider min/max?
-            let newDat = {vm with value = u}
-            {model with data = ViewModel.UFloat(newDat)}
-        | Picker(p), ViewModel.Picker(picker) ->
-            {model with data = Picker.update p picker |> ViewModel.Picker}
-        | _ ->
-            logError (sprintf
-                "Invalid knob value change message for knob %s.  Current data: %+A"
-                model.name
-                model.data)
-            model
     | Message.Slider(msg) ->
         match model.data with
         | ViewModel.Unipolar(s) -> Some (ViewModel.Unipolar, s)
@@ -294,17 +270,18 @@ let update message model =
             logError (sprintf "Knob %s ignored a picker message." model.name)
             model
 
-let view addr model dispatchLocal dispatchServer =
+/// 
+let view model dispatchLocal dispatchChange =
     match model.data with
     | ViewModel.Unipolar(slider) ->
-        Unipolar.view model.name addr slider (Message.Slider >> dispatchLocal) dispatchServer
+        Unipolar.view model.name slider (Message.Slider >> dispatchLocal) dispatchChange
     | ViewModel.Bipolar(slider) ->
-        Bipolar.view model.name addr slider (Message.Slider >> dispatchLocal) dispatchServer
+        Bipolar.view model.name slider (Message.Slider >> dispatchLocal) dispatchChange
     | ViewModel.Rate(slider) ->
-        Rate.view model.name addr slider (Message.Slider >> dispatchLocal) dispatchServer
+        Rate.view model.name slider (Message.Slider >> dispatchLocal) dispatchChange
     | ViewModel.UFloat(slider) ->
-        UFloat.view model.name addr slider (Message.Slider >> dispatchLocal) dispatchServer
+        UFloat.view model.name slider (Message.Slider >> dispatchLocal) dispatchChange
     | ViewModel.Button(b) ->
-        Button.view model.name addr b (Message.Button >> dispatchLocal) dispatchServer
+        Button.view model.name b (Message.Button >> dispatchLocal) dispatchChange
     | ViewModel.Picker(p) ->
-        Picker.view model.name addr p (Message.Picker >> dispatchLocal) dispatchServer
+        Picker.view model.name p (Message.Picker >> dispatchLocal) dispatchChange
