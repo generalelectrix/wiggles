@@ -266,12 +266,12 @@ export function update(initCommands_1, socketSend, wrapShowResponse, updateShow,
     var newModel = updateBaseModel(function (bm) {
       return new BaseModel(bm.name, bm.savesAvailable, bm.showsAvailable, message.Fields[0], bm.showLoader, bm.saveAsUtil, bm.newShowUtil, bm.renameShowUtil, bm.modalDialog, bm.navbar);
     });
-    var commands = CmdModule.batch(map(function ($var177) {
+    var commands = CmdModule.batch(map(function ($var124) {
       return function (msg) {
         return CmdModule.ofMsg(msg);
       }(function (tupledArg) {
         return new Message("Command", [tupledArg[0], tupledArg[1]]);
-      }($var177));
+      }($var124));
     }, message.Fields[0] == null ? new List() : commandsForUtilPageChange(message.Fields[0])));
     return [newModel, commands];
   } else if (message.Case === "Navbar") {
@@ -328,28 +328,28 @@ function viewUtil(utilPage, model, dispatch, dispatchServer) {
   };
 
   if (utilPage.Case === "SaveShowAs") {
-    return SaveShowAs.view(model.baseModel.name, model.baseModel.saveAsUtil, onComplete, function ($var178) {
+    return SaveShowAs.view(model.baseModel.name, model.baseModel.saveAsUtil, onComplete, function ($var125) {
       return dispatch(function (arg0) {
         return new Message("SaveShowAs", [arg0]);
-      }($var178));
+      }($var125));
     }, dispatchServer);
   } else if (utilPage.Case === "RenameShow") {
-    return RenameShow.view(model.baseModel.name, model.baseModel.renameShowUtil, onComplete, function ($var179) {
+    return RenameShow.view(model.baseModel.name, model.baseModel.renameShowUtil, onComplete, function ($var126) {
       return dispatch(function (arg0_1) {
         return new Message("RenameShow", [arg0_1]);
-      }($var179));
+      }($var126));
     }, dispatchServer);
   } else if (utilPage.Case === "NewShow") {
-    return NewShow.view(model.baseModel.newShowUtil, onComplete, function ($var180) {
+    return NewShow.view(model.baseModel.newShowUtil, onComplete, function ($var127) {
       return dispatch(function (arg0_2) {
         return new Message("NewShow", [arg0_2]);
-      }($var180));
+      }($var127));
     }, dispatchServer);
   } else {
-    return LoadShow.view(model.baseModel.showsAvailable, model.baseModel.showLoader, onComplete, function ($var181) {
+    return LoadShow.view(model.baseModel.showsAvailable, model.baseModel.showLoader, onComplete, function ($var128) {
       return dispatch(function (arg0_3) {
         return new Message("ShowLoader", [arg0_3]);
-      }($var181));
+      }($var128));
     }, dispatchServer);
   }
 }
@@ -392,14 +392,14 @@ function viewInner(viewShow, model, dispatch) {
   var matchValue = model.baseModel.utilPage;
 
   if (matchValue != null) {
-    page = viewUtil(matchValue, model, dispatch, function ($var182) {
+    page = viewUtil(matchValue, model, dispatch, function ($var129) {
       return dispatch(function (tupledArg) {
         return new Message("Command", [tupledArg[0], tupledArg[1]]);
-      }($var182));
+      }($var129));
     });
   } else {
-    var dispatchServer = function dispatchServer($var184) {
-      return dispatch(function ($var183) {
+    var dispatchServer = function dispatchServer($var131) {
+      return dispatch(function ($var130) {
         return function (tupledArg_2) {
           return new Message("Command", [tupledArg_2[0], tupledArg_2[1]]);
         }(function () {
@@ -410,28 +410,28 @@ function viewInner(viewShow, model, dispatch) {
           return function (tupledArg_1) {
             return liftResponseAndFilter(f, tupledArg_1[0], tupledArg_1[1]);
           };
-        }()($var183));
-      }($var184));
+        }()($var130));
+      }($var131));
     };
 
-    page = viewShow(openModal)(model.showModel)(function ($var185) {
+    page = viewShow(openModal)(model.showModel)(function ($var132) {
       return dispatch(function (arg0_1) {
         return new Message("Inner", [arg0_1]);
-      }($var185));
+      }($var132));
     })(dispatchServer);
   }
 
-  return createElement("div", {}, createElement("div", {}, view_1(model.baseModel.navbar, dispatch, function ($var186) {
+  return createElement("div", {}, createElement("div", {}, view_1(model.baseModel.navbar, dispatch, function ($var133) {
     return dispatch(function (arg0_2) {
       return new Message("Navbar", [arg0_2]);
-    }($var186));
+    }($var133));
   })), createElement("div", fold(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
-  }, {}, [Container.Fluid]), page, view_2(model.baseModel.modalDialog, function ($var187) {
+  }, {}, [Container.Fluid]), page, view_2(model.baseModel.modalDialog, function ($var134) {
     return dispatch(function (arg0_3) {
       return new Message("Modal", [arg0_3]);
-    }($var187));
+    }($var134));
   })));
 }
 

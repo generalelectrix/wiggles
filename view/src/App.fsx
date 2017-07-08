@@ -5,6 +5,7 @@
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
 #load "core/Base.fsx"
+#load "core/Knobs.fsx"
 #load "patcher/Patcher.fsx"
 
 open Fable.Core
@@ -23,26 +24,34 @@ let withConsoleTrace = true
 
 type Page =
     | Patcher
+    | KnobTest
+
+// FIXME placeholder
+type KnobAddress = int
 
 type ShowModel = {
     page: Page
     patcher: Patcher.Model
+    knobs: Knobs.Model<KnobAddress>
 }
 
 [<RequireQualifiedAccess>]
 type ShowServerCommand =
     | Patcher of PatchTypes.PatchServerRequest
+    | Knob of Knobs.ServerCommand<KnobAddress>
   
 [<RequireQualifiedAccess>]
 type ShowServerResponse =
     | Error of string
     | Patcher of PatchTypes.PatchServerResponse
+    | Knob of Knobs.ServerResponse<KnobAddress>
 
 [<RequireQualifiedAccess>]
 type ShowMessage =
     | Error of string
     | SetPage of Page
     | Patcher of Patcher.Message
+    | Knob of Knobs.Message<KnobAddress>
 
 /// Type alias to ensure that generic inference gets the right types all the way down.
 type ConcreteMessage = Base.Message<ShowServerCommand, ShowServerResponse, ShowMessage>
@@ -54,8 +63,13 @@ let patcherNavItem: Navbar.Item<ConcreteMessage> = {
     onClick = (fun dispatch -> ShowMessage.SetPage Patcher |> Base.Message.Inner |> dispatch)
 }
 
+let knobTestNavItem: Navbar.Item<ConcreteMessage> = {
+    text = "Knobs"
+    onClick = (fun dispatch -> ShowMessage.SetPage KnobTest |> Base.Message.Inner |> dispatch)
+}
+
 let navbar: Navbar.Model<ConcreteMessage> = {
-    leftItems = [Navbar.Dropdown (Base.utilDropdown())]
+    leftItems = [Navbar.Dropdown (Base.utilDropdown()); Navbar.Single knobTestNavItem]
     rightItems = [Navbar.Single patcherNavItem]
     activeItem = Navbar.Right(0)
 }
@@ -63,6 +77,7 @@ let navbar: Navbar.Model<ConcreteMessage> = {
 let initShowModel () = {
     page = Patcher
     patcher = Patcher.initialModel()
+    knobs = Knobs.initModel()
 }
 
 /// Master function to initialize the whole interface.
@@ -87,6 +102,7 @@ let wrapShowResponse (message: ShowServerResponse) =
     match message with
     | ShowServerResponse.Error(e) -> e |> ShowMessage.Error
     | ShowServerResponse.Patcher(m) -> m |> Patcher.Message.Response |> ShowMessage.Patcher
+    | ShowServerResponse.Knob(k) -> k |> Knobs.Message.Response |> ShowMessage.Knob
 
 let updateShow message model : ShowModel * Cmd<ConcreteMessage> =
     match message with
@@ -96,6 +112,9 @@ let updateShow message model : ShowModel * Cmd<ConcreteMessage> =
     | ShowMessage.Patcher(msg) ->
         let updatedPatcher, commands = Patcher.update msg model.patcher
         {model with patcher = updatedPatcher}, commands |> Cmd.map (ShowMessage.Patcher >> Base.Message.Inner)
+    | ShowMessage.Knob(msg) ->
+        let updatedKnobs = Knobs.update msg model.knobs
+        {model with knobs = updatedKnobs}, Cmd.none
 
 let viewShow openModal model dispatch dispatchServer =
     match model.page with
@@ -105,7 +124,18 @@ let viewShow openModal model dispatch dispatchServer =
             model.patcher
             (ShowMessage.Patcher >> dispatch)
             ((Base.liftResponseAndFilter ShowServerCommand.Patcher) >> dispatchServer)
-
+    | KnobTest ->
+        let knobs =
+            model.knobs
+            |> Map.toSeq
+            |> Seq.map ( fun (addr, knob) ->
+                Knobs.viewOne
+                    addr
+                    knob
+                    (ShowMessage.Knob >> dispatch)
+                    ((Base.liftResponseAndFilter ShowServerCommand.Knob) >> dispatchServer))
+            |> List.ofSeq
+        R.div [] knobs
 
 // Launch the websocket we'll use to talk to the server.
 let (subscription, send) =

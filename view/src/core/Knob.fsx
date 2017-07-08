@@ -80,7 +80,7 @@ type KnobDescription = {
 
 /// View a knob whose model is a slide.
 /// Partially apply the function that wraps the outgoing data message with the appropriate variant.
-let viewSlider dataWrapper name addr model dispatchLocal dispatchChange =
+let viewSlider dataWrapper name model dispatchLocal dispatchChange =
     // When we move the slider, emit a server command.
     let onValueChange v =
         dataWrapper v
@@ -213,7 +213,7 @@ type Message =
 let updateFromValueChange data model =
     // Ensure that this value change matches the type of knob we have.  If this is a mismatch,
     // ignore it and log an error.
-    match (d, model.data) with
+    match (data, model.data) with
     | Wiggle(Wiggle.Unipolar(u)), ViewModel.Unipolar(vm) ->
         let newDat = {vm with value = u}
         {model with data = ViewModel.Unipolar(newDat)}
@@ -270,7 +270,7 @@ let update message model =
             logError (sprintf "Knob %s ignored a picker message." model.name)
             model
 
-/// 
+/// Render a particular knob.
 let view model dispatchLocal dispatchChange =
     match model.data with
     | ViewModel.Unipolar(slider) ->

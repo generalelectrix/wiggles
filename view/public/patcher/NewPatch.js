@@ -172,15 +172,15 @@ export function update(message, model) {
     var matchValue_1 = [model.address, model.quantity, model.selectedKind];
     var $var238 = void 0;
 
-    var activePatternResult1328 = _Parsed___(matchValue_1[0]);
+    var activePatternResult1357 = _Parsed___(matchValue_1[0]);
 
-    if (activePatternResult1328 != null) {
-      if (activePatternResult1328.Case === "Present") {
-        var activePatternResult1329 = _Parsed___(matchValue_1[1]);
+    if (activePatternResult1357 != null) {
+      if (activePatternResult1357.Case === "Present") {
+        var activePatternResult1358 = _Parsed___(matchValue_1[1]);
 
-        if (activePatternResult1329 != null) {
+        if (activePatternResult1358 != null) {
           if (matchValue_1[2] != null) {
-            $var238 = [0, activePatternResult1328.Fields[0], matchValue_1[2], activePatternResult1329];
+            $var238 = [0, activePatternResult1357.Fields[0], matchValue_1[2], activePatternResult1358];
           } else {
             $var238 = [1];
           }
@@ -274,19 +274,19 @@ function patchButton(model, dispatchLocal, dispatchServer) {
     var $var240 = void 0;
 
     if (matchValue_2[0] != null) {
-      var activePatternResult1347_1 = _Parsed___(matchValue_2[1]);
+      var activePatternResult1376_1 = _Parsed___(matchValue_2[1]);
 
-      if (activePatternResult1347_1 != null) {
-        var activePatternResult1348_1 = _Parsed___(matchValue_2[2]);
+      if (activePatternResult1376_1 != null) {
+        var activePatternResult1377_1 = _Parsed___(matchValue_2[2]);
 
-        if (activePatternResult1348_1 != null) {
-          var activePatternResult1349_1 = _Parsed___(matchValue_2[3]);
+        if (activePatternResult1377_1 != null) {
+          var activePatternResult1378_1 = _Parsed___(matchValue_2[3]);
 
-          if (activePatternResult1349_1 != null) {
-            var activePatternResult1350_1 = _Parsed___(matchValue_2[4]);
+          if (activePatternResult1378_1 != null) {
+            var activePatternResult1379_1 = _Parsed___(matchValue_2[4]);
 
-            if (activePatternResult1350_1 != null) {
-              $var240 = [0, activePatternResult1349_1, matchValue_2[0], activePatternResult1347_1, activePatternResult1350_1, activePatternResult1348_1];
+            if (activePatternResult1379_1 != null) {
+              $var240 = [0, activePatternResult1378_1, matchValue_2[0], activePatternResult1376_1, activePatternResult1379_1, activePatternResult1377_1];
             } else {
               $var240 = [1];
             }

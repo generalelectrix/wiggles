@@ -6,10 +6,9 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { defaultArg, equals, GenericParam, compareRecords, equalsRecords, makeGeneric, compareUnions, equalsUnions } from "fable-core/Util";
+import { defaultArg, equals, compareRecords, equalsRecords, makeGeneric, compareUnions, equalsUnions } from "fable-core/Util";
 import { map, ofArray } from "fable-core/List";
 import List from "fable-core/List";
-import { ResponseFilter } from "./Types";
 import { createElement } from "react";
 import { update as update_1, Message as Message_1, Model as Model_1, initModel as initModel_1, view as view_1 } from "./Slider";
 import { exists, fold } from "fable-core/Seq";
@@ -272,160 +271,9 @@ export var KnobDescription = function () {
   return KnobDescription;
 }();
 setType("Knob.KnobDescription", KnobDescription);
-export var ValueChange = function () {
-  function ValueChange(addr, value) {
-    _classCallCheck(this, ValueChange);
-
-    this.addr = addr;
-    this.value = value;
-  }
-
-  _createClass(ValueChange, [{
-    key: _Symbol.reflection,
-    value: function () {
-      return {
-        type: "Knob.ValueChange",
-        interfaces: ["FSharpRecord", "System.IEquatable", "System.IComparable"],
-        properties: {
-          addr: GenericParam("a"),
-          value: Data
-        }
-      };
-    }
-  }, {
-    key: "Equals",
-    value: function (other) {
-      return equalsRecords(this, other);
-    }
-  }, {
-    key: "CompareTo",
-    value: function (other) {
-      return compareRecords(this, other);
-    }
-  }]);
-
-  return ValueChange;
-}();
-setType("Knob.ValueChange", ValueChange);
-export var KnobAdded = function () {
-  function KnobAdded(addr, desc) {
-    _classCallCheck(this, KnobAdded);
-
-    this.addr = addr;
-    this.desc = desc;
-  }
-
-  _createClass(KnobAdded, [{
-    key: _Symbol.reflection,
-    value: function () {
-      return {
-        type: "Knob.KnobAdded",
-        interfaces: ["FSharpRecord", "System.IEquatable", "System.IComparable"],
-        properties: {
-          addr: GenericParam("a"),
-          desc: KnobDescription
-        }
-      };
-    }
-  }, {
-    key: "Equals",
-    value: function (other) {
-      return equalsRecords(this, other);
-    }
-  }, {
-    key: "CompareTo",
-    value: function (other) {
-      return compareRecords(this, other);
-    }
-  }]);
-
-  return KnobAdded;
-}();
-setType("Knob.KnobAdded", KnobAdded);
-export var KnobServerCommand = function () {
-  function KnobServerCommand(caseName, fields) {
-    _classCallCheck(this, KnobServerCommand);
-
-    this.Case = caseName;
-    this.Fields = fields;
-  }
-
-  _createClass(KnobServerCommand, [{
-    key: _Symbol.reflection,
-    value: function () {
-      return {
-        type: "Knob.KnobServerCommand",
-        interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
-        cases: {
-          Get: [GenericParam("a")],
-          Set: [makeGeneric(ValueChange, {
-            a: GenericParam("a")
-          })]
-        }
-      };
-    }
-  }, {
-    key: "Equals",
-    value: function (other) {
-      return equalsUnions(this, other);
-    }
-  }, {
-    key: "CompareTo",
-    value: function (other) {
-      return compareUnions(this, other);
-    }
-  }]);
-
-  return KnobServerCommand;
-}();
-setType("Knob.KnobServerCommand", KnobServerCommand);
-export function createSetCommand(addr, wrapper, value) {
-  var v = wrapper(value);
-  return [new ResponseFilter("AllButSelf", []), new KnobServerCommand("Set", [new ValueChange(addr, v)])];
-}
-export var KnobServerResponse = function () {
-  function KnobServerResponse(caseName, fields) {
-    _classCallCheck(this, KnobServerResponse);
-
-    this.Case = caseName;
-    this.Fields = fields;
-  }
-
-  _createClass(KnobServerResponse, [{
-    key: _Symbol.reflection,
-    value: function () {
-      return {
-        type: "Knob.KnobServerResponse",
-        interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
-        cases: {
-          KnobAdded: [makeGeneric(KnobAdded, {
-            a: GenericParam("a")
-          })],
-          KnobRemoved: [GenericParam("a")],
-          ValueChange: [makeGeneric(ValueChange, {
-            a: GenericParam("a")
-          })]
-        }
-      };
-    }
-  }, {
-    key: "Equals",
-    value: function (other) {
-      return equalsUnions(this, other);
-    }
-  }, {
-    key: "CompareTo",
-    value: function (other) {
-      return compareUnions(this, other);
-    }
-  }]);
-
-  return KnobServerResponse;
-}();
-setType("Knob.KnobServerResponse", KnobServerResponse);
-export function viewSlider(dataWrapper, name, addr, model, dispatchLocal, dispatchServer) {
+export function viewSlider(dataWrapper, name, model, dispatchLocal, dispatchChange) {
   var onValueChange = function onValueChange(v) {
-    dispatchServer(createSetCommand(addr, dataWrapper, v));
+    dispatchChange(dataWrapper(v));
   };
 
   return createElement("div", {}, name, view_1(onValueChange, model, dispatchLocal));
@@ -435,10 +283,10 @@ export var Unipolar = function (__exports) {
     return initModel_1(0, 0, 1, 0.0001, ofArray([0, 1]));
   };
 
-  var view = __exports.view = function (name, addr, model, dispatchLocal, dispatchServer) {
-    return viewSlider(function ($var124) {
-      return new Data("Wiggle", [new Wiggle.Data("Unipolar", [$var124])]);
-    }, name, addr, model, dispatchLocal, dispatchServer);
+  var view = __exports.view = function (name, model, dispatchLocal, dispatchChange) {
+    return viewSlider(function ($var159) {
+      return new Data("Wiggle", [new Wiggle.Data("Unipolar", [$var159])]);
+    }, name, model, dispatchLocal, dispatchChange);
   };
 
   return __exports;
@@ -448,10 +296,10 @@ export var Bipolar = function (__exports) {
     return initModel_1(0, -1, 1, 0.0001, ofArray([-1, 0, 1]));
   };
 
-  var view = __exports.view = function (name, addr, model, dispatchLocal, dispatchServer) {
-    return viewSlider(function ($var125) {
-      return new Data("Wiggle", [new Wiggle.Data("Bipolar", [$var125])]);
-    }, name, addr, model, dispatchLocal, dispatchServer);
+  var view = __exports.view = function (name, model, dispatchLocal, dispatchChange) {
+    return viewSlider(function ($var160) {
+      return new Data("Wiggle", [new Wiggle.Data("Bipolar", [$var160])]);
+    }, name, model, dispatchLocal, dispatchChange);
   };
 
   return __exports;
@@ -461,10 +309,10 @@ export var RateModule = function (__exports) {
     return initModel_1(60, 0, 200, 0.01, new List());
   };
 
-  var view = __exports.view = function (name, addr, model, dispatchLocal, dispatchServer) {
-    return viewSlider(function ($var126) {
-      return new Data("Rate", [new Rate("Bpm", [$var126])]);
-    }, name, addr, model, dispatchLocal, dispatchServer);
+  var view = __exports.view = function (name, model, dispatchLocal, dispatchChange) {
+    return viewSlider(function ($var161) {
+      return new Data("Rate", [new Rate("Bpm", [$var161])]);
+    }, name, model, dispatchLocal, dispatchChange);
   };
 
   return __exports;
@@ -474,10 +322,10 @@ export var UFloat = function (__exports) {
     return initModel_1(1, 0, 4, 0.001, ofArray([0, 0.25, 0.5, 1, 2, 4]));
   };
 
-  var view = __exports.view = function (name, addr, model, dispatchLocal, dispatchServer) {
+  var view = __exports.view = function (name, model, dispatchLocal, dispatchChange) {
     return viewSlider(function (arg0) {
       return new Data("UFloat", [arg0]);
-    }, name, addr, model, dispatchLocal, dispatchServer);
+    }, name, model, dispatchLocal, dispatchChange);
   };
 
   return __exports;
@@ -491,15 +339,13 @@ export var Button = function (__exports) {
     return message;
   };
 
-  var view = __exports.view = function (name, addr, state, dispatchLocal, dispatchServer) {
+  var view = __exports.view = function (name, state, dispatchLocal, dispatchChange) {
     return createElement("button", fold(function (o, kv) {
       o[kv[0]] = kv[1];
       return o;
     }, {}, [["onClick", function (_arg1_1) {
       dispatchLocal(!state);
-      dispatchServer(createSetCommand(addr, function (arg0_1) {
-        return new Data("Button", [arg0_1]);
-      }, !state));
+      dispatchChange(new Data("Button", [!state]));
     }], state ? Button_1.Info : Button_1.Default]), name);
   };
 
@@ -573,16 +419,14 @@ export var Picker = function (__exports) {
     }
   };
 
-  var view = __exports.view = function (name, addr, model, dispatchLocal, dispatchServer) {
+  var view = __exports.view = function (name, model, dispatchLocal, dispatchChange) {
     return createElement("div", {}, name, createElement.apply(undefined, ["select", fold(function (o, kv) {
       o[kv[0]] = kv[1];
       return o;
     }, {}, [["value", model.selected], ["onChange", function (e_1) {
       var selected_1 = e_1.target.value;
       dispatchLocal(selected_1);
-      dispatchServer(createSetCommand(addr, function (arg0_1) {
-        return new Data("Picker", [arg0_1]);
-      }, selected_1));
+      dispatchChange(new Data("Picker", [selected_1]));
     }], Form.Control])].concat(_toConsumableArray(map(function (s) {
       return createElement("option", {
         value: s
@@ -687,8 +531,7 @@ export var Message = function () {
         cases: {
           Button: ["boolean"],
           Picker: ["string"],
-          Slider: [Message_1],
-          ValueChange: [Data]
+          Slider: [Message_1]
         }
       };
     }
@@ -707,8 +550,70 @@ export var Message = function () {
   return Message;
 }();
 setType("Knob.Message", Message);
+export function updateFromValueChange(data, model) {
+  var matchValue = [data, model.data];
+  var $var162 = matchValue[0].Case === "Rate" ? matchValue[1].Case === "Rate" ? [2, matchValue[0].Fields[0], matchValue[1].Fields[0]] : [6] : matchValue[0].Case === "Button" ? matchValue[1].Case === "Button" ? [3, matchValue[0].Fields[0]] : [6] : matchValue[0].Case === "UFloat" ? matchValue[1].Case === "UFloat" ? [4, matchValue[0].Fields[0], matchValue[1].Fields[0]] : [6] : matchValue[0].Case === "Picker" ? matchValue[1].Case === "Picker" ? [5, matchValue[0].Fields[0], matchValue[1].Fields[0]] : [6] : matchValue[0].Fields[0].Case === "Bipolar" ? matchValue[1].Case === "Bipolar" ? [1, matchValue[0].Fields[0].Fields[0], matchValue[1].Fields[0]] : [6] : matchValue[1].Case === "Unipolar" ? [0, matchValue[0].Fields[0].Fields[0], matchValue[1].Fields[0]] : [6];
+
+  switch ($var162[0]) {
+    case 0:
+      var newDat = new Model_1($var162[2].uniqueId, $var162[1], $var162[2].min, $var162[2].max, $var162[2].step, $var162[2].detents, $var162[2].inputEventHasFired);
+      var data_1 = new ViewModel("Unipolar", [newDat]);
+      return new Model(model.name, data_1);
+
+    case 1:
+      var newDat_1 = new Model_1($var162[2].uniqueId, $var162[1], $var162[2].min, $var162[2].max, $var162[2].step, $var162[2].detents, $var162[2].inputEventHasFired);
+      var data_2 = new ViewModel("Bipolar", [newDat_1]);
+      return new Model(model.name, data_2);
+
+    case 2:
+      var newDat_2 = void 0;
+      var value = $var162[1].inBpm();
+      newDat_2 = new Model_1($var162[2].uniqueId, value, $var162[2].min, $var162[2].max, $var162[2].step, $var162[2].detents, $var162[2].inputEventHasFired);
+      var data_3 = new ViewModel("Rate", [newDat_2]);
+      return new Model(model.name, data_3);
+
+    case 3:
+      var data_4 = new ViewModel("Button", [$var162[1]]);
+      return new Model(model.name, data_4);
+
+    case 4:
+      var newDat_3 = new Model_1($var162[2].uniqueId, $var162[1], $var162[2].min, $var162[2].max, $var162[2].step, $var162[2].detents, $var162[2].inputEventHasFired);
+      var data_5 = new ViewModel("UFloat", [newDat_3]);
+      return new Model(model.name, data_5);
+
+    case 5:
+      var data_6 = new ViewModel("Picker", [Picker.update($var162[1], $var162[2])]);
+      return new Model(model.name, data_6);
+
+    case 6:
+      logError(fsFormat("Invalid knob value change message for knob %s.  Current data: %+A")(function (x) {
+        return x;
+      })(model.name)(model.data));
+      return model;
+  }
+}
 export function update(message, model) {
-  if (message.Case === "Slider") {
+  if (message.Case === "Button") {
+    if (model.data.Case === "Button") {
+      var data = new ViewModel("Button", [message.Fields[0]]);
+      return new Model(model.name, data);
+    } else {
+      logError(fsFormat("Knob %s ignored a button message.")(function (x) {
+        return x;
+      })(model.name));
+      return model;
+    }
+  } else if (message.Case === "Picker") {
+    if (model.data.Case === "Picker") {
+      var data_1 = new ViewModel("Picker", [Picker.update(message.Fields[0], model.data.Fields[0])]);
+      return new Model(model.name, data_1);
+    } else {
+      logError(fsFormat("Knob %s ignored a picker message.")(function (x) {
+        return x;
+      })(model.name));
+      return model;
+    }
+  } else {
     return function (_arg1) {
       if (_arg1 == null) {
         logError(fsFormat("Knob %s ignored a slider message.")(function (x) {
@@ -728,108 +633,47 @@ export function update(message, model) {
       return new ViewModel("UFloat", [arg0_3]);
     }, model.data.Fields[0]] : null, null, function (tupledArg) {
       var updatedSlider = update_1(message.Fields[0], tupledArg[1]);
-      var data = tupledArg[0](updatedSlider);
-      return new Model(model.name, data);
-    }));
-  } else if (message.Case === "Button") {
-    if (model.data.Case === "Button") {
-      var data_1 = new ViewModel("Button", [message.Fields[0]]);
-      return new Model(model.name, data_1);
-    } else {
-      logError(fsFormat("Knob %s ignored a button message.")(function (x) {
-        return x;
-      })(model.name));
-      return model;
-    }
-  } else if (message.Case === "Picker") {
-    if (model.data.Case === "Picker") {
-      var data_2 = new ViewModel("Picker", [Picker.update(message.Fields[0], model.data.Fields[0])]);
+      var data_2 = tupledArg[0](updatedSlider);
       return new Model(model.name, data_2);
-    } else {
-      logError(fsFormat("Knob %s ignored a picker message.")(function (x) {
-        return x;
-      })(model.name));
-      return model;
-    }
-  } else {
-    var matchValue = [message.Fields[0], model.data];
-    var $var127 = matchValue[0].Case === "Rate" ? matchValue[1].Case === "Rate" ? [2, matchValue[0].Fields[0], matchValue[1].Fields[0]] : [6] : matchValue[0].Case === "Button" ? matchValue[1].Case === "Button" ? [3, matchValue[0].Fields[0]] : [6] : matchValue[0].Case === "UFloat" ? matchValue[1].Case === "UFloat" ? [4, matchValue[0].Fields[0], matchValue[1].Fields[0]] : [6] : matchValue[0].Case === "Picker" ? matchValue[1].Case === "Picker" ? [5, matchValue[0].Fields[0], matchValue[1].Fields[0]] : [6] : matchValue[0].Fields[0].Case === "Bipolar" ? matchValue[1].Case === "Bipolar" ? [1, matchValue[0].Fields[0].Fields[0], matchValue[1].Fields[0]] : [6] : matchValue[1].Case === "Unipolar" ? [0, matchValue[0].Fields[0].Fields[0], matchValue[1].Fields[0]] : [6];
-
-    switch ($var127[0]) {
-      case 0:
-        var newDat = new Model_1($var127[2].uniqueId, $var127[1], $var127[2].min, $var127[2].max, $var127[2].step, $var127[2].detents, $var127[2].inputEventHasFired);
-        var data_3 = new ViewModel("Unipolar", [newDat]);
-        return new Model(model.name, data_3);
-
-      case 1:
-        var newDat_1 = new Model_1($var127[2].uniqueId, $var127[1], $var127[2].min, $var127[2].max, $var127[2].step, $var127[2].detents, $var127[2].inputEventHasFired);
-        var data_4 = new ViewModel("Bipolar", [newDat_1]);
-        return new Model(model.name, data_4);
-
-      case 2:
-        var newDat_2 = void 0;
-        var value = $var127[1].inBpm();
-        newDat_2 = new Model_1($var127[2].uniqueId, value, $var127[2].min, $var127[2].max, $var127[2].step, $var127[2].detents, $var127[2].inputEventHasFired);
-        var data_5 = new ViewModel("Rate", [newDat_2]);
-        return new Model(model.name, data_5);
-
-      case 3:
-        var data_6 = new ViewModel("Button", [$var127[1]]);
-        return new Model(model.name, data_6);
-
-      case 4:
-        var newDat_3 = new Model_1($var127[2].uniqueId, $var127[1], $var127[2].min, $var127[2].max, $var127[2].step, $var127[2].detents, $var127[2].inputEventHasFired);
-        var data_7 = new ViewModel("UFloat", [newDat_3]);
-        return new Model(model.name, data_7);
-
-      case 5:
-        var data_8 = new ViewModel("Picker", [Picker.update($var127[1], $var127[2])]);
-        return new Model(model.name, data_8);
-
-      case 6:
-        logError(fsFormat("Invalid knob value change message for knob %s.  Current data: %+A")(function (x) {
-          return x;
-        })(model.name)(model.data));
-        return model;
-    }
+    }));
   }
 }
-export function view(addr, model, dispatchLocal, dispatchServer) {
+export function view(model, dispatchLocal, dispatchChange) {
   if (model.data.Case === "Bipolar") {
-    return Bipolar.view(model.name, addr, model.data.Fields[0], function ($var128) {
+    return Bipolar.view(model.name, model.data.Fields[0], function ($var163) {
       return dispatchLocal(function (arg0) {
         return new Message("Slider", [arg0]);
-      }($var128));
-    }, dispatchServer);
+      }($var163));
+    }, dispatchChange);
   } else if (model.data.Case === "Rate") {
-    return RateModule.view(model.name, addr, model.data.Fields[0], function ($var129) {
+    return RateModule.view(model.name, model.data.Fields[0], function ($var164) {
       return dispatchLocal(function (arg0_1) {
         return new Message("Slider", [arg0_1]);
-      }($var129));
-    }, dispatchServer);
+      }($var164));
+    }, dispatchChange);
   } else if (model.data.Case === "UFloat") {
-    return UFloat.view(model.name, addr, model.data.Fields[0], function ($var130) {
+    return UFloat.view(model.name, model.data.Fields[0], function ($var165) {
       return dispatchLocal(function (arg0_2) {
         return new Message("Slider", [arg0_2]);
-      }($var130));
-    }, dispatchServer);
+      }($var165));
+    }, dispatchChange);
   } else if (model.data.Case === "Button") {
-    return Button.view(model.name, addr, model.data.Fields[0], function ($var131) {
+    return Button.view(model.name, model.data.Fields[0], function ($var166) {
       return dispatchLocal(function (arg0_3) {
         return new Message("Button", [arg0_3]);
-      }($var131));
-    }, dispatchServer);
+      }($var166));
+    }, dispatchChange);
   } else if (model.data.Case === "Picker") {
-    return Picker.view(model.name, addr, model.data.Fields[0], function ($var132) {
+    return Picker.view(model.name, model.data.Fields[0], function ($var167) {
       return dispatchLocal(function (arg0_4) {
         return new Message("Picker", [arg0_4]);
-      }($var132));
-    }, dispatchServer);
+      }($var167));
+    }, dispatchChange);
   } else {
-    return Unipolar.view(model.name, addr, model.data.Fields[0], function ($var133) {
+    return Unipolar.view(model.name, model.data.Fields[0], function ($var168) {
       return dispatchLocal(function (arg0_5) {
         return new Message("Slider", [arg0_5]);
-      }($var133));
-    }, dispatchServer);
+      }($var168));
+    }, dispatchChange);
   }
 }

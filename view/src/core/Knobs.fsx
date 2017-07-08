@@ -1,5 +1,5 @@
 //! A model and message system for maintaining a collection of knobs.
-module Knob
+module Knobs
 #r "../node_modules/fable-core/Fable.Core.dll"
 #r "../node_modules/fable-react/Fable.React.dll"
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
@@ -16,6 +16,7 @@ open Elmish.React
 open Fable.Core.JsInterop
 module R = Fable.Helpers.React
 open Fable.Helpers.React.Props
+open Types
 open Util
 open Bootstrap
 open Knob
@@ -32,7 +33,6 @@ type KnobAdded<'a> = {
 
 [<RequireQualifiedAccess>]
 type ServerCommand<'a> =
-    | Get of 'a
     | Set of ValueChange<'a>
 
 
@@ -45,12 +45,12 @@ type ServerResponse<'a> =
 //! Immutable binary tree of knobs, indexed by address.
 //! We may need to investigate making this a mutable collection if performance under heavy update
 //! load becomes a problem.
-type Knobs<'a> = Map<'a, Knob.Model>
+type Model<'a when 'a: comparison> = Map<'a, Knob.Model>
 
 let initModel() = Map.empty
 
 type Message<'a> =
-    | Response of ServerResponse
+    | Response of ServerResponse<'a>
     | Particular of 'a * Knob.Message
 
 /// Operate on a particular knob if it is present, replacing its value with that returned by op.
@@ -78,3 +78,20 @@ let update message model =
         model
         |> operateOnKnob addr (Knob.update msg)
 
+/// Render a particular knob using the provided address.
+let viewOne addr knob dispatchLocal dispatchServer =
+    let dispatchChange data =
+        (AllButSelf, ServerCommand.Set({addr = addr; value = data}))
+        |> dispatchServer
+    let dispatchLocal msg = (addr, msg) |> Particular |> dispatchLocal 
+    Knob.view knob dispatchLocal dispatchChange
+
+/// Display a particular knob.
+/// Return an empty div if the requested address is missing.
+let view addr model dispatchLocal dispatchServer =
+    match model |> Map.tryFind addr with
+    | Some(knob) ->
+        viewOne addr knob dispatchLocal dispatchServer
+    | None ->
+        logError (sprintf "Could not view knob at address %+A because it is not present." addr)
+        R.div [] []
