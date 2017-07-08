@@ -127,11 +127,11 @@ export function update(message, model) {
   }() : function () {
     var clearBuffers = void 0;
     var matchValue = [model.selected, message.Fields[0]];
-    var $var160 = matchValue[0] != null ? matchValue[1] != null ? [0, matchValue[0], matchValue[1]] : [1] : [1];
+    var $var213 = matchValue[0] != null ? matchValue[1] != null ? [0, matchValue[0], matchValue[1]] : [1] : [1];
 
-    switch ($var160[0]) {
+    switch ($var213[0]) {
       case 0:
-        if ($var160[1].id !== $var160[2].id) {
+        if ($var213[1].id !== $var213[2].id) {
           clearBuffers = true;
         } else {
           clearBuffers = false;
@@ -167,12 +167,12 @@ function nameEditOnKeyDown(fixtureId, dispatchLocal, dispatchServer, nameEditMod
 
     switch (matchValue) {
       case 13:
-        var $var161 = nameEditModel.value != null ? nameEditModel.value.Case === "Ok" ? [0, nameEditModel.value.Fields[0]] : [1] : [1];
+        var $var214 = nameEditModel.value != null ? nameEditModel.value.Case === "Ok" ? [0, nameEditModel.value.Fields[0]] : [1] : [1];
 
-        switch ($var161[0]) {
+        switch ($var214[0]) {
           case 0:
             clear(null);
-            dispatchServer(all(new PatchServerRequest("Rename", [fixtureId, $var161[1]])));
+            dispatchServer(all(new PatchServerRequest("Rename", [fixtureId, $var214[1]])));
             break;
 
           case 1:
@@ -194,23 +194,23 @@ function nameEditBox(selected, model, dispatchLocal, dispatchServer) {
     return nameEditOnKeyDown(selected.id, dispatchLocal, dispatchServer, nameEditModel);
   };
 
-  return view_1(onKeyDown, selected.name, model.nameEdit, function ($var162) {
+  return view_1(onKeyDown, selected.name, model.nameEdit, function ($var215) {
     return dispatchLocal(function (arg0) {
       return new Message("NameEdit", [arg0]);
-    }($var162));
+    }($var215));
   });
 }
 
 function addressEditor(selected, model, dispatchLocal, dispatchServer, openModal) {
-  var universeBox = view_1(null, emptyIfNone(selected.universe), model.universeEdit, function ($var163) {
+  var universeBox = view_1(null, emptyIfNone(selected.universe), model.universeEdit, function ($var216) {
     return dispatchLocal(function (arg0) {
       return new Message("UniverseEdit", [arg0]);
-    }($var163));
+    }($var216));
   });
-  var addressBox = view_1(null, emptyIfNone(selected.dmxAddress), model.addressEdit, function ($var164) {
+  var addressBox = view_1(null, emptyIfNone(selected.dmxAddress), model.addressEdit, function ($var217) {
     return dispatchLocal(function (arg0_1) {
       return new Message("AddressEdit", [arg0_1]);
-    }($var164));
+    }($var217));
   });
 
   var clear = function clear(msg) {

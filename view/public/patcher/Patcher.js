@@ -221,13 +221,13 @@ export function viewPatchTable(dispatch, patches, selectedId) {
   })))))));
 }
 export function view(openModal, model, dispatch, dispatchServer) {
-  return Grid.layout(ofArray([[8, ofArray([viewPatchTable(dispatch, model.patches, model.selected), view_1(model.universes, model.availablePorts, openModal, dispatchServer)])], [4, ofArray([Grid.fullRow(ofArray([view_2(model.editorModel, function ($var223) {
+  return Grid.layout(ofArray([[8, ofArray([viewPatchTable(dispatch, model.patches, model.selected), view_1(model.universes, model.availablePorts, openModal, dispatchServer)])], [4, ofArray([Grid.fullRow(ofArray([view_2(model.editorModel, function ($var276) {
     return dispatch(function (arg0) {
       return new Message("Edit", [arg0]);
-    }($var223));
-  }, dispatchServer, openModal)])), Grid.fullRow(ofArray([view_3(model.newPatchModel, function ($var224) {
+    }($var276));
+  }, dispatchServer, openModal)])), Grid.fullRow(ofArray([view_3(model.newPatchModel, function ($var277) {
     return dispatch(function (arg0_1) {
       return new Message("Create", [arg0_1]);
-    }($var224));
+    }($var277));
   }, dispatchServer)]))])]]));
 }

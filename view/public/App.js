@@ -194,8 +194,8 @@ export var initCommands = CmdModule.batch(map(function (msg) {
   return CmdModule.ofMsg(msg);
 }, map(function (message) {
   return exclusive(message);
-}, concat(ofArray([initCommands_1(), map(function ($var235) {
-  return new ServerCommand("Console", [new ShowServerCommand("Patcher", [$var235])]);
+}, concat(ofArray([initCommands_1(), map(function ($var288) {
+  return new ServerCommand("Console", [new ShowServerCommand("Patcher", [$var288])]);
 }, initCommands_2)])))));
 export function wrapShowResponse(message) {
   if (message.Case === "Patcher") {
@@ -209,19 +209,19 @@ export function updateShow(message, model) {
     return [new ShowModel(message.Fields[0], model.patcher), CmdModule.none()];
   } else if (message.Case === "Patcher") {
     var patternInput = update_1(message.Fields[0], model.patcher);
-    return [new ShowModel(model.page, patternInput[0]), CmdModule.map(function ($var236) {
-      return new Message_1("Inner", [new ShowMessage("Patcher", [$var236])]);
+    return [new ShowModel(model.page, patternInput[0]), CmdModule.map(function ($var289) {
+      return new Message_1("Inner", [new ShowMessage("Patcher", [$var289])]);
     }, patternInput[1])];
   } else {
     return [model, CmdModule.ofMsg(new Message_1("Modal", [new Message_2("Open", [prompt(message.Fields[0])])]))];
   }
 }
 export function viewShow(openModal, model, dispatch, dispatchServer) {
-  return view_1(openModal, model.patcher, function ($var237) {
+  return view_1(openModal, model.patcher, function ($var290) {
     return dispatch(function (arg0) {
       return new ShowMessage("Patcher", [arg0]);
-    }($var237));
-  }, function ($var238) {
+    }($var290));
+  }, function ($var291) {
     return dispatchServer(function () {
       var f = function f(arg0_1) {
         return new ShowServerCommand("Patcher", [arg0_1]);
@@ -230,7 +230,7 @@ export function viewShow(openModal, model, dispatch, dispatchServer) {
       return function (tupledArg) {
         return liftResponseAndFilter(f, tupledArg[0], tupledArg[1]);
       };
-    }()($var238));
+    }()($var291));
   });
 }
 var patternInput_111 = openSocket(function (arg0) {

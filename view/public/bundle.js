@@ -5967,11 +5967,11 @@ var parseUniverseId = function parseUniverseId(v) {
 };
 function globalAddressFromOptionals(univOpt, addrOpt) {
   var matchValue = [univOpt, addrOpt];
-  var $var159 = matchValue[0].Case === "Absent" ? matchValue[1].Case === "Absent" ? [1] : [2] : matchValue[1].Case === "Present" ? [0, matchValue[1].Fields[0], matchValue[0].Fields[0]] : [2];
+  var $var212 = matchValue[0].Case === "Absent" ? matchValue[1].Case === "Absent" ? [1] : [2] : matchValue[1].Case === "Present" ? [0, matchValue[1].Fields[0], matchValue[0].Fields[0]] : [2];
 
-  switch ($var159[0]) {
+  switch ($var212[0]) {
     case 0:
-      return new __WEBPACK_IMPORTED_MODULE_2_fable_elmish_result__["a" /* Result */]("Ok", [[$var159[2], $var159[1]]]);
+      return new __WEBPACK_IMPORTED_MODULE_2_fable_elmish_result__["a" /* Result */]("Ok", [[$var212[2], $var212[1]]]);
 
     case 1:
       return new __WEBPACK_IMPORTED_MODULE_2_fable_elmish_result__["a" /* Result */]("Ok", [null]);
@@ -17432,12 +17432,12 @@ function update(initCommands_1, socketSend, wrapShowResponse, updateShow, messag
     var newModel = updateBaseModel(function (bm) {
       return new BaseModel(bm.name, bm.savesAvailable, bm.showsAvailable, message.Fields[0], bm.showLoader, bm.saveAsUtil, bm.newShowUtil, bm.renameShowUtil, bm.modalDialog, bm.navbar);
     });
-    var commands = __WEBPACK_IMPORTED_MODULE_10_fable_elmish_elmish__["a" /* CmdModule */].batch(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2_fable_core_List__["b" /* map */])(function ($var124) {
+    var commands = __WEBPACK_IMPORTED_MODULE_10_fable_elmish_elmish__["a" /* CmdModule */].batch(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2_fable_core_List__["b" /* map */])(function ($var177) {
       return function (msg) {
         return __WEBPACK_IMPORTED_MODULE_10_fable_elmish_elmish__["a" /* CmdModule */].ofMsg(msg);
       }(function (tupledArg) {
         return new Message("Command", [tupledArg[0], tupledArg[1]]);
-      }($var124));
+      }($var177));
     }, message.Fields[0] == null ? new __WEBPACK_IMPORTED_MODULE_2_fable_core_List__["d" /* default */]() : commandsForUtilPageChange(message.Fields[0])));
     return [newModel, commands];
   } else if (message.Case === "Navbar") {
@@ -17494,28 +17494,28 @@ function viewUtil(utilPage, model, dispatch, dispatchServer) {
   };
 
   if (utilPage.Case === "SaveShowAs") {
-    return __WEBPACK_IMPORTED_MODULE_4__UtilPages__["b" /* SaveShowAs */].view(model.baseModel.name, model.baseModel.saveAsUtil, onComplete, function ($var125) {
+    return __WEBPACK_IMPORTED_MODULE_4__UtilPages__["b" /* SaveShowAs */].view(model.baseModel.name, model.baseModel.saveAsUtil, onComplete, function ($var178) {
       return dispatch(function (arg0) {
         return new Message("SaveShowAs", [arg0]);
-      }($var125));
+      }($var178));
     }, dispatchServer);
   } else if (utilPage.Case === "RenameShow") {
-    return __WEBPACK_IMPORTED_MODULE_4__UtilPages__["d" /* RenameShow */].view(model.baseModel.name, model.baseModel.renameShowUtil, onComplete, function ($var126) {
+    return __WEBPACK_IMPORTED_MODULE_4__UtilPages__["d" /* RenameShow */].view(model.baseModel.name, model.baseModel.renameShowUtil, onComplete, function ($var179) {
       return dispatch(function (arg0_1) {
         return new Message("RenameShow", [arg0_1]);
-      }($var126));
+      }($var179));
     }, dispatchServer);
   } else if (utilPage.Case === "NewShow") {
-    return __WEBPACK_IMPORTED_MODULE_4__UtilPages__["c" /* NewShow */].view(model.baseModel.newShowUtil, onComplete, function ($var127) {
+    return __WEBPACK_IMPORTED_MODULE_4__UtilPages__["c" /* NewShow */].view(model.baseModel.newShowUtil, onComplete, function ($var180) {
       return dispatch(function (arg0_2) {
         return new Message("NewShow", [arg0_2]);
-      }($var127));
+      }($var180));
     }, dispatchServer);
   } else {
-    return __WEBPACK_IMPORTED_MODULE_4__UtilPages__["a" /* LoadShow */].view(model.baseModel.showsAvailable, model.baseModel.showLoader, onComplete, function ($var128) {
+    return __WEBPACK_IMPORTED_MODULE_4__UtilPages__["a" /* LoadShow */].view(model.baseModel.showsAvailable, model.baseModel.showLoader, onComplete, function ($var181) {
       return dispatch(function (arg0_3) {
         return new Message("ShowLoader", [arg0_3]);
-      }($var128));
+      }($var181));
     }, dispatchServer);
   }
 }
@@ -17558,14 +17558,14 @@ function viewInner(viewShow, model, dispatch) {
   var matchValue = model.baseModel.utilPage;
 
   if (matchValue != null) {
-    page = viewUtil(matchValue, model, dispatch, function ($var129) {
+    page = viewUtil(matchValue, model, dispatch, function ($var182) {
       return dispatch(function (tupledArg) {
         return new Message("Command", [tupledArg[0], tupledArg[1]]);
-      }($var129));
+      }($var182));
     });
   } else {
-    var dispatchServer = function dispatchServer($var131) {
-      return dispatch(function ($var130) {
+    var dispatchServer = function dispatchServer($var184) {
+      return dispatch(function ($var183) {
         return function (tupledArg_2) {
           return new Message("Command", [tupledArg_2[0], tupledArg_2[1]]);
         }(function () {
@@ -17576,28 +17576,28 @@ function viewInner(viewShow, model, dispatch) {
           return function (tupledArg_1) {
             return liftResponseAndFilter(f, tupledArg_1[0], tupledArg_1[1]);
           };
-        }()($var130));
-      }($var131));
+        }()($var183));
+      }($var184));
     };
 
-    page = viewShow(openModal)(model.showModel)(function ($var132) {
+    page = viewShow(openModal)(model.showModel)(function ($var185) {
       return dispatch(function (arg0_1) {
         return new Message("Inner", [arg0_1]);
-      }($var132));
+      }($var185));
     })(dispatchServer);
   }
 
-  return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_12_react__["createElement"])("div", {}, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_12_react__["createElement"])("div", {}, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_7__Navbar__["i" /* view */])(model.baseModel.navbar, dispatch, function ($var133) {
+  return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_12_react__["createElement"])("div", {}, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_12_react__["createElement"])("div", {}, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_7__Navbar__["i" /* view */])(model.baseModel.navbar, dispatch, function ($var186) {
     return dispatch(function (arg0_2) {
       return new Message("Navbar", [arg0_2]);
-    }($var133));
+    }($var186));
   })), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_12_react__["createElement"])("div", __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_13_fable_core_Seq__["b" /* fold */])(function (o, kv) {
     o[kv[0]] = kv[1];
     return o;
-  }, {}, [__WEBPACK_IMPORTED_MODULE_14__Bootstrap__["a" /* Container */].Fluid]), page, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6__Modal__["g" /* view */])(model.baseModel.modalDialog, function ($var134) {
+  }, {}, [__WEBPACK_IMPORTED_MODULE_14__Bootstrap__["a" /* Container */].Fluid]), page, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6__Modal__["g" /* view */])(model.baseModel.modalDialog, function ($var187) {
     return dispatch(function (arg0_3) {
       return new Message("Modal", [arg0_3]);
-    }($var134));
+    }($var187));
   })));
 }
 
@@ -17862,14 +17862,14 @@ function viewPatchTable(dispatch, patches, selectedId) {
   })))))));
 }
 function view(openModal, model, dispatch, dispatchServer) {
-  return __WEBPACK_IMPORTED_MODULE_10__core_Bootstrap__["e" /* Grid */].layout(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([[8, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([viewPatchTable(dispatch, model.patches, model.selected), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_11__Universes__["a" /* view */])(model.universes, model.availablePorts, openModal, dispatchServer)])], [4, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([__WEBPACK_IMPORTED_MODULE_10__core_Bootstrap__["e" /* Grid */].fullRow(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__PatchEdit__["e" /* view */])(model.editorModel, function ($var223) {
+  return __WEBPACK_IMPORTED_MODULE_10__core_Bootstrap__["e" /* Grid */].layout(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([[8, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([viewPatchTable(dispatch, model.patches, model.selected), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_11__Universes__["a" /* view */])(model.universes, model.availablePorts, openModal, dispatchServer)])], [4, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([__WEBPACK_IMPORTED_MODULE_10__core_Bootstrap__["e" /* Grid */].fullRow(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__PatchEdit__["e" /* view */])(model.editorModel, function ($var276) {
     return dispatch(function (arg0) {
       return new Message("Edit", [arg0]);
-    }($var223));
-  }, dispatchServer, openModal)])), __WEBPACK_IMPORTED_MODULE_10__core_Bootstrap__["e" /* Grid */].fullRow(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_4__NewPatch__["e" /* view */])(model.newPatchModel, function ($var224) {
+    }($var276));
+  }, dispatchServer, openModal)])), __WEBPACK_IMPORTED_MODULE_10__core_Bootstrap__["e" /* Grid */].fullRow(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_4__NewPatch__["e" /* view */])(model.newPatchModel, function ($var277) {
     return dispatch(function (arg0_1) {
       return new Message("Create", [arg0_1]);
-    }($var224));
+    }($var277));
   }, dispatchServer)]))])]]));
 }
 
@@ -32522,8 +32522,8 @@ var initCommands = __WEBPACK_IMPORTED_MODULE_7_fable_elmish_elmish__["a" /* CmdM
   return __WEBPACK_IMPORTED_MODULE_7_fable_elmish_elmish__["a" /* CmdModule */].ofMsg(msg);
 }, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_fable_core_List__["b" /* map */])(function (message) {
   return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_8__core_Types__["a" /* exclusive */])(message);
-}, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_fable_core_List__["c" /* concat */])(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_fable_core_List__["a" /* ofArray */])([__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5__core_Base__["d" /* initCommands */])(), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_fable_core_List__["b" /* map */])(function ($var235) {
-  return new __WEBPACK_IMPORTED_MODULE_8__core_Types__["b" /* ServerCommand */]("Console", [new ShowServerCommand("Patcher", [$var235])]);
+}, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_fable_core_List__["c" /* concat */])(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_fable_core_List__["a" /* ofArray */])([__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5__core_Base__["d" /* initCommands */])(), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_fable_core_List__["b" /* map */])(function ($var288) {
+  return new __WEBPACK_IMPORTED_MODULE_8__core_Types__["b" /* ServerCommand */]("Console", [new ShowServerCommand("Patcher", [$var288])]);
 }, __WEBPACK_IMPORTED_MODULE_2__patcher_Patcher__["d" /* initCommands */])])))));
 function wrapShowResponse(message) {
   if (message.Case === "Patcher") {
@@ -32537,19 +32537,19 @@ function updateShow(message, model) {
     return [new ShowModel(message.Fields[0], model.patcher), __WEBPACK_IMPORTED_MODULE_7_fable_elmish_elmish__["a" /* CmdModule */].none()];
   } else if (message.Case === "Patcher") {
     var patternInput = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__patcher_Patcher__["e" /* update */])(message.Fields[0], model.patcher);
-    return [new ShowModel(model.page, patternInput[0]), __WEBPACK_IMPORTED_MODULE_7_fable_elmish_elmish__["a" /* CmdModule */].map(function ($var236) {
-      return new __WEBPACK_IMPORTED_MODULE_5__core_Base__["a" /* Message */]("Inner", [new ShowMessage("Patcher", [$var236])]);
+    return [new ShowModel(model.page, patternInput[0]), __WEBPACK_IMPORTED_MODULE_7_fable_elmish_elmish__["a" /* CmdModule */].map(function ($var289) {
+      return new __WEBPACK_IMPORTED_MODULE_5__core_Base__["a" /* Message */]("Inner", [new ShowMessage("Patcher", [$var289])]);
     }, patternInput[1])];
   } else {
     return [model, __WEBPACK_IMPORTED_MODULE_7_fable_elmish_elmish__["a" /* CmdModule */].ofMsg(new __WEBPACK_IMPORTED_MODULE_5__core_Base__["a" /* Message */]("Modal", [new __WEBPACK_IMPORTED_MODULE_9__core_Modal__["a" /* Message */]("Open", [__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9__core_Modal__["b" /* prompt */])(message.Fields[0])])]))];
   }
 }
 function viewShow(openModal, model, dispatch, dispatchServer) {
-  return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__patcher_Patcher__["f" /* view */])(openModal, model.patcher, function ($var237) {
+  return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__patcher_Patcher__["f" /* view */])(openModal, model.patcher, function ($var290) {
     return dispatch(function (arg0) {
       return new ShowMessage("Patcher", [arg0]);
-    }($var237));
-  }, function ($var238) {
+    }($var290));
+  }, function ($var291) {
     return dispatchServer(function () {
       var f = function f(arg0_1) {
         return new ShowServerCommand("Patcher", [arg0_1]);
@@ -32558,7 +32558,7 @@ function viewShow(openModal, model, dispatch, dispatchServer) {
       return function (tupledArg) {
         return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5__core_Base__["e" /* liftResponseAndFilter */])(f, tupledArg[0], tupledArg[1]);
       };
-    }()($var238));
+    }()($var291));
   });
 }
 var patternInput_111 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_10__core_Socket__["a" /* openSocket */])(function (arg0) {
@@ -33235,7 +33235,7 @@ var Message = function () {
 }();
 __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0_fable_core_Symbol__["b" /* setType */])("NewPatch.Message", Message);
 
-var parsePositiveInt = function parsePositiveInt($var184) {
+var parsePositiveInt = function parsePositiveInt($var237) {
   return function () {
     var f = function f(number) {
       if (number < 1) {
@@ -33248,9 +33248,9 @@ var parsePositiveInt = function parsePositiveInt($var184) {
     return function (r) {
       return __WEBPACK_IMPORTED_MODULE_6_fable_elmish_result__["b" /* ResultModule */].bind(f, r);
     };
-  }()(function ($var183) {
-    return __WEBPACK_IMPORTED_MODULE_4__core_Util__["f" /* Result */].ofOption(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_4__core_Util__["g" /* parseInt */])($var183));
-  }($var184));
+  }()(function ($var236) {
+    return __WEBPACK_IMPORTED_MODULE_4__core_Util__["f" /* Result */].ofOption(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_4__core_Util__["g" /* parseInt */])($var236));
+  }($var237));
 };
 
 function initialModel() {
@@ -33282,33 +33282,33 @@ function update(message, model) {
     return new Model(model.kinds, model.selectedKind, model.name, model.universe, model.address, quantity);
   }() : message.Case === "AdvanceAddress" ? function () {
     var matchValue_1 = [model.address, model.quantity, model.selectedKind];
-    var $var185 = void 0;
+    var $var238 = void 0;
 
-    var activePatternResult966 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_1[0]);
+    var activePatternResult1328 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_1[0]);
 
-    if (activePatternResult966 != null) {
-      if (activePatternResult966.Case === "Present") {
-        var activePatternResult967 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_1[1]);
+    if (activePatternResult1328 != null) {
+      if (activePatternResult1328.Case === "Present") {
+        var activePatternResult1329 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_1[1]);
 
-        if (activePatternResult967 != null) {
+        if (activePatternResult1329 != null) {
           if (matchValue_1[2] != null) {
-            $var185 = [0, activePatternResult966.Fields[0], matchValue_1[2], activePatternResult967];
+            $var238 = [0, activePatternResult1328.Fields[0], matchValue_1[2], activePatternResult1329];
           } else {
-            $var185 = [1];
+            $var238 = [1];
           }
         } else {
-          $var185 = [1];
+          $var238 = [1];
         }
       } else {
-        $var185 = [1];
+        $var238 = [1];
       }
     } else {
-      $var185 = [1];
+      $var238 = [1];
     }
 
-    switch ($var185[0]) {
+    switch ($var238[0]) {
       case 0:
-        var newStartAddress = 512 < $var185[1] + $var185[3] * $var185[2].channelCount ? 512 : $var185[1] + $var185[3] * $var185[2].channelCount;
+        var newStartAddress = 512 < $var238[1] + $var238[3] * $var238[2].channelCount ? 512 : $var238[1] + $var238[3] * $var238[2].channelCount;
         var address_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["g" /* setParsed */])(new __WEBPACK_IMPORTED_MODULE_4__core_Util__["e" /* Optional */]("Present", [newStartAddress]), model.address);
         return new Model(model.kinds, model.selectedKind, model.name, model.universe, address_1, model.quantity);
 
@@ -33383,47 +33383,47 @@ function patchButton(model, dispatchLocal, dispatchServer) {
       console.log(x);
     })(model);
     var matchValue_2 = [model.selectedKind, model.name, model.universe, model.address, model.quantity];
-    var $var187 = void 0;
+    var $var240 = void 0;
 
     if (matchValue_2[0] != null) {
-      var activePatternResult985_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[1]);
+      var activePatternResult1347_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[1]);
 
-      if (activePatternResult985_1 != null) {
-        var activePatternResult986_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[2]);
+      if (activePatternResult1347_1 != null) {
+        var activePatternResult1348_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[2]);
 
-        if (activePatternResult986_1 != null) {
-          var activePatternResult987_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[3]);
+        if (activePatternResult1348_1 != null) {
+          var activePatternResult1349_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[3]);
 
-          if (activePatternResult987_1 != null) {
-            var activePatternResult988_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[4]);
+          if (activePatternResult1349_1 != null) {
+            var activePatternResult1350_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[4]);
 
-            if (activePatternResult988_1 != null) {
-              $var187 = [0, activePatternResult987_1, matchValue_2[0], activePatternResult985_1, activePatternResult988_1, activePatternResult986_1];
+            if (activePatternResult1350_1 != null) {
+              $var240 = [0, activePatternResult1349_1, matchValue_2[0], activePatternResult1347_1, activePatternResult1350_1, activePatternResult1348_1];
             } else {
-              $var187 = [1];
+              $var240 = [1];
             }
           } else {
-            $var187 = [1];
+            $var240 = [1];
           }
         } else {
-          $var187 = [1];
+          $var240 = [1];
         }
       } else {
-        $var187 = [1];
+        $var240 = [1];
       }
     } else {
-      $var187 = [1];
+      $var240 = [1];
     }
 
-    switch ($var187[0]) {
+    switch ($var240[0]) {
       case 0:
-        var matchValue_3 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__PatchTypes__["i" /* globalAddressFromOptionals */])($var187[5], $var187[1]);
+        var matchValue_3 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__PatchTypes__["i" /* globalAddressFromOptionals */])($var240[5], $var240[1]);
 
         if (matchValue_3.Case === "Ok") {
           __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_10_fable_core_String__["a" /* fsFormat */])("Addr: %+A")(function (x) {
             console.log(x);
           })(matchValue_3.Fields[0]);
-          var newPatchResult_1 = newPatchesSequential($var187[3], $var187[2], $var187[4], matchValue_3.Fields[0]);
+          var newPatchResult_1 = newPatchesSequential($var240[3], $var240[2], $var240[4], matchValue_3.Fields[0]);
 
           if (newPatchResult_1.Case === "Ok") {
             dispatchServer(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_12__core_Types__["g" /* all */])(new __WEBPACK_IMPORTED_MODULE_2__PatchTypes__["a" /* PatchServerRequest */]("NewPatches", [newPatchResult_1.Fields[0]])));
@@ -33446,25 +33446,25 @@ function view(model, dispatchLocal, dispatchServer) {
   if (model.kinds.length === 0) {
     return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9_react__["createElement"])("div", {}, "No patch types available.");
   } else {
-    var nameEntry = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, "", model.name, function ($var188) {
+    var nameEntry = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, "", model.name, function ($var241) {
       return dispatchLocal(function (arg0) {
         return new Message("NameEdit", [arg0]);
-      }($var188));
+      }($var241));
     });
-    var universeEntry = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, "", model.universe, function ($var189) {
+    var universeEntry = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, "", model.universe, function ($var242) {
       return dispatchLocal(function (arg0_1) {
         return new Message("UnivEdit", [arg0_1]);
-      }($var189));
+      }($var242));
     });
-    var addressEntry = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, "", model.address, function ($var190) {
+    var addressEntry = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, "", model.address, function ($var243) {
       return dispatchLocal(function (arg0_2) {
         return new Message("AddrEdit", [arg0_2]);
-      }($var190));
+      }($var243));
     });
-    var quantityEntry = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, "", model.quantity, function ($var191) {
+    var quantityEntry = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, "", model.quantity, function ($var244) {
       return dispatchLocal(function (arg0_3) {
         return new Message("QuantEdit", [arg0_3]);
-      }($var191));
+      }($var244));
     });
     return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9_react__["createElement"])("div", __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_Seq__["b" /* fold */])(function (o, kv) {
       o[kv[0]] = kv[1];
@@ -33627,11 +33627,11 @@ function update(message, model) {
   }() : function () {
     var clearBuffers = void 0;
     var matchValue = [model.selected, message.Fields[0]];
-    var $var160 = matchValue[0] != null ? matchValue[1] != null ? [0, matchValue[0], matchValue[1]] : [1] : [1];
+    var $var213 = matchValue[0] != null ? matchValue[1] != null ? [0, matchValue[0], matchValue[1]] : [1] : [1];
 
-    switch ($var160[0]) {
+    switch ($var213[0]) {
       case 0:
-        if ($var160[1].id !== $var160[2].id) {
+        if ($var213[1].id !== $var213[2].id) {
           clearBuffers = true;
         } else {
           clearBuffers = false;
@@ -33667,12 +33667,12 @@ function nameEditOnKeyDown(fixtureId, dispatchLocal, dispatchServer, nameEditMod
 
     switch (matchValue) {
       case 13:
-        var $var161 = nameEditModel.value != null ? nameEditModel.value.Case === "Ok" ? [0, nameEditModel.value.Fields[0]] : [1] : [1];
+        var $var214 = nameEditModel.value != null ? nameEditModel.value.Case === "Ok" ? [0, nameEditModel.value.Fields[0]] : [1] : [1];
 
-        switch ($var161[0]) {
+        switch ($var214[0]) {
           case 0:
             clear(null);
-            dispatchServer(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_8__core_Types__["g" /* all */])(new __WEBPACK_IMPORTED_MODULE_2__PatchTypes__["a" /* PatchServerRequest */]("Rename", [fixtureId, $var161[1]])));
+            dispatchServer(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_8__core_Types__["g" /* all */])(new __WEBPACK_IMPORTED_MODULE_2__PatchTypes__["a" /* PatchServerRequest */]("Rename", [fixtureId, $var214[1]])));
             break;
 
           case 1:
@@ -33694,23 +33694,23 @@ function nameEditBox(selected, model, dispatchLocal, dispatchServer) {
     return nameEditOnKeyDown(selected.id, dispatchLocal, dispatchServer, nameEditModel);
   };
 
-  return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(onKeyDown, selected.name, model.nameEdit, function ($var162) {
+  return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(onKeyDown, selected.name, model.nameEdit, function ($var215) {
     return dispatchLocal(function (arg0) {
       return new Message("NameEdit", [arg0]);
-    }($var162));
+    }($var215));
   });
 }
 
 function addressEditor(selected, model, dispatchLocal, dispatchServer, openModal) {
-  var universeBox = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_4__core_Util__["i" /* emptyIfNone */])(selected.universe), model.universeEdit, function ($var163) {
+  var universeBox = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_4__core_Util__["i" /* emptyIfNone */])(selected.universe), model.universeEdit, function ($var216) {
     return dispatchLocal(function (arg0) {
       return new Message("UniverseEdit", [arg0]);
-    }($var163));
+    }($var216));
   });
-  var addressBox = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_4__core_Util__["i" /* emptyIfNone */])(selected.dmxAddress), model.addressEdit, function ($var164) {
+  var addressBox = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_4__core_Util__["i" /* emptyIfNone */])(selected.dmxAddress), model.addressEdit, function ($var217) {
     return dispatchLocal(function (arg0_1) {
       return new Message("AddressEdit", [arg0_1]);
-    }($var164));
+    }($var217));
   });
 
   var clear = function clear(msg) {
@@ -33888,8 +33888,8 @@ function portSelector(universe, ports, dispatchServer) {
       })(selectedValue_1));
     }
   }], __WEBPACK_IMPORTED_MODULE_4__core_Bootstrap__["c" /* Form */].Control])].concat(_toConsumableArray(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9_fable_core_List__["a" /* ofArray */])(function (array_2) {
-    return Array.from(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Seq__["x" /* mapIndexed */])(function ($var201, $var202) {
-      return portOption($var201)($var202);
+    return Array.from(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Seq__["x" /* mapIndexed */])(function ($var254, $var255) {
+      return portOption($var254)($var255);
     }, array_2));
   }(ports))))));
 }

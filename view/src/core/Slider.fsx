@@ -19,6 +19,8 @@ open Bootstrap
 
 let mutable nextId = 0
 
+// TODO: provide view hooks for editing the range of the slider and/or directly entering a value.
+
 type Model = {
     /// Becomes the id of this slider element's datalist, for binding step values/detents to it.
     uniqueId: string

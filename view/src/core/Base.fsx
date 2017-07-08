@@ -11,6 +11,7 @@ module Base
 #load "Types.fsx"
 #load "Slider.fsx"
 #load "UtilPages.fsx"
+#load "Knob.fsx"
 
 open Fable.Core
 open Fable.Import
