@@ -188,7 +188,7 @@ impl Wiggle for Blender {
     }
 
     /// Blender is stateless, update does nothing.
-    fn update(&mut self, dt: Duration) -> Messages<KnobMessage<KnobAddr>> {
+    fn update(&mut self, _: Duration) -> Messages<KnobMessage<KnobAddr>> {
         Messages::none()
     }
 
