@@ -46,12 +46,12 @@ impl<M> Inputs<M> for SimpleClock {
         0
     }
     /// Simple clock always has no inputs.
-    fn try_push_input(&mut self) -> Result<M, ()> {
+    fn try_push_input(&mut self) -> Result<Messages<M>, ()> {
         Err(())
     }
 
     /// Simple clock always has no inputs.
-    fn try_pop_input(&mut self) -> Result<M, ()> {
+    fn try_pop_input(&mut self) -> Result<Messages<M>, ()> {
         Err(())
     }
 }

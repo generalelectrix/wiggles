@@ -170,13 +170,19 @@ impl ClockProvider for ClockNetwork {
     }
 }
 
-pub trait CompleteClock: Clock + Inputs<KnobMessage<ClockKnobAddr>> + Knobs<KnobAddr> + fmt::Debug {
+pub trait CompleteClock:
+    Clock + Inputs<KnobMessage<ClockKnobAddr>> + Knobs<KnobAddr> + fmt::Debug
+{
     fn eq(&self, other: &CompleteClock) -> bool;
     fn as_any(&self) -> &Any;
 }
 
 impl<T> CompleteClock for T
-    where T: 'static + Clock + Inputs<KnobMessage<ClockKnobAddr>> + Knobs<KnobAddr> + fmt::Debug + PartialEq
+    where T: 'static + Clock
+        + Inputs<KnobMessage<ClockKnobAddr>>
+        + Knobs<KnobAddr>
+        + fmt::Debug
+        + PartialEq
 {
     fn eq(&self, other: &CompleteClock) -> bool {
         other.as_any().downcast_ref::<T>().map_or(false, |x| x == self)

@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use self::clock::CompleteClock;
 use serde::Deserializer;
 use serde_json::{self, Error as SerdeJsonError};
 use self::serde::SerializableClock;
@@ -9,6 +8,8 @@ pub mod clock;
 pub mod simple;
 pub mod multiplier;
 mod serde;
+
+pub use self::clock::{ClockId, CompleteClock, ClockKnobAddr, ClockValue, ClockNetwork, KnobAddr};
 
 // Gather every clock declaration up here.
 // We could potentially make this mutable and provide a registration function if we want to be able

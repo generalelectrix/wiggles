@@ -76,12 +76,12 @@ impl<M> Inputs<M> for ClockMultiplier {
         1
     }
     /// Simple clock always has 1 input.
-    fn try_push_input(&mut self) -> Result<M, ()> {
+    fn try_push_input(&mut self) -> Result<Messages<M>, ()> {
         Err(())
     }
 
     /// Simple clock always has 1 input.
-    fn try_pop_input(&mut self) -> Result<M, ()> {
+    fn try_pop_input(&mut self) -> Result<Messages<M>, ()> {
         Err(())
     }
 }

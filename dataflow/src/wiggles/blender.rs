@@ -88,7 +88,7 @@ fn level_knob_desc(chan: KnobAddr) -> KnobDescription {
 }
 
 // Blender has at least one input, and up to an unlimited number of them.
-impl Inputs<Messages<KnobMessage<KnobAddr>>> for Blender {
+impl Inputs<KnobMessage<KnobAddr>> for Blender {
     fn default_input_count(&self) -> u32 {
         1
     }
@@ -98,7 +98,7 @@ impl Inputs<Messages<KnobMessage<KnobAddr>>> for Blender {
         // tell the world that there's a new knob available
         // level addresses start at 1
         let addr = self.levels.len() as KnobAddr;
-        Ok(Messages::one(KnobMessage::KnobAdded {
+        Ok(Messages::one(KnobMessage::Added {
             addr: addr,
             desc: level_knob_desc(addr),
         }))
@@ -109,7 +109,7 @@ impl Inputs<Messages<KnobMessage<KnobAddr>>> for Blender {
             return Err(());
         }
         self.levels.pop();
-        Ok(Messages::one(KnobMessage::KnobRemoved((self.levels.len() + 1) as KnobAddr)))
+        Ok(Messages::one(KnobMessage::Removed((self.levels.len() + 1) as KnobAddr)))
     }
 }
 

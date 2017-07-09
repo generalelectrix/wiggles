@@ -121,13 +121,20 @@ impl WiggleProvider for WiggleNetwork {
     }
 }
 
-pub trait CompleteWiggle: Wiggle + Inputs<KnobMessage<WiggleKnobAddr>> + Knobs<KnobAddr> + fmt::Debug {
+pub trait CompleteWiggle:
+    Wiggle + Inputs<KnobMessage<WiggleKnobAddr>> + Knobs<KnobAddr> + fmt::Debug
+{
     fn eq(&self, other: &CompleteWiggle) -> bool;
     fn as_any(&self) -> &Any;
 }
 
 impl<T> CompleteWiggle for T
-    where T: 'static + Wiggle + Inputs<KnobMessage<WiggleKnobAddr>> + Knobs<KnobAddr> + fmt::Debug + PartialEq
+    where T: 'static
+        + Wiggle
+        + Inputs<KnobMessage<WiggleKnobAddr>>
+        + Knobs<KnobAddr>
+        + fmt::Debug
+        + PartialEq
 {
     fn eq(&self, other: &CompleteWiggle) -> bool {
         other.as_any().downcast_ref::<T>().map_or(false, |x| x == self)

@@ -42,10 +42,10 @@ impl<M> Inputs<M> for TestWiggle {
     fn default_input_count(&self) -> u32 {
         0
     }
-    fn try_push_input(&mut self) -> Result<M, ()> {
+    fn try_push_input(&mut self) -> Result<Messages<M>, ()> {
         Err(())
     }
-    fn try_pop_input(&mut self) -> Result<M, ()> {
+    fn try_pop_input(&mut self) -> Result<Messages<M>, ()> {
         Err(())
     }
 }

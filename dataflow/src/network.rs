@@ -4,6 +4,7 @@ use std::collections::hash_map::Entry;
 use std::mem::swap;
 use std::u32;
 use std::marker::PhantomData;
+use std::error;
 use wiggles_value::knob::{
     Knobs,
     Datatype as KnobDatatype,
@@ -12,6 +13,7 @@ use wiggles_value::knob::{
     Error as KnobError,
     badaddr,
 };
+use console_server::Messages;
 
 // Use 32-bit ints as indices.
 // Use a 32-bit generation ID to uniquely identify a generation of a particular slot to ensure that
@@ -31,7 +33,7 @@ pub trait NodeId: fmt::Debug + fmt::Display + Copy + PartialEq {
     fn new(index: NodeIndex, gen_id: GenerationId) -> Self;
 }
 
-type InputId = u32;
+pub type InputId = u32;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 /// Generation ID and a slot to hold onto a node in the network.
@@ -40,7 +42,6 @@ struct NodeSlot<N, I, M>
 {
     gen_id: GenerationId,
     node: Option<Node<N, I, M>>,
-    _message_type: PhantomData<M>,
 }
 
 impl<N, I, M> NodeSlot<N, I, M>
@@ -50,7 +51,6 @@ impl<N, I, M> NodeSlot<N, I, M>
         NodeSlot {
             gen_id: gen_id,
             node: node,
-            _message_type: PhantomData,
         }
     }
 }
@@ -64,7 +64,6 @@ pub struct Network<N, I, M>
     /// Indices are stable under insertion and deletion.
     /// Generation IDs are incremented when an empty slot is filled.
     slots: Vec<NodeSlot<N, I, M>>,
-    _index_type: PhantomData<I>,
 }
 
 impl<N, I, M> Network<N, I, M>
@@ -74,12 +73,12 @@ impl<N, I, M> Network<N, I, M>
     pub fn new() -> Self {
         Network {
             slots: Vec::new(),
-            _index_type: PhantomData,
         }
     }
 
-    /// Insert a new node into this network.  Return a mutable reference to it.
-    pub fn add(&mut self, node_contents: N) -> (I, &mut Node<N, I, M>) {
+    /// Insert a new node into this network.
+    /// Return its ID along with an immutable reference to it.
+    pub fn add(&mut self, node_contents: N) -> (I, &Node<N, I, M>) {
         let node = Node::new(node_contents);
         // Find the first available slot index, if one exists.
         // Sadly we can't do this more directly because of rustlang #21906.
@@ -98,7 +97,7 @@ impl<N, I, M> Network<N, I, M>
             // slip the node in
             slot.node = Some(node);
             // return a reference to it
-            (I::new(index as NodeIndex, slot.gen_id), slot.node.as_mut().unwrap())
+            (I::new(index as NodeIndex, slot.gen_id), slot.node.as_ref().unwrap())
         }
         else {
             // no available slot, push a new slot on
@@ -106,7 +105,7 @@ impl<N, I, M> Network<N, I, M>
             self.slots.push(slot);
             // return a reference to the node we just added along with its ID
             let index = self.slots.len()-1;
-            (I::new(index as NodeIndex, 0), self.slots.last_mut().unwrap().node.as_mut().unwrap())
+            (I::new(index as NodeIndex, 0), self.slots.last().unwrap().node.as_ref().unwrap())
         }
     }
 
@@ -278,7 +277,7 @@ impl<N, I, M> Network<N, I, M>
             &mut self,
             node_id: I,
             target: Option<I>)
-            -> Result<(InputId, M), NetworkError<I>>
+            -> Result<(InputId, Messages<M>), NetworkError<I>>
     {
         // if a target was supplied, make sure it exists
         if let Some(t) = target {
@@ -303,7 +302,7 @@ impl<N, I, M> Network<N, I, M>
     pub fn pop_input(
             &mut self,
             node_id: I)
-            -> Result<M, NetworkError<I>>
+            -> Result<Messages<M>, NetworkError<I>>
     {
         match self.node_mut(node_id)?.pop_input() {
             Ok((target, msg)) => {
@@ -459,22 +458,22 @@ pub trait Inputs<M> {
     /// It should return Ok if this is allowed and must have done any work it needs to do to
     /// accomodate the new input.  The node is free to return an arbitrary data structure to the
     /// caller, which should probably hand it off to someone else for processing.
-    fn try_push_input(&mut self) -> Result<M, ()>;
+    fn try_push_input(&mut self) -> Result<Messages<M>, ()>;
 
     /// Tell this node we want to pop the last input.
     /// It should return Ok if this is allowed and must have done any work to ready itself for the
     /// change.
-    fn try_pop_input(&mut self) -> Result<M, ()>;
+    fn try_pop_input(&mut self) -> Result<Messages<M>, ()>;
 }
 
 impl<T, M> Inputs<M> for Box<T> where T: Inputs<M> + ?Sized {
     fn default_input_count(&self) -> u32 {
         (**self).default_input_count()
     }
-    fn try_push_input(&mut self) -> Result<M, ()> {
+    fn try_push_input(&mut self) -> Result<Messages<M>, ()> {
         (**self).try_push_input()
     }
-    fn try_pop_input(&mut self) -> Result<M, ()> {
+    fn try_pop_input(&mut self) -> Result<Messages<M>, ()> {
         (**self).try_pop_input()
     }
 }
@@ -491,6 +490,7 @@ pub struct Node<N, I, M>
     /// How many inputs does this node have, and what are they connected to (if anything).
     inputs: Vec<Option<I>>,
     inner: N,
+    #[serde(skip)]
     _message_type: PhantomData<M>,
 }
 
@@ -529,7 +529,7 @@ impl<N, I, M> Node<N, I, M>
     /// None.
     /// Return the data structure returned by the node, probably a message type to be passed
     /// upstack.
-    fn push_input(&mut self, target: Option<I>) -> Result<(InputId, M), ()> {
+    fn push_input(&mut self, target: Option<I>) -> Result<(InputId, Messages<M>), ()> {
         // if we can't push another input, return an error
         // allow the caller to wrap it up into a real error value
         match self.inner.try_push_input() {
@@ -546,7 +546,7 @@ impl<N, I, M> Node<N, I, M>
     /// Return the target that was assigned to this input.
     /// The caller must ensure that this node has been removed as a listener of the node that was
     /// assigned to this input, if any.
-    fn pop_input(&mut self) -> Result<(Option<I>, M), ()> {
+    fn pop_input(&mut self) -> Result<(Option<I>, Messages<M>), ()> {
         if self.inputs.is_empty() {
             return Err(());
         }
@@ -678,6 +678,25 @@ impl<I: NodeId> fmt::Display for NetworkError<I> {
             CantRemoveInput(id) =>
                 write!(f, "Cannot remove an input from node {}.", id.index()),
         }
+    }
+}
+
+impl<A: NodeId> error::Error for NetworkError<A> {
+    fn description(&self) -> &str {
+        use self::NetworkError::*;
+        match *self {
+            OldGenId(_) => "Outdated generation id for node.",
+            NoNodeAt(_) => "No node at specified index.",
+            InvalidInputId(_) => "Input id is out of range.",
+            WouldCycle{..} => "Connecting source to sink would create a cycle.",
+            HasListeners(_) => "Node {} has listeners.",
+            CantAddInput(_) => "Cannot add an input to node.",
+            CantRemoveInput(_) => "Cannot remove an input from node.",
+        }
+    }
+
+    fn cause(&self) -> Option<&error::Error> {
+        None
     }
 }
 
