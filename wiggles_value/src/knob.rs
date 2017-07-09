@@ -116,8 +116,8 @@ pub trait Knobs<A> {
 /// Messages related to actions on individual knobs or a knob subsystem.
 pub enum Message<A> {
     ValueChange{addr: A, value: Data},
-    KnobAdded{addr: A, desc: KnobDescription},
-    KnobRemoved(A),
+    Added{addr: A, desc: KnobDescription},
+    Removed(A),
 }
 
 impl<A> Message<A> {
@@ -128,8 +128,8 @@ impl<A> Message<A> {
         use self::Message::*;
         match self {
             ValueChange{addr, value} => ValueChange{addr: lifter(addr), value: value},
-            KnobAdded{addr, desc} => KnobAdded{addr: lifter(addr), desc: desc},
-            KnobRemoved(addr) => KnobRemoved(lifter(addr)),
+            Added{addr, desc} => Added{addr: lifter(addr), desc: desc},
+            Removed(addr) => Removed(lifter(addr)),
         }
     }
 }

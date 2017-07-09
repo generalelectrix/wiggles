@@ -4,3 +4,8 @@ version = "0.1.0"
 authors = ["general electrix <general.electrix@gmail.com>"]
 
 [dependencies]
+dataflow = { path = "../dataflow" }
+console_server = { path = "../console_server" }
+wiggles_value = { path = "../wiggles_value"}
+serde = "*"
+serde_derive = "*"

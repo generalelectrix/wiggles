@@ -143,6 +143,7 @@ pub trait WrapResponse: Sized {
 /// The message type sent out by the reactor.
 pub type ResponseMessage<T> = ResponseWrapper<Response<T>>;
 
+#[derive(Debug)]
 /// Small vector optimization for zero or 1 messages; console logic should use this type to return
 /// response messages.
 pub struct Messages<T>(SmallVec<[T; 1]>);
