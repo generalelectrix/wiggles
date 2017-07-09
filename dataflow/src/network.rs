@@ -172,6 +172,16 @@ impl<N, I, M> Network<N, I, M>
             }
         }
     }
+    
+    /// Get an immutable reference to a node's payload, if that node exists.
+    pub fn node_inner(&self, id: I) -> Result<&N, NetworkError<I>> {
+        Ok(self.node(id)?.inner())
+    }
+
+    /// Get a mutable reference to a node's payload, if that node exists.
+    pub fn node_inner_mut(&mut self, id: I) -> Result<&mut N, NetworkError<I>> {
+        Ok(&mut self.node_mut(id)?.inner)
+    }
 
     /// Get an immutable reference to a node without specifying a generation ID, if it exists.
     fn node_direct(&self, index: NodeIndex) -> Result<&Node<N, I, M>, NetworkError<I>> {

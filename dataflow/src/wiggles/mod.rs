@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use self::wiggle::CompleteWiggle;
 use serde::Deserializer;
 use serde_json::{self, Error as SerdeJsonError};
 use self::serde::SerializableWiggle;
@@ -9,6 +8,8 @@ pub mod wiggle;
 mod serde;
 pub mod trial;
 pub mod blender;
+
+pub use self::wiggle::{WiggleId, CompleteWiggle, WiggleKnobAddr, WiggleNetwork, KnobAddr};
 
 // Gather every wiggle declaration up here.
 // We could potentially make this mutable and provide a registration function if we want to be able
