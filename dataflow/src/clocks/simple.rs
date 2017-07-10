@@ -7,7 +7,7 @@ use ::util::{secs, modulo_one};
 use super::clock::{Clock, ClockValue, ClockId, ClockProvider, KnobAddr};
 use ::network::Inputs;
 use wiggles_value::knob::{
-    Knobs, Datatype, Data, KnobDescription, Error as KnobError, badaddr, Message as KnobMessage};
+    Knobs, Datatype, Data, KnobDescription, Error as KnobError, badaddr, Response as KnobResponse};
 use wiggles_value::knob_types::Rate;
 use serde_json::{Error as SerdeJsonError, self};
 
@@ -134,14 +134,14 @@ impl Clock for SimpleClock {
 
     /// Update the state of this clock using the provided update interval.
     /// Return a message collection of some kind.
-    fn update(&mut self, dt: Duration) -> Messages<KnobMessage<KnobAddr>> {
+    fn update(&mut self, dt: Duration) -> Messages<KnobResponse<KnobAddr>> {
         // if the reset knob was pushed, reset the clock value
         if self.should_reset {
             self.value = init_clock_val();
             self.should_reset = false;
             // emit a message that we changed this knob value.
             Messages::one(
-                KnobMessage::ValueChange{addr: RESET_KNOB_ADDR, value: Data::Button(false)})
+                KnobResponse::ValueChange{addr: RESET_KNOB_ADDR, value: Data::Button(false)})
         }
         else {
             // determine how much phase has elapsed

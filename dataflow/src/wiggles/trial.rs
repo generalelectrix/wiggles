@@ -10,7 +10,7 @@ use wiggles_value::knob::{
     KnobDescription,
     Error as KnobError,
     badaddr,
-    Message as KnobMessage,
+    Response as KnobResponse,
 };
 use serde_json::{Error as SerdeJsonError, self};
 use clocks::clock::{ClockId, ClockProvider, ClockValue};
@@ -106,7 +106,7 @@ impl Wiggle for TestWiggle {
     }
 
     /// Update the state of this wiggle using the provided update interval.
-    fn update(&mut self, _: Duration) -> Messages<KnobMessage<KnobAddr>> {
+    fn update(&mut self, _: Duration) -> Messages<KnobResponse<KnobAddr>> {
         Messages::none()
     }
 

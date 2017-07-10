@@ -4,7 +4,7 @@ use util::{modulo_one, almost_eq, angle_almost_eq};
 use network::{Network, NodeIndex, GenerationId, NodeId, Inputs};
 use console_server::reactor::Messages;
 use wiggles_value::Unipolar;
-use wiggles_value::knob::{Knobs, Message as KnobMessage};
+use wiggles_value::knob::{Knobs, Response as KnobResponse};
 use std::collections::HashMap;
 use std::time::Duration;
 use std::fmt;
@@ -111,7 +111,7 @@ pub trait Clock {
 
     /// Update the state of this clock using the provided update interval.
     /// Return a message collection of some kind.
-    fn update(&mut self, dt: Duration) -> Messages<KnobMessage<KnobAddr>>;
+    fn update(&mut self, dt: Duration) -> Messages<KnobResponse<KnobAddr>>;
 
     /// Render the state of this clock, providing its currently-assigned inputs as well as a
     /// function that can be used to retrieve the current value of one of those inputs.
@@ -152,7 +152,7 @@ impl NodeId for ClockId {
 }
 
 /// Type alias for a network of clocks.
-pub type ClockNetwork = Network<Box<CompleteClock>, ClockId, KnobMessage<ClockKnobAddr>>;
+pub type ClockNetwork = Network<Box<CompleteClock>, ClockId, KnobResponse<ClockKnobAddr>>;
 
 impl ClockProvider for ClockNetwork {
     /// Get the value of the requested clock.
@@ -171,7 +171,7 @@ impl ClockProvider for ClockNetwork {
 }
 
 pub trait CompleteClock:
-    Clock + Inputs<KnobMessage<ClockKnobAddr>> + Knobs<KnobAddr> + fmt::Debug
+    Clock + Inputs<KnobResponse<ClockKnobAddr>> + Knobs<KnobAddr> + fmt::Debug
 {
     fn eq(&self, other: &CompleteClock) -> bool;
     fn as_any(&self) -> &Any;
@@ -179,7 +179,7 @@ pub trait CompleteClock:
 
 impl<T> CompleteClock for T
     where T: 'static + Clock
-        + Inputs<KnobMessage<ClockKnobAddr>>
+        + Inputs<KnobResponse<ClockKnobAddr>>
         + Knobs<KnobAddr>
         + fmt::Debug
         + PartialEq
@@ -203,11 +203,11 @@ impl<'a, 'b> PartialEq<CompleteClock+'b> for CompleteClock + 'a {
 // TODO: consider generalizing Update and/or Render as traits.
 /// Wrapper trait for a clock network.
 pub trait ClockCollection {
-    fn update(&mut self, dt: Duration) -> Messages<KnobMessage<ClockKnobAddr>>;
+    fn update(&mut self, dt: Duration) -> Messages<KnobResponse<ClockKnobAddr>>;
 }
 
 impl ClockCollection for ClockNetwork {
-    fn update(&mut self, dt: Duration) -> Messages<KnobMessage<ClockKnobAddr>> {
+    fn update(&mut self, dt: Duration) -> Messages<KnobResponse<ClockKnobAddr>> {
         let mut update_messages = Messages::none();
         {
             let update = |node_id: ClockId, clock: &mut Box<CompleteClock>| {

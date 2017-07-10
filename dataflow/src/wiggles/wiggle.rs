@@ -3,7 +3,7 @@ use util::{modulo_one, almost_eq, angle_almost_eq};
 use network::{Network, NodeIndex, GenerationId, NodeId, Inputs};
 use console_server::reactor::Messages;
 use wiggles_value::{Data, Unipolar, Datatype};
-use wiggles_value::knob::{Knobs, Message as KnobMessage};
+use wiggles_value::knob::{Knobs, Response as KnobResponse};
 use std::collections::HashMap;
 use std::time::Duration;
 use std::fmt;
@@ -40,7 +40,7 @@ pub trait Wiggle {
 
     /// Update the state of this wiggle using the provided update interval.
     /// Return a message collection of some kind.
-    fn update(&mut self, dt: Duration) -> Messages<KnobMessage<KnobAddr>>;
+    fn update(&mut self, dt: Duration) -> Messages<KnobResponse<KnobAddr>>;
 
     /// Render the state of this wiggle, providing its currently-assigned inputs as well as a
     /// function that can be used to retrieve the current value of one of those inputs.
@@ -97,7 +97,7 @@ impl NodeId for WiggleId {
 }
 
 /// Type alias for a network of wiggles.
-pub type WiggleNetwork = Network<Box<CompleteWiggle>, WiggleId, KnobMessage<WiggleKnobAddr>>;
+pub type WiggleNetwork = Network<Box<CompleteWiggle>, WiggleId, KnobResponse<WiggleKnobAddr>>;
 
 impl WiggleProvider for WiggleNetwork {
     fn get_value(
@@ -122,7 +122,7 @@ impl WiggleProvider for WiggleNetwork {
 }
 
 pub trait CompleteWiggle:
-    Wiggle + Inputs<KnobMessage<WiggleKnobAddr>> + Knobs<KnobAddr> + fmt::Debug
+    Wiggle + Inputs<KnobResponse<WiggleKnobAddr>> + Knobs<KnobAddr> + fmt::Debug
 {
     fn eq(&self, other: &CompleteWiggle) -> bool;
     fn as_any(&self) -> &Any;
@@ -131,7 +131,7 @@ pub trait CompleteWiggle:
 impl<T> CompleteWiggle for T
     where T: 'static
         + Wiggle
-        + Inputs<KnobMessage<WiggleKnobAddr>>
+        + Inputs<KnobResponse<WiggleKnobAddr>>
         + Knobs<KnobAddr>
         + fmt::Debug
         + PartialEq
@@ -155,11 +155,11 @@ impl<'a, 'b> PartialEq<CompleteWiggle+'b> for CompleteWiggle + 'a {
 // TODO: consider generalizing Update and/or Render as traits.
 /// Wrapper trait for a wiggle network.
 pub trait WiggleCollection {
-    fn update(&mut self, dt: Duration) -> Messages<KnobMessage<WiggleKnobAddr>>;
+    fn update(&mut self, dt: Duration) -> Messages<KnobResponse<WiggleKnobAddr>>;
 }
 
 impl WiggleCollection for WiggleNetwork {
-    fn update(&mut self, dt: Duration) -> Messages<KnobMessage<WiggleKnobAddr>> {
+    fn update(&mut self, dt: Duration) -> Messages<KnobResponse<WiggleKnobAddr>> {
         let mut update_messages = Messages::none();
         {
             let update = |node_id: WiggleId, wiggle: &mut Box<CompleteWiggle>| {

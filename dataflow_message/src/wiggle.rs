@@ -4,7 +4,7 @@ use std::fmt;
 use std::error;
 use console_server::reactor::Messages;
 use console_server::clients::ResponseFilter;
-use wiggles_value::knob::{KnobDescription, Message as KnobMessage, Knobs};
+use wiggles_value::knob::{KnobDescription, Response as KnobResponse, Knobs};
 use dataflow::network::{InputId, NetworkError};
 use dataflow::wiggles::{
     WiggleNetwork,
@@ -63,7 +63,7 @@ pub enum Response {
 /// message into its constituent pieces.
 pub enum ResponseWithKnobs {
     Wiggle(Response),
-    Knob(KnobMessage<WiggleKnobAddr>),
+    Knob(KnobResponse<WiggleKnobAddr>),
 }
 
 /// Apply the action dictated by a wiggle command to this wiggle network.
@@ -83,7 +83,7 @@ pub fn handle_message(
             for (addr, desc) in wiggle.knobs() {
                 // Lift the knob addr up into the network domain.
                 let addr = (id, addr);
-                let msg = ResponseWithKnobs::Knob(KnobMessage::Added{
+                let msg = ResponseWithKnobs::Knob(KnobResponse::Added{
                     addr: addr,
                     desc: desc,
                 });
@@ -114,7 +114,7 @@ pub fn handle_message(
             // emit messages indicating the removal of its knobs
             let mut messages = Messages::none();
             for (addr, _) in wiggle.knobs() {
-                messages.push(ResponseWithKnobs::Knob(KnobMessage::Removed((id, addr))));
+                messages.push(ResponseWithKnobs::Knob(KnobResponse::Removed((id, addr))));
             }
             // emit a message indicating remove of the wiggle itself
             messages.push(ResponseWithKnobs::Wiggle(Response::Removed(id)));

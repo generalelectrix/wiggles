@@ -10,7 +10,7 @@ use ::util::{modulo_one, almost_eq};
 use super::clock::{Clock, ClockValue, ClockId, ClockProvider, KnobAddr};
 use ::network::Inputs;
 use wiggles_value::knob::{
-    Knobs, Datatype, Data, KnobDescription, Error as KnobError, badaddr, Message as KnobMessage};
+    Knobs, Datatype, Data, KnobDescription, Error as KnobError, badaddr, Response as KnobResponse};
 use serde_json::{Error as SerdeJsonError, self};
 
 pub const MULT_KNOB_ADDR: u32 = 0;
@@ -161,7 +161,7 @@ impl Clock for ClockMultiplier {
 
     /// Update the state of this clock using the provided update interval.
     /// Return a message collection of some kind.
-    fn update(&mut self, _: Duration) -> Messages<KnobMessage<KnobAddr>> {
+    fn update(&mut self, _: Duration) -> Messages<KnobResponse<KnobAddr>> {
         // if the reset knob was pushed, reset the clock value
         if self.should_reset {
             self.prev_upstream.set(None);
@@ -170,7 +170,7 @@ impl Clock for ClockMultiplier {
             self.should_reset = false;
             // emit a message that we changed this knob value.
             Messages::one(
-                KnobMessage::ValueChange{addr: RESET_KNOB_ADDR, value: Data::Button(false)})
+                KnobResponse::ValueChange{addr: RESET_KNOB_ADDR, value: Data::Button(false)})
         }
         else {
             // age our stored previous value by one

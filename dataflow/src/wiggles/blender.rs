@@ -15,7 +15,7 @@ use wiggles_value::knob::{
     Error as KnobError,
     badaddr,
     badtype,
-    Message as KnobMessage,
+    Response as KnobResponse,
 };
 use serde_json::{Error as SerdeJsonError, self};
 use clocks::clock::{ClockId, ClockProvider, ClockValue};
@@ -88,28 +88,28 @@ fn level_knob_desc(chan: KnobAddr) -> KnobDescription {
 }
 
 // Blender has at least one input, and up to an unlimited number of them.
-impl Inputs<KnobMessage<KnobAddr>> for Blender {
+impl Inputs<KnobResponse<KnobAddr>> for Blender {
     fn default_input_count(&self) -> u32 {
         1
     }
-    fn try_push_input(&mut self) -> Result<Messages<KnobMessage<KnobAddr>>, ()> {
+    fn try_push_input(&mut self) -> Result<Messages<KnobResponse<KnobAddr>>, ()> {
         // add a fresh input, set to 1
         self.levels.push(Unipolar(1.0));
         // tell the world that there's a new knob available
         // level addresses start at 1
         let addr = self.levels.len() as KnobAddr;
-        Ok(Messages::one(KnobMessage::Added {
+        Ok(Messages::one(KnobResponse::Added {
             addr: addr,
             desc: level_knob_desc(addr),
         }))
     }
-    fn try_pop_input(&mut self) -> Result<Messages<KnobMessage<KnobAddr>>, ()> {
+    fn try_pop_input(&mut self) -> Result<Messages<KnobResponse<KnobAddr>>, ()> {
         // No use having a mixer with no inputs (perhaps we may want to relax this restriction.)
         if self.levels.len() == 1 {
             return Err(());
         }
         self.levels.pop();
-        Ok(Messages::one(KnobMessage::Removed((self.levels.len() + 1) as KnobAddr)))
+        Ok(Messages::one(KnobResponse::Removed((self.levels.len() + 1) as KnobAddr)))
     }
 }
 
@@ -188,7 +188,7 @@ impl Wiggle for Blender {
     }
 
     /// Blender is stateless, update does nothing.
-    fn update(&mut self, _: Duration) -> Messages<KnobMessage<KnobAddr>> {
+    fn update(&mut self, _: Duration) -> Messages<KnobResponse<KnobAddr>> {
         Messages::none()
     }
 

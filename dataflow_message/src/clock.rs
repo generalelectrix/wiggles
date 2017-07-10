@@ -4,7 +4,7 @@ use std::fmt;
 use std::error;
 use console_server::reactor::Messages;
 use console_server::clients::ResponseFilter;
-use wiggles_value::knob::{KnobDescription, Message as KnobMessage, Knobs};
+use wiggles_value::knob::{KnobDescription, Response as KnobResponse, Knobs};
 use dataflow::network::{InputId, NetworkError};
 use dataflow::clocks::{
     ClockNetwork,
@@ -53,7 +53,7 @@ pub enum Response {
 /// message into its constituent pieces.
 pub enum ResponseWithKnobs {
     Clock(Response),
-    Knob(KnobMessage<ClockKnobAddr>),
+    Knob(KnobResponse<ClockKnobAddr>),
 }
 
 /// Apply the action dictated by a clock command to this clock network.
@@ -73,7 +73,7 @@ pub fn handle_message(
             for (addr, desc) in clock.knobs() {
                 // Lift the knob addr up into the network domain.
                 let addr = (id, addr);
-                let msg = ResponseWithKnobs::Knob(KnobMessage::Added{
+                let msg = ResponseWithKnobs::Knob(KnobResponse::Added{
                     addr: addr,
                     desc: desc,
                 });
@@ -98,7 +98,7 @@ pub fn handle_message(
             // emit messages indicating the removal of its knobs
             let mut messages = Messages::none();
             for (addr, _) in clock.knobs() {
-                messages.push(ResponseWithKnobs::Knob(KnobMessage::Removed((id, addr))));
+                messages.push(ResponseWithKnobs::Knob(KnobResponse::Removed((id, addr))));
             }
             // emit a message indicating remove of the clock itself
             messages.push(ResponseWithKnobs::Clock(Response::Removed(id)));
