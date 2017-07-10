@@ -237,12 +237,6 @@ enum Response {
     Knob(KnobResponse<KnobAddress>),
 }
 
-impl From<PatchServerResponse> for Response {
-    fn from(r: PatchServerResponse) -> Self {
-        Response::Patcher(r)
-    }
-}
-
 impl WrapResponse for Response {}
 
 impl Console for TestConsole {
