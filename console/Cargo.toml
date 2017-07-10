@@ -1,5 +1,5 @@
 [package]
-name = "core_console_test"
+name = "console"
 version = "0.1.0"
 authors = ["general electrix <general.electrix@gmail.com>"]
 
