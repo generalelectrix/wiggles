@@ -9,7 +9,14 @@ mod serde;
 pub mod trial;
 pub mod blender;
 
-pub use self::wiggle::{WiggleId, CompleteWiggle, WiggleKnobAddr, WiggleNetwork, KnobAddr};
+pub use self::wiggle::{
+    WiggleId,
+    CompleteWiggle,
+    WiggleKnobAddr,
+    WiggleNetwork,
+    KnobAddr,
+    WiggleCollection,
+};
 
 // Gather every wiggle declaration up here.
 // We could potentially make this mutable and provide a registration function if we want to be able

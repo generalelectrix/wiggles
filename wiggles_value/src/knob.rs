@@ -5,6 +5,7 @@
 //! this conversion may fail and the knob control action could return an error rather than setting
 //! a value.
 use std::sync::Arc;
+use std::{error, fmt};
 use super::{Datatype as WiggleDatatype, Data as WiggleData, Unipolar};
 use super::knob_types::Rate;
 use console_server::reactor::Messages;
@@ -113,6 +114,21 @@ pub trait Knobs<A> {
     fn set_knob(&mut self, addr: A, value: Data) -> Result<(), Error<A>>;
 }
 
+impl<T, A> Knobs<A> for Box<T> where T: Knobs<A> + ?Sized {
+    fn knobs(&self) -> Vec<(A, KnobDescription)> {
+        (**self).knobs()
+    }
+    fn knob_datatype(&self, addr: A) -> Result<Datatype, Error<A>> {
+        (**self).knob_datatype(addr)
+    }
+    fn knob_value(&self, addr: A) -> Result<Data, Error<A>> {
+        (**self).knob_value(addr)
+    }
+    fn set_knob(&mut self, addr: A, value: Data) -> Result<(), Error<A>> {
+        (**self).set_knob(addr, value)
+    }
+}
+
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum Command<A> {
     Set{addr: A, value: Data},
@@ -129,7 +145,7 @@ pub enum Response<A> {
 impl<A> Response<A> {
     /// Use the provided function to lift this knob message into a higher address space.
     pub fn lift_address<NewAddr, F>(self, lifter: F) -> Response<NewAddr>
-        where F: FnOnce(A) -> NewAddr, NewAddr: Copy
+        where F: FnOnce(A) -> NewAddr
     {
         use self::Response::*;
         match self {
@@ -159,6 +175,29 @@ impl<A> Error<A> {
     }
 }
 
+impl<A: fmt::Debug> fmt::Display for Error<A> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Error::InvalidAddress(ref a) => write!(f, "Invalid knob address: {:?}.", a),
+            Error::InvalidDatatype{ref expected, ref provided} =>
+                write!(f, "Knob expected datatype {:?} but received the data {:?}.", expected, provided),
+        }
+    }
+}
+
+impl<A: fmt::Debug> error::Error for Error<A> {
+    fn description(&self) -> &str {
+        match *self {
+            Error::InvalidAddress(_) => "Invalid knob address.",
+            Error::InvalidDatatype{..} => "Invalid datatype for knob.",
+        }
+    }
+
+    fn cause(&self) -> Option<&error::Error> {
+        None
+    }
+}
+
 
 /// Helper function for KnobError::InvalidDatatype.
 pub fn badtype<A>(expected: Datatype, provided: Data) -> Error<A> {
@@ -176,7 +215,7 @@ pub fn badaddr<A>(add: A) -> Error<A> {
 /// Use a knob subsystem to handle a command message.
 /// This is a standalone function rather than a trait method to make it clear that this is assumed
 /// to sit at only the top layer of a knob address space hierarchy.
-fn handle_command<A: Clone, K: Knobs<A>>(
+pub fn handle_command<A: Clone, K: Knobs<A>>(
     knob_system: &mut K,
     command: Command<A>)
     -> Result<Messages<Response<A>>, Error<A>>

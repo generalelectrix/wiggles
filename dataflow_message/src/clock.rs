@@ -13,14 +13,14 @@ use dataflow::clocks::{
     ClockKnobAddr,
     new_clock};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SetInput {
     clock: ClockId,
     input: InputId,
     target: Option<ClockId>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Command {
     Create{class: String, name: String},
     Remove{id: ClockId, force: bool},
@@ -29,14 +29,14 @@ pub enum Command {
     PopInput(ClockId),
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone, Deserialize)]
 pub struct ClockDescription {
     name: Arc<String>,
     class: Arc<String>,
     inputs: Vec<Option<ClockId>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone, Deserialize)]
 /// Response messages related to clock actions.
 pub enum Response {
     New{id: ClockId, desc: ClockDescription},

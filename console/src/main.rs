@@ -10,6 +10,7 @@ extern crate dataflow;
 extern crate dataflow_message;
 extern crate wiggles_value;
 
+use std::fmt;
 use std::time::Duration;
 use console_server::*;
 use console_server::clients::{ClientData, ResponseFilter};
@@ -21,17 +22,26 @@ use fixture_patch_message::{
     handle_message as handle_patch_message,
     UnivWithPort};
 use rust_dmx::{DmxPort, OfflineDmxPort, Error as DmxError};
-use dataflow::clocks::ClockNetwork;
-use dataflow::wiggles::WiggleNetwork;
+use dataflow::clocks::{ClockKnobAddr, ClockNetwork, ClockCollection};
+use dataflow::wiggles::{WiggleKnobAddr, WiggleNetwork, WiggleCollection};
 use dataflow_message::clock::{
     Command as ClockCommand,
     Response as ClockResponse,
-    ResponseWithKnobs as ClockResponseWithKnobs};
+    ResponseWithKnobs as ClockResponseWithKnobs,
+    handle_message as handle_clock_message,
+};
 use dataflow_message::wiggle::{
     Command as WiggleCommand,
     Response as WiggleResponse,
-    ResponseWithKnobs as WiggleResponseWithKnobs};
-use wiggles_value::knob::{Message as KnobMessage};
+    ResponseWithKnobs as WiggleResponseWithKnobs,
+    handle_message as handle_wiggle_message,
+};
+use wiggles_value::knob::{
+    Response as KnobResponse,
+    Command as KnobCommand,
+    handle_command as handle_knob_message,
+    Error as KnobError,
+};
 
 #[derive(Serialize, Deserialize, Default)]
 struct TestConsole {
@@ -42,25 +52,13 @@ struct TestConsole {
 
 impl TestConsole {
     fn handle_patch_message(
-            &mut self,
-            message: PatchServerRequest,
-            mut client_data: ClientData)
-            -> Messages<ResponseWrapper<Response>>
+        &mut self,
+        message: PatchServerRequest,
+        client_data: ClientData)
+        -> Messages<ResponseWrapper<Response>>
     {
-        match handle_patch_message(&mut self.patch, message) {
-            Ok((mut resp, maybe_filter)) => {
-                if let Some(filter) = maybe_filter {
-                    client_data.filter = filter;
-                }
-                resp.drain()
-                    .map(|m| Response::Patcher(m).with_client(client_data))
-                    .collect()
-            }
-            Err(e) => {
-                client_data.filter = ResponseFilter::Exclusive;
-                Messages::one(Response::Error(format!("{}", e)).with_client(client_data))
-            }
-        }
+        let result = handle_patch_message(&mut self.patch, message);
+        handle_error(result, client_data, Response::Patcher)
     }
 
     /// Swap a port to offline mode if it looks like it has been disconnected.
@@ -105,6 +103,121 @@ impl TestConsole {
         messages.push(err_msg.no_client());
         messages
     }
+
+    fn handle_clock_message(
+        &mut self,
+        message: ClockCommand,
+        client_data: ClientData)
+        -> Messages<ResponseWrapper<Response>>
+    {
+        let result = handle_clock_message(&mut self.clocks, message).map(|(mut resp, filter)| {
+            let resp = resp.drain().map(|r| {
+                match r {
+                    ClockResponseWithKnobs::Knob(m) =>
+                        Response::Knob(m.lift_address(KnobAddress::Clock)),
+                    ClockResponseWithKnobs::Clock(m) =>
+                        Response::Clock(m),
+                }
+            }).collect();
+            (resp, filter)
+        });
+        handle_error(result, client_data, |x| x)
+    }
+
+    fn handle_wiggle_message(
+        &mut self,
+        message: WiggleCommand,
+        client_data: ClientData)
+        -> Messages<ResponseWrapper<Response>>
+    {
+        let result = handle_wiggle_message(&mut self.wiggles, message).map(|(mut resp, filter)| {
+            let resp = resp.drain().map(|r| {
+                match r {
+                    WiggleResponseWithKnobs::Knob(m) =>
+                        Response::Knob(m.lift_address(KnobAddress::Wiggle)),
+                    WiggleResponseWithKnobs::Wiggle(m) =>
+                        Response::Wiggle(m),
+                }
+            }).collect();
+            (resp, filter)
+        });
+        handle_error(result, client_data, |x| x)
+    }
+
+    fn handle_knob_message(
+        &mut self,
+        message: KnobCommand<KnobAddress>,
+        client_data: ClientData)
+        -> Messages<ResponseWrapper<Response>>
+    {
+        
+        let result = match message {
+            KnobCommand::Set{addr, value} => {
+                match addr {
+                    KnobAddress::Clock(a) => {
+                        let inner_cmd = KnobCommand::Set{addr: a, value: value};
+                        let result = handle_knob_message(&mut self.clocks, inner_cmd);
+                        lift_knob_result(result, &KnobAddress::Clock)
+                    }
+                    KnobAddress::Wiggle(w) => {
+                        let inner_cmd = KnobCommand::Set{addr: w, value: value};
+                        let result = handle_knob_message(&mut self.wiggles, inner_cmd);
+                        lift_knob_result(result, &KnobAddress::Wiggle)
+                    }
+                }
+            }
+        };
+        handle_error(result.map(|r| (r, None)), client_data, Response::Knob)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+enum KnobAddress {
+    Clock(ClockKnobAddr),
+    Wiggle(WiggleKnobAddr),
+}
+
+type KnobResult<A> = Result<Messages<KnobResponse<A>>, KnobError<A>>;
+
+/// Take the result from handling a knob command and lift it up into the global address space.
+fn lift_knob_result<A, F>(
+    r: KnobResult<A>,
+    lifter: &F)
+    -> KnobResult<KnobAddress>
+    where F: Fn(A) -> KnobAddress
+{
+    match r {
+        Ok(mut responses) => {
+            Ok(responses.drain().map(|msg| msg.lift_address(lifter)).collect())
+        }
+        Err(err) => Err(err.lift_address(lifter))
+    }
+}
+
+/// Handle a result from handling a message.
+/// Convert the error case into the top-level response type.
+/// Lift the OK case's messages into the top-level wrapper type.
+fn handle_error<M, E, F>(
+    r: Result<(Messages<M>, Option<ResponseFilter>), E>,
+    mut client_data: ClientData,
+    message_wrapper: F)
+    -> Messages<ResponseWrapper<Response>>
+    where F: Fn(M) -> Response, E: fmt::Display
+{
+    match r {
+        Ok((mut resp, maybe_filter)) => {
+            if let Some(filter) = maybe_filter {
+                client_data.filter = filter;
+            }
+            resp.drain()
+                .map(|m| message_wrapper(m).with_client(client_data))
+                .collect()
+        }
+        Err(e) => {
+            client_data.filter = ResponseFilter::Exclusive;
+            Messages::one(Response::Error(format!("{}", e)).with_client(client_data))
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -112,13 +225,16 @@ enum Command {
     Patcher(PatchServerRequest),
     Clock(ClockCommand),
     Wiggle(WiggleCommand),
-    Knob(KnobCommand),
+    Knob(KnobCommand<KnobAddress>),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 enum Response {
     Error(String),
     Patcher(PatchServerResponse),
+    Clock(ClockResponse),
+    Wiggle(WiggleResponse),
+    Knob(KnobResponse<KnobAddress>),
 }
 
 impl From<PatchServerResponse> for Response {
@@ -145,7 +261,18 @@ impl Console for TestConsole {
     }
 
     fn update(&mut self, dt: Duration) -> Messages<ResponseWrapper<Response>> {
-        Messages::none()
+        // update the clocks
+        let mut clock_msgs = self.clocks.update(dt);
+        let mut wiggle_msgs = self.wiggles.update(dt);
+        let mut messages = Messages::none();
+        messages.reserve(clock_msgs.len() + wiggle_msgs.len());
+        for msg in clock_msgs.drain() {
+            messages.push(Response::Knob(msg.lift_address(KnobAddress::Clock)).no_client());
+        }
+        for msg in wiggle_msgs.drain() {
+            messages.push(Response::Knob(msg.lift_address(KnobAddress::Wiggle)).no_client());
+        }
+        messages
     }
 
     fn handle_command(&mut self, cmd: CommandWrapper<Command>) -> Messages<ResponseWrapper<Response>> {
@@ -153,12 +280,21 @@ impl Console for TestConsole {
             Command::Patcher(msg) => {
                 self.handle_patch_message(msg, cmd.client_data)
             }
+            Command::Knob(msg) => {
+                self.handle_knob_message(msg, cmd.client_data)
+            }
+            Command::Clock(msg) => {
+                self.handle_clock_message(msg, cmd.client_data)
+            }
+            Command::Wiggle(msg) => {
+                self.handle_wiggle_message(msg, cmd.client_data)
+            }
         }
     }
 }
 
 fn main() {
-    simple_logger::init_with_level(log::LogLevel::Warn);
+    simple_logger::init_with_level(log::LogLevel::Warn).unwrap();
     
     let state: InitialState<TestConsole> = InitialState::default();
 

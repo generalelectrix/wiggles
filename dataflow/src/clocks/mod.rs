@@ -9,7 +9,15 @@ pub mod simple;
 pub mod multiplier;
 mod serde;
 
-pub use self::clock::{ClockId, CompleteClock, ClockKnobAddr, ClockValue, ClockNetwork, KnobAddr};
+pub use self::clock::{
+    ClockId,
+    CompleteClock,
+    ClockKnobAddr,
+    ClockValue,
+    ClockNetwork,
+    KnobAddr,
+    ClockCollection,
+};
 
 // Gather every clock declaration up here.
 // We could potentially make this mutable and provide a registration function if we want to be able

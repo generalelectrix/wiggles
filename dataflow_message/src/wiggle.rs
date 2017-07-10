@@ -14,7 +14,7 @@ use dataflow::wiggles::{
     new_wiggle};
 use dataflow::clocks::{ClockId};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SetInput {
     wiggle: WiggleId,
     input: InputId,
@@ -31,13 +31,13 @@ pub enum Command {
     SetClock(WiggleId, Option<ClockId>),
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum UsesClock {
     Yes(Option<ClockId>),
     No,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WiggleDescription {
     name: Arc<String>,
     class: Arc<String>,
@@ -45,7 +45,7 @@ pub struct WiggleDescription {
     clock: UsesClock,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 /// Response messages related to wiggle actions.
 pub enum Response {
     New{id: WiggleId, desc: WiggleDescription},

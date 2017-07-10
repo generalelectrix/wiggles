@@ -153,6 +153,10 @@ impl<T> Messages<T> {
         self.0.len()
     }
 
+    pub fn reserve(&mut self, additional: usize) {
+        self.0.reserve(additional)
+    }
+
     pub fn one(m: T) -> Self {
         let mut msgs = SmallVec::new();
         msgs.push(m);
