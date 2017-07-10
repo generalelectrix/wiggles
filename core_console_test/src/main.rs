@@ -110,7 +110,9 @@ impl TestConsole {
 #[derive(Debug, Serialize, Deserialize)]
 enum Command {
     Patcher(PatchServerRequest),
-    Clock()
+    Clock(ClockCommand),
+    Wiggle(WiggleCommand),
+    Knob(KnobCommand),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -5,6 +5,7 @@
 use std::cmp::{min, max};
 use std::ops::{Deref, Mul, Add};
 
+extern crate console_server;
 extern crate serde;
 #[macro_use] extern crate serde_derive;
 

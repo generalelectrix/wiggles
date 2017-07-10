@@ -6,6 +6,7 @@ authors = ["general electrix <general.electrix@gmail.com>"]
 [dependencies]
 serde_derive = "*"
 try_from = "*"
+console_server = { path = "../console_server" }
 
 [dependencies.serde]
 version = "*"

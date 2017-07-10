@@ -7,6 +7,7 @@
 use std::sync::Arc;
 use super::{Datatype as WiggleDatatype, Data as WiggleData, Unipolar};
 use super::knob_types::Rate;
+use console_server::reactor::Messages;
 
 // For now, knob data types will not be extensible but will instead be limited to Wiggles values
 // and a few additional types we've defined here, otherwise the generic types get oppressively 
@@ -112,20 +113,25 @@ pub trait Knobs<A> {
     fn set_knob(&mut self, addr: A, value: Data) -> Result<(), Error<A>>;
 }
 
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub enum Command<A> {
+    Set{addr: A, value: Data},
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-/// Messages related to actions on individual knobs or a knob subsystem.
-pub enum Message<A> {
+/// Responses related to actions on individual knobs or a knob subsystem.
+pub enum Response<A> {
     ValueChange{addr: A, value: Data},
     Added{addr: A, desc: KnobDescription},
     Removed(A),
 }
 
-impl<A> Message<A> {
+impl<A> Response<A> {
     /// Use the provided function to lift this knob message into a higher address space.
-    pub fn lift_address<NewAddr, F>(self, lifter: F) -> Message<NewAddr>
+    pub fn lift_address<NewAddr, F>(self, lifter: F) -> Response<NewAddr>
         where F: FnOnce(A) -> NewAddr, NewAddr: Copy
     {
-        use self::Message::*;
+        use self::Response::*;
         match self {
             ValueChange{addr, value} => ValueChange{addr: lifter(addr), value: value},
             Added{addr, desc} => Added{addr: lifter(addr), desc: desc},
@@ -165,4 +171,17 @@ pub fn badtype<A>(expected: Datatype, provided: Data) -> Error<A> {
 /// Shorthand for KnobError::InvalidAddress.
 pub fn badaddr<A>(add: A) -> Error<A> {
     Error::InvalidAddress(add)
+}
+
+fn handle_message<A, K: Knobs<A>>(
+    knob_system: &mut K,
+    command: Command<A>)
+    -> Result<Messages<Response<A>>, Error<A>>
+{
+    match command {
+        Command::Set{addr, value} => {
+            knob_system.set_knob(addr, value)?;
+            Ok(Messages::one(Response::ValueChange{addr, value}))
+        }
+    }
 }
