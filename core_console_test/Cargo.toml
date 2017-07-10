@@ -7,6 +7,9 @@ authors = ["general electrix <general.electrix@gmail.com>"]
 console_server = { path = "../console_server" }
 fixture_patch = { path = "../fixture_patch" }
 fixture_patch_message = { path = "../fixture_patch_message" }
+dataflow = { path = "../dataflow" }
+dataflow_message = { path = "../dataflow_message" }
+wiggles_value = { path = "../wiggles_value" }
 serde = "*"
 serde_derive = "*"
 log = "*"

@@ -6,6 +6,9 @@ extern crate simple_logger;
 extern crate fixture_patch;
 extern crate fixture_patch_message;
 extern crate rust_dmx;
+extern crate dataflow;
+extern crate dataflow_message;
+extern crate wiggles_value;
 
 use std::time::Duration;
 use console_server::*;
@@ -18,10 +21,23 @@ use fixture_patch_message::{
     handle_message as handle_patch_message,
     UnivWithPort};
 use rust_dmx::{DmxPort, OfflineDmxPort, Error as DmxError};
+use dataflow::clocks::ClockNetwork;
+use dataflow::wiggles::WiggleNetwork;
+use dataflow_message::clock::{
+    Command as ClockCommand,
+    Response as ClockResponse,
+    ResponseWithKnobs as ClockResponseWithKnobs};
+use dataflow_message::wiggle::{
+    Command as WiggleCommand,
+    Response as WiggleResponse,
+    ResponseWithKnobs as WiggleResponseWithKnobs};
+use wiggles_value::knob::{Message as KnobMessage};
 
 #[derive(Serialize, Deserialize, Default)]
 struct TestConsole {
-    patch: Patch
+    patch: Patch,
+    clocks: ClockNetwork,
+    wiggles: WiggleNetwork,
 }
 
 impl TestConsole {
@@ -94,6 +110,7 @@ impl TestConsole {
 #[derive(Debug, Serialize, Deserialize)]
 enum Command {
     Patcher(PatchServerRequest),
+    Clock()
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

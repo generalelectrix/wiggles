@@ -58,7 +58,7 @@ fn add_node_get_id(net: &mut TestNetwork) -> TestNodeId {
 
 #[test]
 fn test_no_cycles() {
-    simple_logger::init_with_level(LogLevel::Debug);
+    simple_logger::init_with_level(LogLevel::Debug).unwrap();
     let mut net: TestNetwork = Network::new();
     let end = add_node_get_id(&mut net);
 
@@ -77,6 +77,14 @@ fn test_no_cycles() {
     assert!(net.node(head).unwrap().has_listeners());
     assert!(net.node_among_listeners(head.index(), end.index()));
     assert!(net.check_would_cycle(end, head).is_err());
-    
+    expect_no_cycle(end, head, net.swap_input(head, 0, Some(end)));
+
+    let middle = add_node_get_id(&mut net);
+
+    net.swap_input(end, 0, Some(middle)).unwrap();
+    net.swap_input(middle, 0, Some(head)).unwrap();
+
+    assert!(net.node_among_listeners(head.index(), end.index()));
+    assert!(net.check_would_cycle(end, head).is_err());
     expect_no_cycle(end, head, net.swap_input(head, 0, Some(end)));
 }

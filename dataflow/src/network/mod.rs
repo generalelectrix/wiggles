@@ -69,6 +69,14 @@ pub struct Network<N, I, M>
     slots: Vec<NodeSlot<N, I, M>>,
 }
 
+impl<N, I, M> Default for Network<N, I, M>
+    where N: fmt::Debug + Inputs<M> + Sized, I: NodeId, M: fmt::Debug
+{
+    fn default() -> Self {
+        Network::new()
+    }
+}
+
 impl<N, I, M> Network<N, I, M>
     where N: fmt::Debug + Inputs<M> + Sized, I: NodeId, M: fmt::Debug
 {
@@ -399,7 +407,7 @@ impl<N, I, M> Network<N, I, M>
                 }
                 // we didn't find it, so now recurse into these listeners
                 for listener in node.listeners.keys() {
-                    if self.node_among_listeners(*listener, node_to_check) {
+                    if self.node_among_listeners(*listener, node_to_find) {
                         return true;
                     }
                 }
