@@ -104,13 +104,13 @@ pub trait Knobs<A> {
     fn knobs(&self) -> Vec<(A, KnobDescription)>;
 
     /// Return the native datatype for the knob at this address or an error if it doesn't exist.
-    fn knob_datatype(&self, addr: A) -> Result<Datatype, Error<A>>;
+    fn knob_datatype(&self, addr: &A) -> Result<Datatype, Error<A>>;
 
     /// Return this knob's current data payload or an error if it doesn't exist.
-    fn knob_value(&self, addr: A) -> Result<Data, Error<A>>;
+    fn knob_value(&self, addr: &A) -> Result<Data, Error<A>>;
 
     /// Attempt to set a value on the knob at this address.
-    fn set_knob(&mut self, addr: A, value: Data) -> Result<(), Error<A>>;
+    fn set_knob(&mut self, addr: &A, value: Data) -> Result<(), Error<A>>;
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -173,14 +173,17 @@ pub fn badaddr<A>(add: A) -> Error<A> {
     Error::InvalidAddress(add)
 }
 
-fn handle_message<A, K: Knobs<A>>(
+/// Use a knob subsystem to handle a command message.
+/// This is a standalone function rather than a trait method to make it clear that this is assumed
+/// to sit at only the top layer of a knob address space hierarchy.
+fn handle_command<A, K: Knobs<A>>(
     knob_system: &mut K,
     command: Command<A>)
     -> Result<Messages<Response<A>>, Error<A>>
 {
     match command {
         Command::Set{addr, value} => {
-            knob_system.set_knob(addr, value)?;
+            knob_system.set_knob(&addr, value.clone())?;
             Ok(Messages::one(Response::ValueChange{addr, value}))
         }
     }
