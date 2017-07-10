@@ -15,6 +15,9 @@ use wiggles_value::knob::{
 };
 use console_server::Messages;
 
+#[cfg(test)]
+mod test;
+
 // Use 32-bit ints as indices.
 // Use a 32-bit generation ID to uniquely identify a generation of a particular slot to ensure that
 // we don't try to mess with an old version of a node if it has been removed and re-used later.
@@ -521,7 +524,7 @@ impl<N, I, M> Node<N, I, M>
     /// This method assumes that we have ensured that the listeners collection has an entry
     /// removed immediately any time the listener count hits 0.
     pub fn has_listeners(&self) -> bool {
-        self.listeners.is_empty()
+        ! self.listeners.is_empty()
     }
 
     /// Return an immutable reference to this node's inner payload.

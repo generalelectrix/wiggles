@@ -14,3 +14,6 @@ serde = "*"
 serde_derive = "*"
 lazy_static = "*"
 serde_json = "*"
+
+[dev-dependencies]
+simple_logger = "*"

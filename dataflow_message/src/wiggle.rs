@@ -104,7 +104,7 @@ pub fn handle_message(
             };
             messages.push(ResponseWithKnobs::Wiggle(Response::New{
                 id: id,
-                desc: desc
+                desc: desc,
             }));
             Ok((messages, Some(ResponseFilter::All)))
         }

@@ -7,6 +7,7 @@ extern crate console_server;
 #[macro_use] extern crate lazy_static;
 extern crate serde_json;
 extern crate waveforms;
+#[cfg(test)] extern crate simple_logger;
 
 pub mod network;
 pub mod clocks;
