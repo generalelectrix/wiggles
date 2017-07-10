@@ -11,7 +11,9 @@ use dataflow::clocks::{
     ClockId,
     KnobAddr as ClockNodeKnobAddr,
     ClockKnobAddr,
-    new_clock};
+    new_clock,
+    CLOCKS,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SetInput {
@@ -22,6 +24,7 @@ pub struct SetInput {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Command {
+    Classes,
     Create{class: String, name: String},
     Remove{id: ClockId, force: bool},
     SetInput(SetInput),
@@ -39,6 +42,7 @@ pub struct ClockDescription {
 #[derive(Debug, Serialize, Clone, Deserialize)]
 /// Response messages related to clock actions.
 pub enum Response {
+    Classes(Arc<Vec<String>>),
     New{id: ClockId, desc: ClockDescription},
     Removed(ClockId),
     SetInput(SetInput),
@@ -56,6 +60,10 @@ pub enum ResponseWithKnobs {
     Knob(KnobResponse<ClockKnobAddr>),
 }
 
+lazy_static! {
+    static ref CLASSES: Arc<Vec<String>> = Arc::new(CLOCKS.iter().map(|s| s.to_string()).collect());
+}
+
 /// Apply the action dictated by a clock command to this clock network.
 pub fn handle_message(
     network: &mut ClockNetwork,
@@ -64,6 +72,9 @@ pub fn handle_message(
 {
     use self::Command::*;
     match command {
+        Classes => Ok((
+            Messages::one(ResponseWithKnobs::Clock(Response::Classes(CLASSES.clone()))),
+            None)),
         Create{class, name} => {
             let node = new_clock(&class, name).ok_or(Error::UnknownClass(class.clone()))?;
             let (id, node) = network.add(node);

@@ -26,7 +26,7 @@ pub use self::wiggle::{
 // objects.
 
 lazy_static! {
-    static ref WIGGLES: Vec<&'static str> = vec!(
+    pub static ref WIGGLES: Vec<&'static str> = vec!(
         trial::CLASS,
     );
 }

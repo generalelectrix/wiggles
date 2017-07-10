@@ -11,7 +11,8 @@ use dataflow::wiggles::{
     WiggleId,
     KnobAddr as WiggleNodeKnobAddr,
     WiggleKnobAddr,
-    new_wiggle};
+    new_wiggle,
+    WIGGLES};
 use dataflow::clocks::{ClockId};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -23,6 +24,7 @@ pub struct SetInput {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Command {
+    Classes,
     Create{class: String, name: String},
     Remove{id: WiggleId, force: bool},
     SetInput(SetInput),
@@ -48,6 +50,7 @@ pub struct WiggleDescription {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// Response messages related to wiggle actions.
 pub enum Response {
+    Classes(Arc<Vec<String>>),
     New{id: WiggleId, desc: WiggleDescription},
     Removed(WiggleId),
     SetInput(SetInput),
@@ -66,6 +69,10 @@ pub enum ResponseWithKnobs {
     Knob(KnobResponse<WiggleKnobAddr>),
 }
 
+lazy_static! {
+    static ref CLASSES: Arc<Vec<String>> = Arc::new(WIGGLES.iter().map(|s| s.to_string()).collect());
+}
+
 /// Apply the action dictated by a wiggle command to this wiggle network.
 pub fn handle_message(
     network: &mut WiggleNetwork,
@@ -74,6 +81,9 @@ pub fn handle_message(
 {
     use self::Command::*;
     match command {
+        Classes => Ok((
+            Messages::one(ResponseWithKnobs::Wiggle(Response::Classes(CLASSES.clone()))),
+            None)),
         Create{class, name} => {
             let node = new_wiggle(&class, name).ok_or(Error::UnknownClass(class.clone()))?;
             let (id, node) = network.add(node);

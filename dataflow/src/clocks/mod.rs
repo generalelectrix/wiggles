@@ -27,7 +27,7 @@ pub use self::clock::{
 // objects.
 
 lazy_static! {
-    static ref CLOCKS: Vec<&'static str> = vec!(
+    pub static ref CLOCKS: Vec<&'static str> = vec!(
         simple::CLASS,
         multiplier::CLASS,
     );
