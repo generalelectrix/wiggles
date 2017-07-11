@@ -75,7 +75,9 @@ export var ShowModel = function () {
         interfaces: ["FSharpRecord"],
         properties: {
           page: Page,
-          patcher: Model,
+          patcher: makeGeneric(Model, {
+            s: "number"
+          }),
           knobs: makeGeneric(_Map, {
             Key: "number",
             Value: Model_1
@@ -106,7 +108,9 @@ export var ShowServerCommand = function () {
           Knob: [makeGeneric(ServerCommand, {
             a: "number"
           })],
-          Patcher: [PatchServerRequest]
+          Patcher: [makeGeneric(PatchServerRequest, {
+            s: "number"
+          })]
         }
       };
     }
@@ -144,7 +148,9 @@ export var ShowServerResponse = function () {
           Knob: [makeGeneric(ServerResponse, {
             a: "number"
           })],
-          Patcher: [PatchServerResponse]
+          Patcher: [makeGeneric(PatchServerResponse, {
+            s: "number"
+          })]
         }
       };
     }
@@ -182,7 +188,9 @@ export var ShowMessage = function () {
           Knob: [makeGeneric(Message, {
             a: "number"
           })],
-          Patcher: [Message_1],
+          Patcher: [makeGeneric(Message_1, {
+            s: "number"
+          })],
           SetPage: [Page]
         }
       };
@@ -221,7 +229,7 @@ export var initCommands = CmdModule.batch(map(function (msg) {
   return exclusive(message);
 }, concat(ofArray([initCommands_1(), map(function ($var288) {
   return new ServerCommand_1("Console", [new ShowServerCommand("Patcher", [$var288])]);
-}, initCommands_2)])))));
+}, initCommands_2())])))));
 export function wrapShowResponse(message) {
   if (message.Case === "Patcher") {
     return new ShowMessage("Patcher", [new Message_1("Response", [message.Fields[0]])]);
@@ -284,7 +292,7 @@ export function viewShow(openModal, model, dispatch, dispatchServer) {
     });
   }
 }
-var patternInput_141 = openSocket(function (arg0) {
+var patternInput_144 = openSocket(function (arg0) {
   return new Message_2("Socket", [arg0]);
 }, {
   rsp: makeGeneric(ServerResponse_1, {
@@ -296,8 +304,8 @@ var patternInput_141 = openSocket(function (arg0) {
     msg: ShowMessage
   })
 });
-export var subscription = patternInput_141[0];
-export var send = patternInput_141[1];
+export var subscription = patternInput_144[0];
+export var send = patternInput_144[1];
 export function update(msg, model) {
   return update_3(initCommands, function (arg00) {
     send(arg00);

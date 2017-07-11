@@ -4,9 +4,10 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { compareUnions, equalsUnions, Array as _Array, defaultArg, Tuple, Option, compareRecords, equalsRecords } from "fable-core/Util";
+import { compareUnions, equalsUnions, Array as _Array, defaultArg, GenericParam, makeGeneric, Tuple, Option, compareRecords, equalsRecords } from "fable-core/Util";
 import { Result } from "fable-elmish/result";
 import { parseOptionalNumber } from "../core/Util";
+import List from "fable-core/List";
 export var FixtureKind = function () {
   function FixtureKind(name, channelCount) {
     _classCallCheck(this, FixtureKind);
@@ -119,7 +120,7 @@ export var PatchRequest = function () {
 }();
 setType("PatchTypes.PatchRequest", PatchRequest);
 export var PatchItem = function () {
-  function PatchItem(id, name, kind, address, channelCount) {
+  function PatchItem(id, name, kind, address, channelCount, controlSources) {
     _classCallCheck(this, PatchItem);
 
     this.id = id;
@@ -127,6 +128,7 @@ export var PatchItem = function () {
     this.kind = kind;
     this.address = address;
     this.channelCount = channelCount;
+    this.controlSources = controlSources;
   }
 
   _createClass(PatchItem, [{
@@ -140,7 +142,10 @@ export var PatchItem = function () {
           name: "string",
           kind: "string",
           address: Option(Tuple(["number", "number"])),
-          channelCount: "number"
+          channelCount: "number",
+          controlSources: makeGeneric(List, {
+            T: Option(GenericParam("s"))
+          })
         }
       };
     }
@@ -234,7 +239,8 @@ export var PatchServerRequest = function () {
           Remove: ["number"],
           RemoveUniverse: ["number", "boolean"],
           Rename: ["number", "string"],
-          Repatch: ["number", Option(Tuple(["number", "number"]))]
+          Repatch: ["number", Option(Tuple(["number", "number"]))],
+          SetControlSource: ["number", "number", Option(GenericParam("s"))]
         }
       };
     }
@@ -270,11 +276,17 @@ export var PatchServerResponse = function () {
         cases: {
           AvailablePorts: [_Array(Tuple(["string", "string"]))],
           Kinds: [_Array(FixtureKind)],
-          NewPatches: [_Array(PatchItem)],
-          PatchState: [_Array(PatchItem), _Array(UnivWithPort)],
+          NewPatches: [_Array(makeGeneric(PatchItem, {
+            s: GenericParam("s")
+          }))],
+          PatchState: [_Array(makeGeneric(PatchItem, {
+            s: GenericParam("s")
+          })), _Array(UnivWithPort)],
           Remove: ["number"],
           UniverseRemoved: ["number"],
-          Update: [PatchItem],
+          Update: [makeGeneric(PatchItem, {
+            s: GenericParam("s")
+          })],
           UpdateUniverse: [UnivWithPort]
         }
       };

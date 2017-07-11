@@ -19,22 +19,22 @@ open Fable.Helpers.React.Props
 open PatchTypes
 open Bootstrap
 
-type Model = {
-    patches: PatchItem array
+type Model<'s> = {
+    patches: PatchItem<'s> array
     universes: UnivWithPort array
     availablePorts: Port array
     // Current fixture ID we have selected, if any.
     selected: FixtureId option
     // Model for the patch editor.
-    editorModel: PatchEdit.Model
+    editorModel: PatchEdit.Model<'s>
     newPatchModel: NewPatch.Model
 }
 
-type Message =
-    | Response of PatchServerResponse
+type Message<'s> =
+    | Response of PatchServerResponse<'s>
     | SetSelected of FixtureId
     | Deselect
-    | Edit of PatchEdit.Message
+    | Edit of PatchEdit.Message<'s>
     | Create of NewPatch.Message
 
 // Commands needed to initialize the patcher.

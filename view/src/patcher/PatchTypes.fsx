@@ -1,6 +1,7 @@
 module PatchTypes
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #load "../core/Util.fsx"
+#load "../core/Knob.fsx"
 
 open Elmish
 open Util
@@ -40,12 +41,13 @@ type PatchRequest = {
     address: GlobalAddress option;
 }
 
-type PatchItem = {
+type PatchItem<'s> = {
     id: FixtureId;
     name: string;
     kind: string;
     address: GlobalAddress option;
-    channelCount: int}
+    channelCount: int;
+    controlSources: 's option list}
     with
     member this.universe = this.address |> Option.map fst
     member this.dmxAddress = this.address |> Option.map snd
@@ -61,7 +63,7 @@ type Port = string * string
 
 /// All possible requests we can make to the patch server.
 [<RequireQualifiedAccess>]
-type PatchServerRequest =
+type PatchServerRequest<'s> =
     /// Request the full state of the patch to be sent.
     | PatchState
     /// Create one or more new patches; may fail.
@@ -82,16 +84,18 @@ type PatchServerRequest =
     | AttachPort of UnivWithPort
     /// List the available DMX ports.
     | AvailablePorts
+    /// Set the control input of a particular fixture to a particular source.
+    | SetControlSource of FixtureId * int * 's option
 
 /// All possible responses we can receive from the patch server.
 [<RequireQualifiedAccess>]
-type PatchServerResponse =
+type PatchServerResponse<'s> =
     /// Full current state of the patch.
-    | PatchState of PatchItem array * UnivWithPort array
+    | PatchState of PatchItem<'s> array * UnivWithPort array
     /// One or more new patches added.
-    | NewPatches of PatchItem array
+    | NewPatches of PatchItem<'s> array
     /// A patch has been updated, update our version if we have it.
-    | Update of PatchItem
+    | Update of PatchItem<'s>
     /// A patch item has been removed.
     | Remove of FixtureId
     /// A listing of every available fixture kind.

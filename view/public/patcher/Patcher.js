@@ -6,7 +6,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { equals, toString, defaultArg, compareUnions, equalsUnions, Option, Tuple, Array as _Array } from "fable-core/Util";
+import { equals, toString, defaultArg, compareUnions, equalsUnions, Option, Tuple, makeGeneric, GenericParam, Array as _Array } from "fable-core/Util";
 import { PatchServerRequest, PatchServerResponse, UnivWithPort, PatchItem } from "./PatchTypes";
 import { view as view_2, update as update_1, initialModel as initialModel_1, Message as Message_2, Model as Model_1 } from "./PatchEdit";
 import { view as view_3, update as update_2, initialModel as initialModel_2, Message as Message_1, Model as Model_2 } from "./NewPatch";
@@ -36,11 +36,15 @@ export var Model = function () {
         type: "Patcher.Model",
         interfaces: ["FSharpRecord"],
         properties: {
-          patches: _Array(PatchItem),
+          patches: _Array(makeGeneric(PatchItem, {
+            s: GenericParam("s")
+          })),
           universes: _Array(UnivWithPort),
           availablePorts: _Array(Tuple(["string", "string"])),
           selected: Option("number"),
-          editorModel: Model_1,
+          editorModel: makeGeneric(Model_1, {
+            s: GenericParam("s")
+          }),
           newPatchModel: Model_2
         }
       };
@@ -67,8 +71,12 @@ export var Message = function () {
         cases: {
           Create: [Message_1],
           Deselect: [],
-          Edit: [Message_2],
-          Response: [PatchServerResponse],
+          Edit: [makeGeneric(Message_2, {
+            s: GenericParam("s")
+          })],
+          Response: [makeGeneric(PatchServerResponse, {
+            s: GenericParam("s")
+          })],
           SetSelected: ["number"]
         }
       };
@@ -88,7 +96,9 @@ export var Message = function () {
   return Message;
 }();
 setType("Patcher.Message", Message);
-export var initCommands = ofArray([new PatchServerRequest("AvailablePorts", []), new PatchServerRequest("PatchState", []), new PatchServerRequest("GetKinds", [])]);
+export function initCommands() {
+  return ofArray([new PatchServerRequest("AvailablePorts", []), new PatchServerRequest("PatchState", []), new PatchServerRequest("GetKinds", [])]);
+}
 export function initialModel() {
   return new Model(new Array(0), new Array(0), new Array(0), null, initialModel_1(), initialModel_2());
 }

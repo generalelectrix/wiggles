@@ -132,20 +132,29 @@ impl<S> PatchItem<S> {
         self.fixture.kind()
     }
 
+    /// The universe ID in which this fixture is patched, if any.
     pub fn universe(&self) -> Option<UniverseId> {
         self.address.map(|(id, _)| id)
     }
 
+    /// The DMX address this fixture is patched at, if it is patched.
     pub fn address(&self) -> Option<DmxAddress> {
         self.address.map(|(_, addr)| addr)
     }
 
+    /// The universe and DMX address this fixture is patched at, if it is patched.
     pub fn global_address(&self) -> Option<(UniverseId, DmxAddress)> {
         self.address
     }
 
+    /// The DMX channel count that this fixture requires.
     pub fn channel_count(&self) -> DmxChannelCount {
         self.fixture.channel_count()
+    }
+
+    /// Get an immutable slice of this patch item's control sources.
+    pub fn control_sources(&self) -> &[Option<S>] {
+        &self.control_sources
     }
 
     /// Set all of the control values of this fixture by providing a data source to retrieve its
@@ -306,7 +315,7 @@ impl<S> Patch<S> {
     }
 
     /// Get a mutable reference to a patch item by id, if it exists.
-    fn item_mut(&mut self, id: FixtureId) -> Result<&mut PatchItem<S>, PatchError> {
+    pub fn item_mut(&mut self, id: FixtureId) -> Result<&mut PatchItem<S>, PatchError> {
         self.items.iter_mut().find(|item| item.id == id).ok_or(PatchError::InvalidFixtureId(id))
     }
 

@@ -4,7 +4,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { compareUnions, equalsUnions, makeGeneric, Option } from "fable-core/Util";
+import { compareUnions, equalsUnions, makeGeneric, GenericParam, Option } from "fable-core/Util";
 import { globalAddressFromOptionals, PatchServerRequest, parseUniverseId, parseDmxAddress, PatchItem } from "./PatchTypes";
 import { view as view_1, update as update_1, initialModel as initialModel_1, Message as Message_1, Model as Model_1 } from "../core/EditBox";
 import { OptionalModule, emptyIfNone, Optional } from "../core/Util";
@@ -34,7 +34,9 @@ export var Model = function () {
         type: "PatchEdit.Model",
         interfaces: ["FSharpRecord"],
         properties: {
-          selected: Option(PatchItem),
+          selected: Option(makeGeneric(PatchItem, {
+            s: GenericParam("s")
+          })),
           nameEdit: makeGeneric(Model_1, {
             T: "string"
           }),
@@ -79,7 +81,9 @@ export var Message = function () {
           NameEdit: [makeGeneric(Message_1, {
             T: "string"
           })],
-          SetState: [Option(PatchItem)],
+          SetState: [Option(makeGeneric(PatchItem, {
+            s: GenericParam("s")
+          }))],
           UniverseEdit: [makeGeneric(Message_1, {
             T: makeGeneric(Optional, {
               T: "number"

@@ -23,16 +23,16 @@ open Util
 open PatchTypes
 open Bootstrap
 
-type Model = {
+type Model<'s> = {
     /// Real details of the currently-selected patch item.
-    selected: PatchItem option
+    selected: PatchItem<'s> option
     nameEdit: EditBox.Model<string>
     addressEdit: EditBox.Model<Optional<DmxAddress>>
     universeEdit: EditBox.Model<Optional<UniverseId>>
 }
     
-type Message =
-    | SetState of PatchItem option
+type Message<'s> =
+    | SetState of PatchItem<'s> option
     | NameEdit of EditBox.Message<string>
     | AddressEdit of EditBox.Message<Optional<DmxAddress>>
     | UniverseEdit of EditBox.Message<Optional<UniverseId>>
@@ -44,7 +44,7 @@ let initialModel () = {
     universeEdit = EditBox.initialModel "Universe:" parseUniverseId InputType.Number
 }
 
-let update message (model: Model) =
+let update message (model: Model<'s>) =
     let clear submodel = EditBox.update EditBox.Clear submodel
 
     match message with
@@ -99,7 +99,7 @@ let private nameEditBox selected model dispatchLocal dispatchServer =
         model.nameEdit
         (NameEdit >> dispatchLocal)
 
-let private addressEditor (selected: PatchItem) model dispatchLocal dispatchServer openModal =
+let private addressEditor (selected: PatchItem<'s>) model dispatchLocal dispatchServer openModal =
 
     let universeBox =
         EditBox.view

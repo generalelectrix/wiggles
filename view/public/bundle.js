@@ -6467,9 +6467,11 @@ function tryPick(f, map) {
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_fable_core_Util__ = __webpack_require__(3);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_fable_elmish_result__ = __webpack_require__(47);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__core_Util__ = __webpack_require__(19);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4_fable_core_List__ = __webpack_require__(7);
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
 
 
 
@@ -6588,7 +6590,7 @@ var PatchRequest = function () {
 }();
 __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0_fable_core_Symbol__["b" /* setType */])("PatchTypes.PatchRequest", PatchRequest);
 var PatchItem = function () {
-  function PatchItem(id, name, kind, address, channelCount) {
+  function PatchItem(id, name, kind, address, channelCount, controlSources) {
     _classCallCheck(this, PatchItem);
 
     this.id = id;
@@ -6596,6 +6598,7 @@ var PatchItem = function () {
     this.kind = kind;
     this.address = address;
     this.channelCount = channelCount;
+    this.controlSources = controlSources;
   }
 
   _createClass(PatchItem, [{
@@ -6609,7 +6612,10 @@ var PatchItem = function () {
           name: "string",
           kind: "string",
           address: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["h" /* Option */])(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["s" /* Tuple */])(["number", "number"])),
-          channelCount: "number"
+          channelCount: "number",
+          controlSources: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(__WEBPACK_IMPORTED_MODULE_4_fable_core_List__["d" /* default */], {
+            T: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["h" /* Option */])(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["j" /* GenericParam */])("s"))
+          })
         }
       };
     }
@@ -6703,7 +6709,8 @@ var PatchServerRequest = function () {
           Remove: ["number"],
           RemoveUniverse: ["number", "boolean"],
           Rename: ["number", "string"],
-          Repatch: ["number", __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["h" /* Option */])(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["s" /* Tuple */])(["number", "number"]))]
+          Repatch: ["number", __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["h" /* Option */])(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["s" /* Tuple */])(["number", "number"]))],
+          SetControlSource: ["number", "number", __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["h" /* Option */])(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["j" /* GenericParam */])("s"))]
         }
       };
     }
@@ -6739,11 +6746,17 @@ var PatchServerResponse = function () {
         cases: {
           AvailablePorts: [__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["i" /* Array */])(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["s" /* Tuple */])(["string", "string"]))],
           Kinds: [__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["i" /* Array */])(FixtureKind)],
-          NewPatches: [__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["i" /* Array */])(PatchItem)],
-          PatchState: [__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["i" /* Array */])(PatchItem), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["i" /* Array */])(UnivWithPort)],
+          NewPatches: [__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["i" /* Array */])(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(PatchItem, {
+            s: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["j" /* GenericParam */])("s")
+          }))],
+          PatchState: [__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["i" /* Array */])(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(PatchItem, {
+            s: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["j" /* GenericParam */])("s")
+          })), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["i" /* Array */])(UnivWithPort)],
           Remove: ["number"],
           UniverseRemoved: ["number"],
-          Update: [PatchItem],
+          Update: [__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(PatchItem, {
+            s: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["j" /* GenericParam */])("s")
+          })],
           UpdateUniverse: [UnivWithPort]
         }
       };
@@ -18627,7 +18640,7 @@ function view(addr, model, dispatchLocal, dispatchServer) {
 "use strict";
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return Model; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return Message; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "d", function() { return initCommands; });
+/* harmony export (immutable) */ __webpack_exports__["d"] = initCommands;
 /* harmony export (immutable) */ __webpack_exports__["c"] = initialModel;
 /* unused harmony export updateEditorState */
 /* harmony export (immutable) */ __webpack_exports__["e"] = update;
@@ -18686,11 +18699,15 @@ var Model = function () {
         type: "Patcher.Model",
         interfaces: ["FSharpRecord"],
         properties: {
-          patches: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["i" /* Array */])(__WEBPACK_IMPORTED_MODULE_2__PatchTypes__["c" /* PatchItem */]),
+          patches: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["i" /* Array */])(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(__WEBPACK_IMPORTED_MODULE_2__PatchTypes__["c" /* PatchItem */], {
+            s: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["j" /* GenericParam */])("s")
+          })),
           universes: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["i" /* Array */])(__WEBPACK_IMPORTED_MODULE_2__PatchTypes__["d" /* UnivWithPort */]),
           availablePorts: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["i" /* Array */])(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["s" /* Tuple */])(["string", "string"])),
           selected: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["h" /* Option */])("number"),
-          editorModel: __WEBPACK_IMPORTED_MODULE_3__PatchEdit__["a" /* Model */],
+          editorModel: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(__WEBPACK_IMPORTED_MODULE_3__PatchEdit__["a" /* Model */], {
+            s: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["j" /* GenericParam */])("s")
+          }),
           newPatchModel: __WEBPACK_IMPORTED_MODULE_4__NewPatch__["a" /* Model */]
         }
       };
@@ -18717,8 +18734,12 @@ var Message = function () {
         cases: {
           Create: [__WEBPACK_IMPORTED_MODULE_4__NewPatch__["b" /* Message */]],
           Deselect: [],
-          Edit: [__WEBPACK_IMPORTED_MODULE_3__PatchEdit__["b" /* Message */]],
-          Response: [__WEBPACK_IMPORTED_MODULE_2__PatchTypes__["b" /* PatchServerResponse */]],
+          Edit: [__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(__WEBPACK_IMPORTED_MODULE_3__PatchEdit__["b" /* Message */], {
+            s: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["j" /* GenericParam */])("s")
+          })],
+          Response: [__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(__WEBPACK_IMPORTED_MODULE_2__PatchTypes__["b" /* PatchServerResponse */], {
+            s: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["j" /* GenericParam */])("s")
+          })],
           SetSelected: ["number"]
         }
       };
@@ -18738,7 +18759,9 @@ var Message = function () {
   return Message;
 }();
 __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0_fable_core_Symbol__["b" /* setType */])("Patcher.Message", Message);
-var initCommands = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([new __WEBPACK_IMPORTED_MODULE_2__PatchTypes__["a" /* PatchServerRequest */]("AvailablePorts", []), new __WEBPACK_IMPORTED_MODULE_2__PatchTypes__["a" /* PatchServerRequest */]("PatchState", []), new __WEBPACK_IMPORTED_MODULE_2__PatchTypes__["a" /* PatchServerRequest */]("GetKinds", [])]);
+function initCommands() {
+  return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([new __WEBPACK_IMPORTED_MODULE_2__PatchTypes__["a" /* PatchServerRequest */]("AvailablePorts", []), new __WEBPACK_IMPORTED_MODULE_2__PatchTypes__["a" /* PatchServerRequest */]("PatchState", []), new __WEBPACK_IMPORTED_MODULE_2__PatchTypes__["a" /* PatchServerRequest */]("GetKinds", [])]);
+}
 function initialModel() {
   return new Model(new Array(0), new Array(0), new Array(0), null, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__PatchEdit__["c" /* initialModel */])(), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_4__NewPatch__["c" /* initialModel */])());
 }
@@ -33419,7 +33442,9 @@ var ShowModel = function () {
         interfaces: ["FSharpRecord"],
         properties: {
           page: Page,
-          patcher: __WEBPACK_IMPORTED_MODULE_2__patcher_Patcher__["a" /* Model */],
+          patcher: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(__WEBPACK_IMPORTED_MODULE_2__patcher_Patcher__["a" /* Model */], {
+            s: "number"
+          }),
           knobs: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(__WEBPACK_IMPORTED_MODULE_3_fable_core_Map__["a" /* default */], {
             Key: "number",
             Value: __WEBPACK_IMPORTED_MODULE_4__core_Knob__["a" /* Model */]
@@ -33450,7 +33475,9 @@ var ShowServerCommand = function () {
           Knob: [__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(__WEBPACK_IMPORTED_MODULE_5__core_Knobs__["a" /* ServerCommand */], {
             a: "number"
           })],
-          Patcher: [__WEBPACK_IMPORTED_MODULE_6__patcher_PatchTypes__["a" /* PatchServerRequest */]]
+          Patcher: [__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(__WEBPACK_IMPORTED_MODULE_6__patcher_PatchTypes__["a" /* PatchServerRequest */], {
+            s: "number"
+          })]
         }
       };
     }
@@ -33488,7 +33515,9 @@ var ShowServerResponse = function () {
           Knob: [__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(__WEBPACK_IMPORTED_MODULE_5__core_Knobs__["b" /* ServerResponse */], {
             a: "number"
           })],
-          Patcher: [__WEBPACK_IMPORTED_MODULE_6__patcher_PatchTypes__["b" /* PatchServerResponse */]]
+          Patcher: [__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(__WEBPACK_IMPORTED_MODULE_6__patcher_PatchTypes__["b" /* PatchServerResponse */], {
+            s: "number"
+          })]
         }
       };
     }
@@ -33526,7 +33555,9 @@ var ShowMessage = function () {
           Knob: [__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(__WEBPACK_IMPORTED_MODULE_5__core_Knobs__["c" /* Message */], {
             a: "number"
           })],
-          Patcher: [__WEBPACK_IMPORTED_MODULE_2__patcher_Patcher__["b" /* Message */]],
+          Patcher: [__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(__WEBPACK_IMPORTED_MODULE_2__patcher_Patcher__["b" /* Message */], {
+            s: "number"
+          })],
           SetPage: [Page]
         }
       };
@@ -33565,7 +33596,7 @@ var initCommands = __WEBPACK_IMPORTED_MODULE_10_fable_elmish_elmish__["a" /* Cmd
   return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_11__core_Types__["a" /* exclusive */])(message);
 }, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9_fable_core_List__["c" /* concat */])(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9_fable_core_List__["a" /* ofArray */])([__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_8__core_Base__["d" /* initCommands */])(), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9_fable_core_List__["b" /* map */])(function ($var288) {
   return new __WEBPACK_IMPORTED_MODULE_11__core_Types__["b" /* ServerCommand */]("Console", [new ShowServerCommand("Patcher", [$var288])]);
-}, __WEBPACK_IMPORTED_MODULE_2__patcher_Patcher__["d" /* initCommands */])])))));
+}, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__patcher_Patcher__["d" /* initCommands */])())])))));
 function wrapShowResponse(message) {
   if (message.Case === "Patcher") {
     return new ShowMessage("Patcher", [new __WEBPACK_IMPORTED_MODULE_2__patcher_Patcher__["b" /* Message */]("Response", [message.Fields[0]])]);
@@ -33628,7 +33659,7 @@ function viewShow(openModal, model, dispatch, dispatchServer) {
     });
   }
 }
-var patternInput_141 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_15__core_Socket__["a" /* openSocket */])(function (arg0) {
+var patternInput_144 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_15__core_Socket__["a" /* openSocket */])(function (arg0) {
   return new __WEBPACK_IMPORTED_MODULE_8__core_Base__["a" /* Message */]("Socket", [arg0]);
 }, {
   rsp: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(__WEBPACK_IMPORTED_MODULE_11__core_Types__["c" /* ServerResponse */], {
@@ -33640,8 +33671,8 @@ var patternInput_141 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_15__core_
     msg: ShowMessage
   })
 });
-var subscription = patternInput_141[0];
-var send = patternInput_141[1];
+var subscription = patternInput_144[0];
+var send = patternInput_144[1];
 function update(msg, model) {
   return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_8__core_Base__["f" /* update */])(initCommands, function (arg00) {
     send(arg00);
@@ -34534,15 +34565,15 @@ function update(message, model) {
     var matchValue_1 = [model.address, model.quantity, model.selectedKind];
     var $var238 = void 0;
 
-    var activePatternResult1357 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_1[0]);
+    var activePatternResult1396 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_1[0]);
 
-    if (activePatternResult1357 != null) {
-      if (activePatternResult1357.Case === "Present") {
-        var activePatternResult1358 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_1[1]);
+    if (activePatternResult1396 != null) {
+      if (activePatternResult1396.Case === "Present") {
+        var activePatternResult1397 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_1[1]);
 
-        if (activePatternResult1358 != null) {
+        if (activePatternResult1397 != null) {
           if (matchValue_1[2] != null) {
-            $var238 = [0, activePatternResult1357.Fields[0], matchValue_1[2], activePatternResult1358];
+            $var238 = [0, activePatternResult1396.Fields[0], matchValue_1[2], activePatternResult1397];
           } else {
             $var238 = [1];
           }
@@ -34636,19 +34667,19 @@ function patchButton(model, dispatchLocal, dispatchServer) {
     var $var240 = void 0;
 
     if (matchValue_2[0] != null) {
-      var activePatternResult1376_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[1]);
+      var activePatternResult1415_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[1]);
 
-      if (activePatternResult1376_1 != null) {
-        var activePatternResult1377_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[2]);
+      if (activePatternResult1415_1 != null) {
+        var activePatternResult1416_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[2]);
 
-        if (activePatternResult1377_1 != null) {
-          var activePatternResult1378_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[3]);
+        if (activePatternResult1416_1 != null) {
+          var activePatternResult1417_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[3]);
 
-          if (activePatternResult1378_1 != null) {
-            var activePatternResult1379_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[4]);
+          if (activePatternResult1417_1 != null) {
+            var activePatternResult1418_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[4]);
 
-            if (activePatternResult1379_1 != null) {
-              $var240 = [0, activePatternResult1378_1, matchValue_2[0], activePatternResult1376_1, activePatternResult1379_1, activePatternResult1377_1];
+            if (activePatternResult1418_1 != null) {
+              $var240 = [0, activePatternResult1417_1, matchValue_2[0], activePatternResult1415_1, activePatternResult1418_1, activePatternResult1416_1];
             } else {
               $var240 = [1];
             }
@@ -34784,7 +34815,9 @@ var Model = function () {
         type: "PatchEdit.Model",
         interfaces: ["FSharpRecord"],
         properties: {
-          selected: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["h" /* Option */])(__WEBPACK_IMPORTED_MODULE_2__PatchTypes__["c" /* PatchItem */]),
+          selected: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["h" /* Option */])(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(__WEBPACK_IMPORTED_MODULE_2__PatchTypes__["c" /* PatchItem */], {
+            s: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["j" /* GenericParam */])("s")
+          })),
           nameEdit: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["b" /* Model */], {
             T: "string"
           }),
@@ -34829,7 +34862,9 @@ var Message = function () {
           NameEdit: [__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["a" /* Message */], {
             T: "string"
           })],
-          SetState: [__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["h" /* Option */])(__WEBPACK_IMPORTED_MODULE_2__PatchTypes__["c" /* PatchItem */])],
+          SetState: [__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["h" /* Option */])(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(__WEBPACK_IMPORTED_MODULE_2__PatchTypes__["c" /* PatchItem */], {
+            s: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["j" /* GenericParam */])("s")
+          }))],
           UniverseEdit: [__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["a" /* Message */], {
             T: __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Util__["c" /* makeGeneric */])(__WEBPACK_IMPORTED_MODULE_4__core_Util__["e" /* Optional */], {
               T: "number"

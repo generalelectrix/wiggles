@@ -23,22 +23,24 @@ pub struct PatchRequest {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct PatchItemDescription {
+pub struct PatchItemDescription<S> {
     id: FixtureId,
     name: String,
     kind: String,
     address: Option<GlobalAddress>,
     channel_count: DmxChannelCount,
+    control_sources: Vec<Option<S>>,
 }
 
-impl<'a> From<&'a PatchItem> for PatchItemDescription {
-    fn from(item: &'a PatchItem) -> Self {
+impl<'a, S: Clone> From<&'a PatchItem<S>> for PatchItemDescription<S> {
+    fn from(item: &'a PatchItem<S>) -> Self {
         PatchItemDescription {
             id: item.id(),
             name: item.name.clone(),
             kind: item.kind().to_string(),
             address: item.global_address(),
             channel_count: item.channel_count(),
+            control_sources: item.control_sources().to_vec(),
         }
     }
 }
@@ -86,7 +88,7 @@ impl<'a> From<(UniverseId, &'a Universe)> for UnivWithPort {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub enum PatchServerRequest {
+pub enum PatchServerRequest<S> {
     PatchState,
     NewPatches(Vec<PatchRequest>),
     Rename(FixtureId, String),
@@ -97,13 +99,14 @@ pub enum PatchServerRequest {
     RemoveUniverse(UniverseId, bool),
     AttachPort(UnivWithPort),
     AvailablePorts,
+    SetControlSource(FixtureId, usize, Option<S>),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum PatchServerResponse {
-    PatchState(Vec<PatchItemDescription>, Vec<UnivWithPort>),
-    NewPatches(Vec<PatchItemDescription>),
-    Update(PatchItemDescription),
+pub enum PatchServerResponse<S> {
+    PatchState(Vec<PatchItemDescription<S>>, Vec<UnivWithPort>),
+    NewPatches(Vec<PatchItemDescription<S>>),
+    Update(PatchItemDescription<S>),
     Remove(FixtureId),
     Kinds(Vec<FixtureKindDescription>),
     UpdateUniverse(UnivWithPort),
@@ -115,10 +118,10 @@ pub enum PatchServerResponse {
 /// error to be lifted into a global generic error type.
 /// In the successful case, optionally also provide a override that will be applied to the outgoing
 /// responses.
-pub fn handle_message(
-        patch: &mut Patch,
-        command: PatchServerRequest)
-        -> Result<(Messages<PatchServerResponse>, Option<ResponseFilter>), PatchRequestError>
+pub fn handle_message<S: Clone>(
+        patch: &mut Patch<S>,
+        command: PatchServerRequest<S>)
+        -> Result<(Messages<PatchServerResponse<S>>, Option<ResponseFilter>), PatchRequestError>
 {
     use PatchServerRequest::*;
     use ResponseFilter::All;
@@ -226,6 +229,11 @@ pub fn handle_message(
         AvailablePorts => {
             // get all the ports we have available
             Ok((Messages::one(PatchServerResponse::AvailablePorts(available_ports())), None))
+        }
+        SetControlSource(id, control_id, source) => {
+            patch.set_control_source(id, control_id, source.clone())?;
+            let item = patch.item(id)?;
+            Ok((Messages::one(PatchServerResponse::Update(item.into())), Some(All)))
         }
     }
 }

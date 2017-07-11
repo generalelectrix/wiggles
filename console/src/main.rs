@@ -10,8 +10,6 @@ extern crate dataflow;
 extern crate dataflow_message;
 extern crate wiggles_value;
 
-mod fixture_data;
-
 use std::fmt;
 use std::time::Duration;
 use console_server::*;
@@ -25,7 +23,7 @@ use fixture_patch_message::{
     UnivWithPort};
 use rust_dmx::{DmxPort, OfflineDmxPort, Error as DmxError};
 use dataflow::clocks::{ClockKnobAddr, ClockNetwork, ClockCollection};
-use dataflow::wiggles::{WiggleKnobAddr, WiggleNetwork, WiggleCollection};
+use dataflow::wiggles::{WiggleId, WiggleKnobAddr, WiggleNetwork, WiggleCollection};
 use dataflow_message::clock::{
     Command as ClockCommand,
     Response as ClockResponse,
@@ -47,7 +45,7 @@ use wiggles_value::knob::{
 
 #[derive(Serialize, Deserialize, Default)]
 struct TestConsole {
-    patch: Patch,
+    patch: Patch<WiggleId>,
     clocks: ClockNetwork,
     wiggles: WiggleNetwork,
 }
@@ -55,7 +53,7 @@ struct TestConsole {
 impl TestConsole {
     fn handle_patch_message(
         &mut self,
-        message: PatchServerRequest,
+        message: PatchServerRequest<WiggleId>,
         client_data: ClientData)
         -> Messages<ResponseWrapper<Response>>
     {
@@ -224,7 +222,7 @@ fn handle_error<M, E, F>(
 
 #[derive(Debug, Serialize, Deserialize)]
 enum Command {
-    Patcher(PatchServerRequest),
+    Patcher(PatchServerRequest<WiggleId>),
     Clock(ClockCommand),
     Wiggle(WiggleCommand),
     Knob(KnobCommand<KnobAddress>),
@@ -233,7 +231,7 @@ enum Command {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 enum Response {
     Error(String),
-    Patcher(PatchServerResponse),
+    Patcher(PatchServerResponse<WiggleId>),
     Clock(ClockResponse),
     Wiggle(WiggleResponse),
     Knob(KnobResponse<KnobAddress>),

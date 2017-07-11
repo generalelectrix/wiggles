@@ -29,28 +29,31 @@ type Page =
 // FIXME placeholder
 type KnobAddress = int
 
+// FIXME placeholder
+type WiggleId = int
+
 type ShowModel = {
     page: Page
-    patcher: Patcher.Model
+    patcher: Patcher.Model<WiggleId>
     knobs: Knobs.Model<KnobAddress>
 }
 
 [<RequireQualifiedAccess>]
 type ShowServerCommand =
-    | Patcher of PatchTypes.PatchServerRequest
+    | Patcher of PatchTypes.PatchServerRequest<WiggleId>
     | Knob of Knobs.ServerCommand<KnobAddress>
   
 [<RequireQualifiedAccess>]
 type ShowServerResponse =
     | Error of string
-    | Patcher of PatchTypes.PatchServerResponse
+    | Patcher of PatchTypes.PatchServerResponse<WiggleId>
     | Knob of Knobs.ServerResponse<KnobAddress>
 
 [<RequireQualifiedAccess>]
 type ShowMessage =
     | Error of string
     | SetPage of Page
-    | Patcher of Patcher.Message
+    | Patcher of Patcher.Message<WiggleId>
     | Knob of Knobs.Message<KnobAddress>
 
 /// Type alias to ensure that generic inference gets the right types all the way down.
