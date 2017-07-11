@@ -5,7 +5,7 @@ use std::error;
 use console_server::reactor::Messages;
 use console_server::clients::ResponseFilter;
 use wiggles_value::knob::{KnobDescription, Response as KnobResponse, Knobs};
-use dataflow::network::{InputId, NetworkError};
+use dataflow::network::{InputId, NetworkError, OutputId};
 use dataflow::clocks::{
     ClockNetwork,
     ClockId,
@@ -28,7 +28,7 @@ pub enum Command {
     Create{class: String, name: String},
     Remove{id: ClockId, force: bool},
     SetInput(SetInput),
-    PushInput(ClockId, Option<ClockId>),
+    PushInput(ClockId),
     PopInput(ClockId),
 }
 
@@ -46,7 +46,7 @@ pub enum Response {
     New{id: ClockId, desc: ClockDescription},
     Removed(ClockId),
     SetInput(SetInput),
-    PushInput(ClockId, Option<ClockId>),
+    PushInput(ClockId),
     PopInput(ClockId),
 }
 
@@ -63,6 +63,8 @@ pub enum ResponseWithKnobs {
 lazy_static! {
     static ref CLASSES: Arc<Vec<String>> = Arc::new(CLOCKS.iter().map(|s| s.to_string()).collect());
 }
+
+const o0: OutputId = OutputId(0);
 
 /// Apply the action dictated by a clock command to this clock network.
 pub fn handle_message(
@@ -92,10 +94,11 @@ pub fn handle_message(
             }
 
             // emit a message for the new clock we just added
+            let inputs = node.inputs().iter().map(|o| o.map(|(i, _)| i)).collect();
             let desc = ClockDescription {
                 name: Arc::new(clock.name().to_string()),
                 class: Arc::new(class),
-                inputs: node.inputs().to_vec(),
+                inputs: inputs,
             };
             messages.push(ResponseWithKnobs::Clock(Response::New{
                 id: id,
@@ -116,14 +119,15 @@ pub fn handle_message(
             Ok((messages, Some(ResponseFilter::All)))
         }
         SetInput(set) => {
-            network.swap_input(set.clock, set.input, set.target)?;
+            let target = set.target.map(|t| (t, o0));
+            network.swap_input(set.clock, set.input, target)?;
             let msg = ResponseWithKnobs::Clock(Response::SetInput(set));
             Ok((Messages::one(msg), Some(ResponseFilter::All)))
         }
-        PushInput(id, target) => {
-            let (_, mut knob_messages) = network.push_input(id, target)?;
+        PushInput(id) => {
+            let (_, mut knob_messages) = network.push_input(id)?;
             let mut messages = knob_messages.drain().map(ResponseWithKnobs::Knob).collect::<Messages<_>>();
-            messages.push(ResponseWithKnobs::Clock(Response::PushInput(id, target)));
+            messages.push(ResponseWithKnobs::Clock(Response::PushInput(id)));
             Ok((messages, Some(ResponseFilter::All)))
         }
         PopInput(id) => {

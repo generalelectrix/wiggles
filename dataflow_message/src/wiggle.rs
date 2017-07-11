@@ -5,7 +5,7 @@ use std::error;
 use console_server::reactor::Messages;
 use console_server::clients::ResponseFilter;
 use wiggles_value::knob::{KnobDescription, Response as KnobResponse, Knobs};
-use dataflow::network::{InputId, NetworkError};
+use dataflow::network::{InputId, NetworkError, OutputId};
 use dataflow::wiggles::{
     WiggleNetwork,
     WiggleId,
@@ -19,7 +19,7 @@ use dataflow::clocks::{ClockId};
 pub struct SetInput {
     wiggle: WiggleId,
     input: InputId,
-    target: Option<WiggleId>,
+    target: Option<(WiggleId, OutputId)>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -28,7 +28,7 @@ pub enum Command {
     Create{class: String, name: String},
     Remove{id: WiggleId, force: bool},
     SetInput(SetInput),
-    PushInput(WiggleId, Option<WiggleId>),
+    PushInput(WiggleId),
     PopInput(WiggleId),
     SetClock(WiggleId, Option<ClockId>),
 }
@@ -43,7 +43,7 @@ pub enum UsesClock {
 pub struct WiggleDescription {
     name: Arc<String>,
     class: Arc<String>,
-    inputs: Vec<Option<WiggleId>>,
+    inputs: Vec<Option<(WiggleId, OutputId)>>,
     clock: UsesClock,
 }
 
@@ -54,7 +54,7 @@ pub enum Response {
     New{id: WiggleId, desc: WiggleDescription},
     Removed(WiggleId),
     SetInput(SetInput),
-    PushInput(WiggleId, Option<WiggleId>),
+    PushInput(WiggleId),
     PopInput(WiggleId),
     SetClock(WiggleId, Option<ClockId>),
 }
@@ -135,10 +135,10 @@ pub fn handle_message(
             let msg = ResponseWithKnobs::Wiggle(Response::SetInput(set));
             Ok((Messages::one(msg), Some(ResponseFilter::All)))
         }
-        PushInput(id, target) => {
-            let (_, mut knob_messages) = network.push_input(id, target)?;
+        PushInput(id) => {
+            let (_, mut knob_messages) = network.push_input(id)?;
             let mut messages = knob_messages.drain().map(ResponseWithKnobs::Knob).collect::<Messages<_>>();
-            messages.push(ResponseWithKnobs::Wiggle(Response::PushInput(id, target)));
+            messages.push(ResponseWithKnobs::Wiggle(Response::PushInput(id)));
             Ok((messages, Some(ResponseFilter::All)))
         }
         PopInput(id) => {
