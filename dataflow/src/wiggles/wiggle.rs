@@ -1,6 +1,6 @@
 //! Dataflow node that generates/propagates/mutates a wiggle.
 use util::{modulo_one, almost_eq, angle_almost_eq};
-use network::{Network, NodeIndex, GenerationId, NodeId, Inputs};
+use network::{Network, NodeIndex, GenerationId, NodeId, Inputs, Outputs};
 use console_server::reactor::Messages;
 use wiggles_value::{Data, Unipolar, Datatype};
 use wiggles_value::knob::{Knobs, Response as KnobResponse};
@@ -122,7 +122,11 @@ impl WiggleProvider for WiggleNetwork {
 }
 
 pub trait CompleteWiggle:
-    Wiggle + Inputs<KnobResponse<WiggleKnobAddr>> + Knobs<KnobAddr> + fmt::Debug
+    Wiggle
+    + Inputs<KnobResponse<WiggleKnobAddr>>
+    + Outputs<KnobResponse<WiggleKnobAddr>>
+    + Knobs<KnobAddr>
+    + fmt::Debug
 {
     fn eq(&self, other: &CompleteWiggle) -> bool;
     fn as_any(&self) -> &Any;
@@ -132,6 +136,7 @@ impl<T> CompleteWiggle for T
     where T: 'static
         + Wiggle
         + Inputs<KnobResponse<WiggleKnobAddr>>
+        + Outputs<KnobResponse<WiggleKnobAddr>>
         + Knobs<KnobAddr>
         + fmt::Debug
         + PartialEq

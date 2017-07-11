@@ -37,18 +37,19 @@ pub trait NodeId: fmt::Debug + fmt::Display + Copy + PartialEq {
 }
 
 pub type InputId = u32;
+pub type OutputId = u32;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 /// Generation ID and a slot to hold onto a node in the network.
 struct NodeSlot<N, I, M>
-    where N: fmt::Debug + Inputs<M> + Sized, I: NodeId
+    where N: fmt::Debug + Inputs<M> + Outputs<M> + Sized, I: NodeId
 {
     gen_id: GenerationId,
     node: Option<Node<N, I, M>>,
 }
 
 impl<N, I, M> NodeSlot<N, I, M>
-    where N: fmt::Debug + Inputs<M> + Sized, I: NodeId
+    where N: fmt::Debug + Inputs<M> + Outputs<M> + Sized, I: NodeId
 {
     fn new(gen_id: GenerationId, node: Option<Node<N, I, M>>) -> Self {
         NodeSlot {
@@ -60,7 +61,7 @@ impl<N, I, M> NodeSlot<N, I, M>
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Network<N, I, M>
-    where N: fmt::Debug + Inputs<M> + Sized, I: NodeId
+    where N: fmt::Debug + Inputs<M> + Outputs<M> + Sized, I: NodeId
 {
     /// Collection of node slots, indexed by their ID.
     /// Tagged internally with a generation ID.
@@ -70,7 +71,7 @@ pub struct Network<N, I, M>
 }
 
 impl<N, I, M> Default for Network<N, I, M>
-    where N: fmt::Debug + Inputs<M> + Sized, I: NodeId, M: fmt::Debug
+    where N: fmt::Debug + Inputs<M> + Outputs<M> + Sized, I: NodeId, M: fmt::Debug
 {
     fn default() -> Self {
         Network::new()
@@ -78,7 +79,7 @@ impl<N, I, M> Default for Network<N, I, M>
 }
 
 impl<N, I, M> Network<N, I, M>
-    where N: fmt::Debug + Inputs<M> + Sized, I: NodeId, M: fmt::Debug
+    where N: fmt::Debug + Inputs<M> + Outputs<M> + Sized, I: NodeId, M: fmt::Debug
 {
     /// Create a new, empty network.
     pub fn new() -> Self {
@@ -136,9 +137,9 @@ impl<N, I, M> Network<N, I, M>
         let node = node.expect("Could not get a node whose existence we just verified.");
 
         // Safe to remove; iterate over its inputs and disconnect it, logging any errors.
-        for input_node_id in node.inputs.iter().filter_map(|x| *x) {
+        for (input_node_id, output_id) in node.inputs.iter().filter_map(|x| *x) {
             match self.node_mut(input_node_id) {
-                Ok(input_node) => input_node.remove_listener(node_id.index()),
+                Ok(input_node) => input_node.remove_listener(node_id.index(), output_id),
                 Err(_) => error!(
                     "Found an invalid input node {} while removing node {}.",
                     input_node_id,
@@ -146,19 +147,21 @@ impl<N, I, M> Network<N, I, M>
             }
         }
         // Now iterate over all of its listeners and disconnect them.
-        for listener in node.listeners.keys() {
-            match self.node_direct_mut(*listener) {
-                Ok(node) => {
-                    node.disconnect_from(node_id);
-                }
-                Err(_) => {
-                    // log an error if one of this node's listeners didn't exist
-                    error!(
-                        "The node {} was registered as a listener of node {} (undergoing removal) \
-                        but it is missing from the node collection.",
-                        listener,
-                        node_id,
-                    );
+        for (oid, listeners) in node.outputs.iter().enumerate() {
+            for listener in listeners.keys() {
+                match self.node_direct_mut(*listener) {
+                    Ok(node) => {
+                        node.disconnect_from((node_id, oid as OutputId));
+                    }
+                    Err(_) => {
+                        // log an error if one of this node's listeners didn't exist
+                        error!(
+                            "The node {} was registered as a listener of node {} (undergoing removal) \
+                            but it is missing from the node collection.",
+                            listener,
+                            node_id,
+                        );
+                    }
                 }
             }
         }
@@ -262,18 +265,20 @@ impl<N, I, M> Network<N, I, M>
         &mut self,
         node_id: I,
         input_id: InputId,
-        target: Option<I>)
+        target: Option<(I, OutputId)>)
         -> Result<(), NetworkError<I>>
     {
+        // Make sure that the provided target is valid.
         // Validate that connecting these nodes wouldn't create a cycle.
-        if let Some(t) = target {
+        if let Some((t, o)) = target {
+            self.node(t)?.valid_output(o)?;
             self.check_would_cycle(t, node_id)?;
         }
 
-        if let Some(current_input_node_id) = self.node_mut(node_id)?.input_node(input_id)? {
+        if let Some((current_input_node_id, output_id)) = self.node_mut(node_id)?.input_node(input_id)? {
             // Unregister this node as a listener if this input was already connected.
             match self.node_mut(current_input_node_id) {
-                Ok(input_node) => input_node.remove_listener(node_id.index()),
+                Ok(input_node) => input_node.remove_listener(node_id.index(), output_id),
                 Err(_) => error!(
                     "Node {} had node {} as an input, but that node is not present in the network.",
                     node_id,
@@ -282,8 +287,8 @@ impl<N, I, M> Network<N, I, M>
         }
 
         // Register this node as a listener of the new node, if we're not disconnecting it.
-        if let Some(t) = target {
-            self.node_mut(t)?.add_listener(node_id.index());
+        if let Some((t, o)) = target {
+            self.node_mut(t)?.add_listener(node_id.index(), o);
         }
         
         // Set the value of the input to the new one.
@@ -294,28 +299,18 @@ impl<N, I, M> Network<N, I, M>
 
     /// Push a new input onto a node, if it supports this operation.
     /// Return the new input ID and a potential message type returned by the node.
-    pub fn push_input(
-            &mut self,
-            node_id: I,
-            target: Option<I>)
-            -> Result<(InputId, Messages<M>), NetworkError<I>>
-    {
-        // if a target was supplied, make sure it exists
-        if let Some(t) = target {
-            self.exists(t)?;
-        }
-        match self.node_mut(node_id)?.push_input(target) {
-            Ok(x) => {
-                // if we had a target, add this node as a listener of it
-                if let Some(t) = target {
-                    // We know this node exists so this should never fail.
-                    let target_node = self.node_mut(t).expect("We just checked that this node exists.");
-                    target_node.add_listener(node_id.index());
-                }
-                Ok(x)
-            }
-            Err(()) => Err(NetworkError::CantAddInput(node_id)),
-        }
+    pub fn push_input(&mut self, node_id: I) -> Result<(InputId, Messages<M>), NetworkError<I>> {
+        self.node_mut(node_id)?
+            .push_input()
+            .map_err(|_| NetworkError::CantAddInput(node_id))
+    }
+
+    /// Push a new output onto a node, if it supports this operation.
+    /// Return the new output ID and a potential message type returned by the node.
+    pub fn push_output(&mut self, node_id: I) -> Result<(OutputId, Messages<M>), NetworkError<I>> {
+        self.node_mut(node_id)?
+            .push_output()
+            .map_err(|_| NetworkError::CantAddOutput(node_id))
     }
 
     /// Pop the last input off of a node, if it supports this operation.
@@ -328,18 +323,18 @@ impl<N, I, M> Network<N, I, M>
         match self.node_mut(node_id)?.pop_input() {
             Ok((target, msg)) => {
                 // if this input had a target, remove this node as a listener.
-                if let Some(t) = target {
+                if let Some((target_node_id, output_id)) = target {
                     // If this node doesn't exist, log an error.
-                    match self.node_mut(t) {
+                    match self.node_mut(target_node_id) {
                         Ok(target_node) => {
-                            target_node.remove_listener(node_id.index());
+                            target_node.remove_listener(node_id.index(), output_id);
                         }
                         Err(e) => {
                             error!(
                                 "Popped an input off of node {}, but its target (node {}) could \
                                 not be retrieved due to an error: {}.",
                                 node_id.index(),
-                                t,
+                                target_node_id,
                                 e,
                             );
                         }
@@ -349,6 +344,36 @@ impl<N, I, M> Network<N, I, M>
                 Ok(msg)
             }
             Err(()) => Err(NetworkError::CantRemoveInput(node_id)),
+        }
+    }
+
+    /// Pop the last output off of a node, if it supports this operation.
+    /// Return the message type returned by the node.
+    pub fn pop_output(
+            &mut self,
+            node_id: I)
+            -> Result<Messages<M>, NetworkError<I>>
+    {
+        match self.node_mut(node_id)?.pop_output() {
+            Ok((output_id, listeners, msg)) => {
+                // disconnect every listener of this output
+                for listener in listeners.keys() {
+                    match self.node_direct(*listener) {
+                        Ok(l) => l.disconnect_from((node_id, output_id)),
+                        Err(_) => {
+                            // log an error if one of this node's listeners didn't exist
+                            error!(
+                                "The node {} was registered as a listener of node {} (removing an \
+                                output) but it is missing from the node collection.",
+                                listener,
+                                node_id,
+                            );
+                        }
+                    }
+                }
+                Ok(msg)
+            }
+            Err(()) => Err(NetworkError::CantRemoveOutput(node_id)),
         }
     }
 
@@ -400,15 +425,19 @@ impl<N, I, M> Network<N, I, M>
             Ok(node) => {
                 // first just iterate over all of the listeners and check if any of them are the
                 // node we're checking for (faster to check them all before recursing).
-                for listener in node.listeners.keys() {
-                    if *listener == node_to_find {
-                        return true;
+                for output in node.outputs {
+                    for listener in output.keys() {
+                        if *listener == node_to_find {
+                            return true;
+                        }
                     }
                 }
                 // we didn't find it, so now recurse into these listeners
-                for listener in node.listeners.keys() {
-                    if self.node_among_listeners(*listener, node_to_find) {
-                        return true;
+                for output in node.outputs {
+                    for listener in output.keys() {
+                        if self.node_among_listeners(*listener, node_to_find) {
+                            return true;
+                        }
                     }
                 }
                 // we didn't find it among any listeners
@@ -421,7 +450,7 @@ impl<N, I, M> Network<N, I, M>
 /// Blanket impl for a network whose nodes are knob-controlled.
 /// Wrapper the inner knob address with the address of the node in the network.
 impl<N, I, M, A> Knobs<(I, A)> for Network<N, I, M>
-    where N: Knobs<A> + fmt::Debug + Inputs<M>, I: NodeId, M: fmt::Debug, A: Copy
+    where N: Knobs<A> + fmt::Debug + Inputs<M> + Outputs<M>, I: NodeId, M: fmt::Debug, A: Copy
 {
     fn knobs(&self) -> Vec<((I, A), KnobDescription)> {
         let mut descriptions = Vec::new();
@@ -499,40 +528,71 @@ impl<T, M> Inputs<M> for Box<T> where T: Inputs<M> + ?Sized {
     }
 }
 
+/// Trait expressing options that a node can express about its outputs.
+pub trait Outputs<M> {
+    /// How many outputs this node should default to when initialized.
+    /// Should probably be at least one...
+    fn default_output_count(&self) -> u32;
+    /// Tell this node we're pushing another output.
+    /// It should return Ok if this is allowed and must have done any work it needs to do to
+    /// accomodate the new output.  The node is free to return an arbitrary data structure to the
+    /// caller, which should probably hand it off to someone else for processing.
+    fn try_push_output(&mut self) -> Result<Messages<M>, ()>;
+
+    /// Tell this node we want to pop the last output.
+    /// It should return Ok if this is allowed and must have done any work to ready itself for the
+    /// change.
+    fn try_pop_output(&mut self) -> Result<Messages<M>, ()>;
+}
+
+impl<T, M> Outputs<M> for Box<T> where T: Outputs<M> + ?Sized {
+    fn default_output_count(&self) -> u32 {
+        (**self).default_output_count()
+    }
+    fn try_push_output(&mut self) -> Result<Messages<M>, ()> {
+        (**self).try_push_output()
+    }
+    fn try_pop_output(&mut self) -> Result<Messages<M>, ()> {
+        (**self).try_pop_output()
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Node<N, I, M>
-    where N: fmt::Debug + Inputs<M> + Sized, I: NodeId
+    where N: fmt::Debug + Inputs<M> + Outputs<M> + Sized, I: NodeId
 {
-    /// Which other node Ids are listening to this one, and how many connections do they have?
+    /// How many inputs does this node have, and what are they connected to (if anything).
+    inputs: Vec<Option<(I, OutputId)>>,
+    /// How many outputs does this node have, and who is connected to each of them?
     /// We just track node indices here rather than full node IDs with the generation ID as
     /// we should internally hold the invariant that removal of a node always ensures that we
     /// remove all listeners.
-    listeners: HashMap<NodeIndex, u32>,
-    /// How many inputs does this node have, and what are they connected to (if anything).
-    inputs: Vec<Option<I>>,
+    outputs: Vec<HashMap<NodeIndex, u32>>,
+    /// The inner node payload.
     inner: N,
     #[serde(skip)]
     _message_type: PhantomData<M>,
 }
 
 impl<N, I, M> Node<N, I, M>
-    where N: fmt::Debug + Inputs<M> + Sized, I: NodeId, M: fmt::Debug
+    where N: fmt::Debug + Inputs<M> + Outputs<M> + Sized, I: NodeId, M: fmt::Debug
 {
     pub fn new(node: N) -> Self {
         let inputs = vec![None; node.default_input_count() as usize];
+        let outputs = vec![HashMap::new(); node.default_output_count() as usize];
         Node {
-            listeners: HashMap::new(),
             inputs: inputs,
+            outputs: outputs,
             inner: node,
             _message_type: PhantomData,
         }
     }
 
-    /// Return True if this node's listener collection is not empty.
+    /// Return true if any of this node's output listener collection is not empty.
     /// This method assumes that we have ensured that the listeners collection has an entry
     /// removed immediately any time the listener count hits 0.
     pub fn has_listeners(&self) -> bool {
-        ! self.listeners.is_empty()
+        self.outputs.iter().any(|output| ! output.is_empty())
     }
 
     /// Return an immutable reference to this node's inner payload.
@@ -541,23 +601,47 @@ impl<N, I, M> Node<N, I, M>
     }
 
     /// Return an immutable slice of this node's inputs.
-    pub fn inputs(&self) -> &[Option<I>] {
+    pub fn inputs(&self) -> &[Option<(I, OutputId)>] {
         self.inputs.as_slice()
     }
 
+    /// Return Ok if the provided output ID is valid for this node.
+    pub fn valid_output(&self, output: OutputId) -> Result<(), NetworkError<I>> {
+        if (output as usize) < self.outputs.len() {
+            Ok(())
+        }
+        else {
+            Err(NetworkError::InvalidOutputId(output))
+        }
+    }
+
     /// Push another input onto this node, if it can support it.
-    /// The caller must ensure this node has been added a listener of the target node if it is not
-    /// None.
     /// Return the data structure returned by the node, probably a message type to be passed
     /// upstack.
-    fn push_input(&mut self, target: Option<I>) -> Result<(InputId, Messages<M>), ()> {
+    fn push_input(&mut self) -> Result<(InputId, Messages<M>), ()> {
         // if we can't push another input, return an error
         // allow the caller to wrap it up into a real error value
         match self.inner.try_push_input() {
             Ok(msg) => {
-                // go ahead and add it
-                self.inputs.push(target);
+                // go ahead and add it, with no upstream connection
+                self.inputs.push(None);
                 Ok((((self.inputs.len() - 1) as InputId), msg))
+            }
+            Err(()) => Err(()),
+        }
+    }
+
+    /// Push another output onto this node, if it can support it.
+    /// Return the data structure returned by the node, probably a message type to be passed
+    /// upstack.
+    fn push_output(&mut self) -> Result<(OutputId, Messages<M>), ()> {
+        // if we can't push another output, return an error
+        // allow the caller to wrap it up into a real error value
+        match self.inner.try_push_output() {
+            Ok(msg) => {
+                // go ahead and add it
+                self.outputs.push(HashMap::new());
+                Ok((((self.outputs.len() - 1) as OutputId), msg))
             }
             Err(()) => Err(()),
         }
@@ -567,7 +651,7 @@ impl<N, I, M> Node<N, I, M>
     /// Return the target that was assigned to this input.
     /// The caller must ensure that this node has been removed as a listener of the node that was
     /// assigned to this input, if any.
-    fn pop_input(&mut self) -> Result<(Option<I>, Messages<M>), ()> {
+    fn pop_input(&mut self) -> Result<(Option<(I, OutputId)>, Messages<M>), ()> {
         if self.inputs.is_empty() {
             return Err(());
         }
@@ -581,8 +665,27 @@ impl<N, I, M> Node<N, I, M>
         }
     }
 
-    /// Get the node ID that an input is currently connected to.
-    fn input_node(&self, id: InputId) -> Result<Option<I>, NetworkError<I>> {
+    /// Pop the last output off this node, if it allows it.
+    /// Return the collection of nodes that were listening to this input.
+    /// The caller must ensure that all downstream nodes listening to this output have been
+    /// disconnected from it.  The listener collection can be used to conveniently clean up
+    /// after removal of this output.
+    fn pop_output(&mut self) -> Result<(OutputId, HashMap<NodeIndex, u32>, Messages<M>), ()> {
+        if self.outputs.is_empty() {
+            return Err(());
+        }
+        match self.inner.try_pop_output() {
+            Ok(msg) => {
+                // go ahead and remove
+                let listeners = self.outputs.pop().expect("Pop on a list we know to not be empty failed.");
+                Ok((self.outputs.len() as OutputId, listeners, msg))
+            }
+            Err(()) => Err(()),
+        }
+    }
+
+    /// Get the node ID and output ID that an input is currently connected to.
+    fn input_node(&self, id: InputId) -> Result<Option<(I, OutputId)>, NetworkError<I>> {
         match self.inputs.get(id as usize) {
             Some(target) => Ok(*target),
             None => Err(noinput(id)),
@@ -591,26 +694,48 @@ impl<N, I, M> Node<N, I, M>
 
     /// Set the target node for the provided input id.
     /// The caller must ensure correct update of relevant listeners.
-    fn set_input_node(&mut self, id: InputId, target: Option<I>) -> Result<(), NetworkError<I>> {
+    fn set_input_node(&mut self, id: InputId, target: Option<(I, OutputId)>) -> Result<(), NetworkError<I>> {
         let node = self.inputs.get_mut(id as usize).ok_or(noinput(id))?;
         *node = target;
         Ok(())
     }
 
-    /// Increment the listen count from another node.
-    fn add_listener(&mut self, listener: NodeIndex) {
-        *self.listeners.entry(listener).or_insert(0) += 1;
+    /// Get a mutable reference to the listeners collection for a particular output.
+    fn output_mut(&mut self, id: OutputId) -> Result<&mut HashMap<NodeIndex, u32>, NetworkError<I>> {
+        self.outputs.get_mut(id as usize).ok_or(NetworkError::InvalidOutputId(id))
+    }
+
+    /// Increment the listen count from another node on the provided output ID.
+    /// Fail if the output ID is out of range.
+    fn add_listener(&mut self, output: OutputId, listener: NodeIndex) -> Result<(), NetworkError<I>> {
+        let listeners = self.output_mut(output)?;
+        *listeners.entry(listener).or_insert(0) += 1;
+        Ok(())
     }
 
     /// Decrement the listener count from another node.
     /// Log an error if this node didn't have the other registered as a listener or if the
     /// listener count was 0.
-    fn remove_listener(&mut self, listener: NodeIndex) {
+    fn remove_listener(&mut self, listener: NodeIndex, output: OutputId) {
+        let listeners = match self.output_mut(output) {
+            Ok(listeners) => listeners,
+            Err(e) => {
+                // We're missing an output that should probably be present.
+                // Log an error and return.
+                error!(
+                    "Tried to remove node {} as a listener of output {}, but: {}",
+                    listener,
+                    output,
+                    e,
+                );
+                return
+            }
+        };
         let mut should_remove = false;
         // If the listener was missing completely, Some(false).
         // If the listener was present but the count was zero, Some(true).
         let mut error = None;
-        match self.listeners.entry(listener) {
+        match listeners.entry(listener) {
             Entry::Occupied(ref mut count) => {
                 if *count.get() == 0 {
                     error = Some(true);
@@ -628,7 +753,7 @@ impl<N, I, M> Node<N, I, M>
             }
         }
         if should_remove {
-            self.listeners.remove(&listener);
+            listeners.remove(&listener);
         }
         if let Some(present) = error {
             let err_reason =
@@ -639,16 +764,17 @@ impl<N, I, M> Node<N, I, M>
                     "the listener was not registered"
                 };
             error!(
-                "Tried to remove the listener {} from node {:?} but {}.",
+                "Tried to remove the listener {} from node {:?} output {} but {}.",
                 listener,
                 self,
+                output,
                 err_reason,
             );
         }
     }
 
-    /// Disconnect this node's inputs from the provided listener.
-    fn disconnect_from(&mut self, target: I) {
+    /// Disconnect this node's inputs from the provided node and output ID.
+    fn disconnect_from(&mut self, target: (I, OutputId)) {
         for input in self.inputs.iter_mut() {
             if *input == Some(target) {
                 *input = None;
@@ -666,6 +792,8 @@ pub enum NetworkError<I: NodeId> {
     NoNodeAt(I),
     /// This input ID is out of range for this node.
     InvalidInputId(InputId),
+    /// This output ID is out of range for this node.
+    InvalidOutputId(OutputId),
     /// Connecting source to sink would create a cycle.
     WouldCycle{source: I, sink: I},
     /// Cannot remove a node because it has listeners.
@@ -674,6 +802,10 @@ pub enum NetworkError<I: NodeId> {
     CantAddInput(I),
     /// Cannot remove an input from this node.
     CantRemoveInput(I),
+    /// Cannot add an output to this node.
+    CantAddOutput(I),
+    /// Cannot remove an output from this node.
+    CantRemoveOutput(I),
 }
 
 impl<I: NodeId> fmt::Display for NetworkError<I> {
@@ -686,6 +818,8 @@ impl<I: NodeId> fmt::Display for NetworkError<I> {
                 write!(f, "No node at index {}.", id.index()),
             InvalidInputId(id) =>
                 write!(f, "Input id {} is out of range.", id),
+            InvalidOutputId(id) =>
+                write!(f, "Output id {} is out of range.", id),
             WouldCycle{source, sink} =>
                 write!(
                     f,
@@ -698,6 +832,10 @@ impl<I: NodeId> fmt::Display for NetworkError<I> {
                 write!(f, "Cannot add an input to node {}.", id.index()),
             CantRemoveInput(id) =>
                 write!(f, "Cannot remove an input from node {}.", id.index()),
+            CantAddOutput(id) =>
+                write!(f, "Cannot add an output to node {}.", id.index()),
+            CantRemoveOutput(id) =>
+                write!(f, "Cannot remove an output from node {}.", id.index()),
         }
     }
 }
@@ -709,10 +847,13 @@ impl<A: NodeId> error::Error for NetworkError<A> {
             OldGenId(_) => "Outdated generation id for node.",
             NoNodeAt(_) => "No node at specified index.",
             InvalidInputId(_) => "Input id is out of range.",
+            InvalidOutputId(_) => "Output id is out of range.",
             WouldCycle{..} => "Connecting source to sink would create a cycle.",
             HasListeners(_) => "Node {} has listeners.",
             CantAddInput(_) => "Cannot add an input to node.",
             CantRemoveInput(_) => "Cannot remove an input from node.",
+            CantAddOutput(_) => "Cannot add an output to node.",
+            CantRemoveOutput(_) => "Cannot remove an output from node.",
         }
     }
 

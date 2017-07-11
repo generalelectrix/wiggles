@@ -1,7 +1,7 @@
 //! Clock abstraction for Wiggles.
 //! Implementors will be wrapped up as trait objects and injected into a dataflow network.
 use util::{modulo_one, almost_eq, angle_almost_eq};
-use network::{Network, NodeIndex, GenerationId, NodeId, Inputs};
+use network::{Network, NodeIndex, GenerationId, NodeId, Inputs, Outputs};
 use console_server::reactor::Messages;
 use wiggles_value::Unipolar;
 use wiggles_value::knob::{Knobs, Response as KnobResponse};
@@ -171,7 +171,11 @@ impl ClockProvider for ClockNetwork {
 }
 
 pub trait CompleteClock:
-    Clock + Inputs<KnobResponse<ClockKnobAddr>> + Knobs<KnobAddr> + fmt::Debug
+    Clock
+    + Inputs<KnobResponse<ClockKnobAddr>>
+    + Outputs<KnobResponse<ClockKnobAddr>>
+    + Knobs<KnobAddr>
+    + fmt::Debug
 {
     fn eq(&self, other: &CompleteClock) -> bool;
     fn as_any(&self) -> &Any;
@@ -180,6 +184,7 @@ pub trait CompleteClock:
 impl<T> CompleteClock for T
     where T: 'static + Clock
         + Inputs<KnobResponse<ClockKnobAddr>>
+        + Outputs<KnobResponse<ClockKnobAddr>>
         + Knobs<KnobAddr>
         + fmt::Debug
         + PartialEq
