@@ -36,8 +36,47 @@ pub trait NodeId: fmt::Debug + fmt::Display + Copy + PartialEq {
     fn new(index: NodeIndex, gen_id: GenerationId) -> Self;
 }
 
-pub type InputId = u32;
-pub type OutputId = u32;
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct InputId(pub u32);
+
+impl From<u32> for InputId {
+    fn from(x: u32) -> InputId {
+        InputId(x)
+    }
+}
+
+impl From<usize> for InputId {
+    fn from(x: usize) -> InputId {
+        InputId(x as u32)
+    }
+}
+
+impl fmt::Display for InputId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct OutputId(pub u32);
+
+impl From<u32> for OutputId {
+    fn from(x: u32) -> OutputId {
+        OutputId(x)
+    }
+}
+
+impl From<usize> for OutputId {
+    fn from(x: usize) -> OutputId {
+        OutputId(x as u32)
+    }
+}
+
+impl fmt::Display for OutputId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 /// Generation ID and a slot to hold onto a node in the network.
@@ -151,7 +190,7 @@ impl<N, I, M> Network<N, I, M>
             for listener in listeners.keys() {
                 match self.node_direct_mut(*listener) {
                     Ok(node) => {
-                        node.disconnect_from((node_id, oid as OutputId));
+                        node.disconnect_from((node_id, OutputId(oid as u32)));
                     }
                     Err(_) => {
                         // log an error if one of this node's listeners didn't exist
@@ -288,7 +327,7 @@ impl<N, I, M> Network<N, I, M>
 
         // Register this node as a listener of the new node, if we're not disconnecting it.
         if let Some((t, o)) = target {
-            self.node_mut(t)?.add_listener(node_id.index(), o);
+            self.node_mut(t)?.add_listener(node_id.index(), o).expect("We already validated this output ID.");
         }
         
         // Set the value of the input to the new one.
@@ -358,7 +397,7 @@ impl<N, I, M> Network<N, I, M>
             Ok((output_id, listeners, msg)) => {
                 // disconnect every listener of this output
                 for listener in listeners.keys() {
-                    match self.node_direct(*listener) {
+                    match self.node_direct_mut(*listener) {
                         Ok(l) => l.disconnect_from((node_id, output_id)),
                         Err(_) => {
                             // log an error if one of this node's listeners didn't exist
@@ -425,7 +464,7 @@ impl<N, I, M> Network<N, I, M>
             Ok(node) => {
                 // first just iterate over all of the listeners and check if any of them are the
                 // node we're checking for (faster to check them all before recursing).
-                for output in node.outputs {
+                for output in node.outputs.iter() {
                     for listener in output.keys() {
                         if *listener == node_to_find {
                             return true;
@@ -433,7 +472,7 @@ impl<N, I, M> Network<N, I, M>
                     }
                 }
                 // we didn't find it, so now recurse into these listeners
-                for output in node.outputs {
+                for output in node.outputs.iter() {
                     for listener in output.keys() {
                         if self.node_among_listeners(*listener, node_to_find) {
                             return true;
@@ -501,19 +540,29 @@ impl<N, I, M, A> Knobs<(I, A)> for Network<N, I, M>
 }
 
 /// Trait expressing options that a node can express about its inputs.
+/// By default, everything has a single, fixed input.
+/// These defaults can be overridden by nodes with more complex routing.
+/// By selectively override just default_input_count, a different number of fixed inputs can be
+/// set.
 pub trait Inputs<M> {
     /// How many inputs this node should default to when initialized.
-    fn default_input_count(&self) -> u32;
+    fn default_input_count(&self) -> u32 {
+        1
+    }
     /// Tell this node we're pushing another input.
     /// It should return Ok if this is allowed and must have done any work it needs to do to
     /// accomodate the new input.  The node is free to return an arbitrary data structure to the
     /// caller, which should probably hand it off to someone else for processing.
-    fn try_push_input(&mut self) -> Result<Messages<M>, ()>;
+    fn try_push_input(&mut self) -> Result<Messages<M>, ()> {
+        Err(())
+    }
 
     /// Tell this node we want to pop the last input.
     /// It should return Ok if this is allowed and must have done any work to ready itself for the
     /// change.
-    fn try_pop_input(&mut self) -> Result<Messages<M>, ()>;
+    fn try_pop_input(&mut self) -> Result<Messages<M>, ()> {
+        Err(())
+    }
 }
 
 impl<T, M> Inputs<M> for Box<T> where T: Inputs<M> + ?Sized {
@@ -529,31 +578,29 @@ impl<T, M> Inputs<M> for Box<T> where T: Inputs<M> + ?Sized {
 }
 
 /// Trait expressing options that a node can express about its outputs.
+/// By default, everything has a single, fixed output.
+/// These defaults can be overridden by nodes that have more complex routing.
+/// By selectively override just default_output_count, a different number of fixed inputs can be
+/// set.
 pub trait Outputs<M> {
     /// How many outputs this node should default to when initialized.
     /// Should probably be at least one...
-    fn default_output_count(&self) -> u32;
+    fn default_output_count(&self) -> u32 {
+        1
+    }
     /// Tell this node we're pushing another output.
     /// It should return Ok if this is allowed and must have done any work it needs to do to
     /// accomodate the new output.  The node is free to return an arbitrary data structure to the
     /// caller, which should probably hand it off to someone else for processing.
-    fn try_push_output(&mut self) -> Result<Messages<M>, ()>;
+    fn try_push_output(&mut self) -> Result<Messages<M>, ()> {
+        Err(())
+    }
 
     /// Tell this node we want to pop the last output.
     /// It should return Ok if this is allowed and must have done any work to ready itself for the
     /// change.
-    fn try_pop_output(&mut self) -> Result<Messages<M>, ()>;
-}
-
-impl<T, M> Outputs<M> for Box<T> where T: Outputs<M> + ?Sized {
-    fn default_output_count(&self) -> u32 {
-        (**self).default_output_count()
-    }
-    fn try_push_output(&mut self) -> Result<Messages<M>, ()> {
-        (**self).try_push_output()
-    }
     fn try_pop_output(&mut self) -> Result<Messages<M>, ()> {
-        (**self).try_pop_output()
+        Err(())
     }
 }
 
@@ -607,7 +654,7 @@ impl<N, I, M> Node<N, I, M>
 
     /// Return Ok if the provided output ID is valid for this node.
     pub fn valid_output(&self, output: OutputId) -> Result<(), NetworkError<I>> {
-        if (output as usize) < self.outputs.len() {
+        if (output.0 as usize) < self.outputs.len() {
             Ok(())
         }
         else {
@@ -625,7 +672,7 @@ impl<N, I, M> Node<N, I, M>
             Ok(msg) => {
                 // go ahead and add it, with no upstream connection
                 self.inputs.push(None);
-                Ok((((self.inputs.len() - 1) as InputId), msg))
+                Ok((((self.inputs.len() - 1).into()), msg))
             }
             Err(()) => Err(()),
         }
@@ -641,7 +688,7 @@ impl<N, I, M> Node<N, I, M>
             Ok(msg) => {
                 // go ahead and add it
                 self.outputs.push(HashMap::new());
-                Ok((((self.outputs.len() - 1) as OutputId), msg))
+                Ok((((self.outputs.len() - 1).into()), msg))
             }
             Err(()) => Err(()),
         }
@@ -678,7 +725,7 @@ impl<N, I, M> Node<N, I, M>
             Ok(msg) => {
                 // go ahead and remove
                 let listeners = self.outputs.pop().expect("Pop on a list we know to not be empty failed.");
-                Ok((self.outputs.len() as OutputId, listeners, msg))
+                Ok((self.outputs.len().into(), listeners, msg))
             }
             Err(()) => Err(()),
         }
@@ -686,7 +733,7 @@ impl<N, I, M> Node<N, I, M>
 
     /// Get the node ID and output ID that an input is currently connected to.
     fn input_node(&self, id: InputId) -> Result<Option<(I, OutputId)>, NetworkError<I>> {
-        match self.inputs.get(id as usize) {
+        match self.inputs.get(id.0 as usize) {
             Some(target) => Ok(*target),
             None => Err(noinput(id)),
         }
@@ -695,19 +742,19 @@ impl<N, I, M> Node<N, I, M>
     /// Set the target node for the provided input id.
     /// The caller must ensure correct update of relevant listeners.
     fn set_input_node(&mut self, id: InputId, target: Option<(I, OutputId)>) -> Result<(), NetworkError<I>> {
-        let node = self.inputs.get_mut(id as usize).ok_or(noinput(id))?;
+        let node = self.inputs.get_mut(id.0 as usize).ok_or(noinput(id))?;
         *node = target;
         Ok(())
     }
 
     /// Get a mutable reference to the listeners collection for a particular output.
     fn output_mut(&mut self, id: OutputId) -> Result<&mut HashMap<NodeIndex, u32>, NetworkError<I>> {
-        self.outputs.get_mut(id as usize).ok_or(NetworkError::InvalidOutputId(id))
+        self.outputs.get_mut(id.0 as usize).ok_or(NetworkError::InvalidOutputId(id))
     }
 
     /// Increment the listen count from another node on the provided output ID.
     /// Fail if the output ID is out of range.
-    fn add_listener(&mut self, output: OutputId, listener: NodeIndex) -> Result<(), NetworkError<I>> {
+    fn add_listener(&mut self, listener: NodeIndex, output: OutputId) -> Result<(), NetworkError<I>> {
         let listeners = self.output_mut(output)?;
         *listeners.entry(listener).or_insert(0) += 1;
         Ok(())
@@ -717,43 +764,45 @@ impl<N, I, M> Node<N, I, M>
     /// Log an error if this node didn't have the other registered as a listener or if the
     /// listener count was 0.
     fn remove_listener(&mut self, listener: NodeIndex, output: OutputId) {
-        let listeners = match self.output_mut(output) {
-            Ok(listeners) => listeners,
-            Err(e) => {
-                // We're missing an output that should probably be present.
-                // Log an error and return.
-                error!(
-                    "Tried to remove node {} as a listener of output {}, but: {}",
-                    listener,
-                    output,
-                    e,
-                );
-                return
-            }
-        };
-        let mut should_remove = false;
-        // If the listener was missing completely, Some(false).
-        // If the listener was present but the count was zero, Some(true).
         let mut error = None;
-        match listeners.entry(listener) {
-            Entry::Occupied(ref mut count) => {
-                if *count.get() == 0 {
-                    error = Some(true);
-                    should_remove = true;
+        {
+            let listeners = match self.output_mut(output) {
+                Ok(listeners) => listeners,
+                Err(e) => {
+                    // We're missing an output that should probably be present.
+                    // Log an error and return.
+                    error!(
+                        "Tried to remove node {} as a listener of output {}, but: {}",
+                        listener,
+                        output,
+                        e,
+                    );
+                    return
                 }
-                else {
-                    *count.get_mut() -= 1;
+            };
+            let mut should_remove = false;
+            // If the listener was missing completely, Some(false).
+            // If the listener was present but the count was zero, Some(true).
+            match listeners.entry(listener) {
+                Entry::Occupied(ref mut count) => {
                     if *count.get() == 0 {
+                        error = Some(true);
                         should_remove = true;
                     }
+                    else {
+                        *count.get_mut() -= 1;
+                        if *count.get() == 0 {
+                            should_remove = true;
+                        }
+                    }
+                }
+                Entry::Vacant(_) => {
+                    error = Some(false);
                 }
             }
-            Entry::Vacant(_) => {
-                error = Some(false);
+            if should_remove {
+                listeners.remove(&listener);
             }
-        }
-        if should_remove {
-            listeners.remove(&listener);
         }
         if let Some(present) = error {
             let err_reason =

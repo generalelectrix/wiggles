@@ -23,7 +23,7 @@ fn test_wiggle_network() {
         wid
     };
 
-    let val = network.get_value(wid, Unipolar(0.0), None, &TestClockProvider{});
+    let val = network.get_value(wid, 0u32.into(), Unipolar(0.0), None, &TestClockProvider{});
 
     // check serialization/deserialization mechanism
     let ser_net = serde_json::to_string(&network).unwrap();

@@ -41,7 +41,7 @@ fn test_construct_network() {
     };
 
     // connect the multiplier's input
-    network.swap_input(mult_id, 0, Some(simple_id)).unwrap();
+    network.swap_input(mult_id, 0u32.into(), Some((simple_id, 0u32.into()))).unwrap();
 
     // Run an update step that updates by 1/10th of a second.
     // No messages should have been emitted.

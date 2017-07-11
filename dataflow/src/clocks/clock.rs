@@ -1,7 +1,9 @@
 //! Clock abstraction for Wiggles.
 //! Implementors will be wrapped up as trait objects and injected into a dataflow network.
+//! Clocks do not use the option to have multiple outputs, at least not at this time, and so they
+//! blanket impl Outputs to always have a single one.
 use util::{modulo_one, almost_eq, angle_almost_eq};
-use network::{Network, NodeIndex, GenerationId, NodeId, Inputs, Outputs};
+use network::{Network, NodeIndex, GenerationId, NodeId, Inputs, Outputs, OutputId};
 use console_server::reactor::Messages;
 use wiggles_value::Unipolar;
 use wiggles_value::knob::{Knobs, Response as KnobResponse};
@@ -115,7 +117,7 @@ pub trait Clock {
 
     /// Render the state of this clock, providing its currently-assigned inputs as well as a
     /// function that can be used to retrieve the current value of one of those inputs.
-    fn render(&self, inputs: &[Option<ClockId>], network: &ClockProvider) -> ClockValue;
+    fn render(&self, inputs: &[Option<(ClockId, OutputId)>], network: &ClockProvider) -> ClockValue;
 
     /// Serialize yourself into JSON.
     /// Every clock must implement this separately until an erased_serde solution is back in
@@ -129,6 +131,7 @@ pub trait Clock {
         })
     }
 }
+
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClockId(NodeIndex, GenerationId);
@@ -173,7 +176,6 @@ impl ClockProvider for ClockNetwork {
 pub trait CompleteClock:
     Clock
     + Inputs<KnobResponse<ClockKnobAddr>>
-    + Outputs<KnobResponse<ClockKnobAddr>>
     + Knobs<KnobAddr>
     + fmt::Debug
 {
@@ -184,7 +186,6 @@ pub trait CompleteClock:
 impl<T> CompleteClock for T
     where T: 'static + Clock
         + Inputs<KnobResponse<ClockKnobAddr>>
-        + Outputs<KnobResponse<ClockKnobAddr>>
         + Knobs<KnobAddr>
         + fmt::Debug
         + PartialEq
@@ -204,6 +205,9 @@ impl<'a, 'b> PartialEq<CompleteClock+'b> for CompleteClock + 'a {
         CompleteClock::eq(self, other)
     }
 }
+
+// Blanket impl Outputs for every clock.
+impl<M> Outputs<M> for Box<CompleteClock> {}
 
 // TODO: consider generalizing Update and/or Render as traits.
 /// Wrapper trait for a clock network.

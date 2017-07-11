@@ -5,7 +5,7 @@ use std::time::Duration;
 use console_server::reactor::Messages;
 use ::util::{secs, modulo_one};
 use super::clock::{Clock, ClockValue, ClockId, ClockProvider, KnobAddr};
-use ::network::Inputs;
+use ::network::{Inputs, OutputId};
 use wiggles_value::knob::{
     Knobs, Datatype, Data, KnobDescription, Error as KnobError, badaddr, Response as KnobResponse};
 use wiggles_value::knob_types::Rate;
@@ -161,7 +161,7 @@ impl Clock for SimpleClock {
         }
     }
 
-    fn render(&self, _: &[Option<ClockId>], _: &ClockProvider) -> ClockValue {
+    fn render(&self, _: &[Option<(ClockId, OutputId)>], _: &ClockProvider) -> ClockValue {
         self.value
     }
 

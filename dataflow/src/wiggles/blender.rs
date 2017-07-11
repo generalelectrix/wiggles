@@ -6,7 +6,7 @@ use std::ops::{Add, Mul};
 use std::cmp::max;
 use std::fmt;
 use console_server::reactor::Messages;
-use ::network::Inputs;
+use ::network::{OutputId, Inputs, Outputs};
 use wiggles_value::knob::{
     Knobs,
     Datatype as KnobDatatype,
@@ -113,6 +113,9 @@ impl Inputs<KnobResponse<KnobAddr>> for Blender {
     }
 }
 
+// Blender has a single, fixed output.
+impl<M> Outputs<M> for Blender {}
+
 const BLEND_MODE_KNOB_ADDR: KnobAddr = 0;
 
 fn blend_knob_datatype() -> KnobDatatype {
@@ -197,7 +200,8 @@ impl Wiggle for Blender {
         &self,
         phase_offset: Unipolar,
         type_hint: Option<Datatype>,
-        inputs: &[Option<WiggleId>],
+        inputs: &[Option<(WiggleId, OutputId)>],
+        _: OutputId,
         wiggles: &WiggleProvider,
         clocks: &ClockProvider)
         -> Data
@@ -237,7 +241,7 @@ impl Wiggle for Blender {
             .zip(self.levels.iter())
             .map(|(input_id_opt, level)| {
                 let input_val = match *input_id_opt {
-                    Some(id) => wiggles.get_value(id, phase_offset, type_hint, clocks),
+                    Some((id, output)) => wiggles.get_value(id, output, phase_offset, type_hint, clocks),
                     None => Data::default_with_type_hint(type_hint),
                 };
                 // scale the input value by its level

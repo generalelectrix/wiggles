@@ -1,6 +1,6 @@
 //! Dataflow node that generates/propagates/mutates a wiggle.
 use util::{modulo_one, almost_eq, angle_almost_eq};
-use network::{Network, NodeIndex, GenerationId, NodeId, Inputs, Outputs};
+use network::{Network, NodeIndex, GenerationId, NodeId, OutputId, Inputs, Outputs};
 use console_server::reactor::Messages;
 use wiggles_value::{Data, Unipolar, Datatype};
 use wiggles_value::knob::{Knobs, Response as KnobResponse};
@@ -23,6 +23,7 @@ pub trait WiggleProvider {
     fn get_value(
         &self,
         wiggle_id: WiggleId,
+        output_id: OutputId,
         phase_offset: Unipolar,
         type_hint: Option<Datatype>,
         clocks: &ClockProvider)
@@ -44,12 +45,14 @@ pub trait Wiggle {
 
     /// Render the state of this wiggle, providing its currently-assigned inputs as well as a
     /// function that can be used to retrieve the current value of one of those inputs.
+    /// Specify which output port this wiggle should be rendered for.
     /// Also provide access to the clock network if this node needs it.
     fn render(
         &self,
         phase_offset: Unipolar,
         type_hint: Option<Datatype>,
-        inputs: &[Option<WiggleId>],
+        inputs: &[Option<(WiggleId, OutputId)>],
+        output: OutputId,
         network: &WiggleProvider,
         clocks: &ClockProvider)
         -> Data;
@@ -103,6 +106,7 @@ impl WiggleProvider for WiggleNetwork {
     fn get_value(
         &self,
         wiggle_id: WiggleId,
+        output_id: OutputId,
         phase_offset: Unipolar,
         type_hint: Option<Datatype>,
         clocks: &ClockProvider)
@@ -115,7 +119,7 @@ impl WiggleProvider for WiggleNetwork {
                 Data::default_with_type_hint(type_hint)
             }
             Ok(node) => {
-                node.inner().render(phase_offset, type_hint, node.inputs(), self, clocks)
+                node.inner().render(phase_offset, type_hint, node.inputs(), output_id, self, clocks)
             }
         }
     }
@@ -154,6 +158,18 @@ impl<T> CompleteWiggle for T
 impl<'a, 'b> PartialEq<CompleteWiggle+'b> for CompleteWiggle + 'a {
     fn eq(&self, other: &(CompleteWiggle+'b)) -> bool {
         CompleteWiggle::eq(self, other)
+    }
+}
+
+impl Outputs<KnobResponse<WiggleKnobAddr>> for Box<CompleteWiggle> {
+    fn default_output_count(&self) -> u32 {
+        (**self).default_output_count()
+    }
+    fn try_push_output(&mut self) -> Result<Messages<KnobResponse<WiggleKnobAddr>>, ()> {
+        (**self).try_push_output()
+    }
+    fn try_pop_output(&mut self) -> Result<Messages<KnobResponse<WiggleKnobAddr>>, ()> {
+        (**self).try_pop_output()
     }
 }
 

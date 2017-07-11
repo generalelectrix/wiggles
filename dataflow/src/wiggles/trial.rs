@@ -2,7 +2,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 use console_server::reactor::Messages;
-use ::network::Inputs;
+use network::{OutputId, Inputs, Outputs};
 use wiggles_value::knob::{
     Knobs,
     Datatype as KnobDatatype,
@@ -42,13 +42,10 @@ impl<M> Inputs<M> for TestWiggle {
     fn default_input_count(&self) -> u32 {
         0
     }
-    fn try_push_input(&mut self) -> Result<Messages<M>, ()> {
-        Err(())
-    }
-    fn try_pop_input(&mut self) -> Result<Messages<M>, ()> {
-        Err(())
-    }
 }
+
+// TestWiggle has one output.
+impl<M> Outputs<M> for TestWiggle {}
 
 const DUTY_KNOB_ADDR: u32 = 0;
 
@@ -114,7 +111,8 @@ impl Wiggle for TestWiggle {
         &self,
         phase_offset: Unipolar,
         type_hint: Option<Datatype>,
-        _: &[Option<WiggleId>],
+        _: &[Option<(WiggleId, OutputId)>],
+        _: OutputId,
         _: &WiggleProvider,
         clocks: &ClockProvider)
         -> Data

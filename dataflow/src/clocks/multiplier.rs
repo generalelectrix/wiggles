@@ -8,7 +8,7 @@ use std::cmp::max;
 use console_server::reactor::Messages;
 use ::util::{modulo_one, almost_eq};
 use super::clock::{Clock, ClockValue, ClockId, ClockProvider, KnobAddr};
-use ::network::Inputs;
+use ::network::{Inputs, OutputId};
 use wiggles_value::knob::{
     Knobs, Datatype, Data, KnobDescription, Error as KnobError, badaddr, Response as KnobResponse};
 use serde_json::{Error as SerdeJsonError, self};
@@ -180,7 +180,7 @@ impl Clock for ClockMultiplier {
         }
     }
 
-    fn render(&self, inputs: &[Option<ClockId>], clock_network: &ClockProvider) -> ClockValue {
+    fn render(&self, inputs: &[Option<(ClockId, OutputId)>], clock_network: &ClockProvider) -> ClockValue {
         // If our inputs are the wrong shape, log an error and return the zero value.
         match inputs.get(0) {
             None => {
@@ -191,7 +191,7 @@ impl Clock for ClockMultiplier {
                 // input is disconnected, return 0
                 return ClockValue::default();
             }
-            Some(&Some(id)) => {
+            Some(&Some((id, _))) => {
                 let upstream_val = clock_network.get_value(id);
 
                 let upstream_float_val = upstream_val.float_value();

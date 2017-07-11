@@ -2,9 +2,12 @@
 use std::fmt;
 use std::collections::HashMap;
 use console_server::reactor::Messages;
-use network::{Network, Inputs, NodeId, NetworkError};
+use network::{Network, Inputs, Outputs, NodeId, NetworkError, InputId, OutputId};
 use log::LogLevel;
 use simple_logger;
+
+const i0: InputId = InputId(0);
+const o0: OutputId = OutputId(0);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct TestNodeId(u32, u32);
@@ -33,11 +36,9 @@ impl NodeId for TestNodeId {
 #[derive(Debug)]
 struct EmptyNode;
 
-impl<T> Inputs<T> for EmptyNode {
-    fn default_input_count(&self) -> u32 { 1 }
-    fn try_push_input(&mut self) -> Result<Messages<T>, ()> { Err(()) }
-    fn try_pop_input(&mut self) -> Result<Messages<T>, ()> { Err(()) }
-}
+impl<T> Inputs<T> for EmptyNode {}
+
+impl<T> Outputs<T> for EmptyNode {}
 
 type TestNetwork = Network<EmptyNode, TestNodeId, ()>;
 
@@ -62,29 +63,30 @@ fn test_no_cycles() {
     let mut net: TestNetwork = Network::new();
     let end = add_node_get_id(&mut net);
 
-    expect_no_cycle(end, end, net.swap_input(end, 0, Some(end)));
+    expect_no_cycle(end, end, net.swap_input(end, i0, Some((end, o0))));
 
     let head = add_node_get_id(&mut net);
-    net.swap_input(end, 0, Some(head)).unwrap();
+    net.swap_input(end, i0, Some((head, o0))).unwrap();
     {
         let mut expected_listeners = HashMap::new();
         expected_listeners.insert(end.index(), 1);
-        assert_eq!(net.node(head).unwrap().listeners, expected_listeners);
+        assert_eq!(net.node(head).unwrap().outputs[0], expected_listeners);
 
-        assert_eq!(net.node(end).unwrap().inputs(), vec!(Some(head)).as_slice());
+        assert_eq!(net.node(end).unwrap().inputs(), vec!(Some((head, o0))).as_slice());
     }
 
     assert!(net.node(head).unwrap().has_listeners());
     assert!(net.node_among_listeners(head.index(), end.index()));
     assert!(net.check_would_cycle(end, head).is_err());
-    expect_no_cycle(end, head, net.swap_input(head, 0, Some(end)));
+    expect_no_cycle(end, head, net.swap_input(head, i0, Some((end, o0))));
 
     let middle = add_node_get_id(&mut net);
 
-    net.swap_input(end, 0, Some(middle)).unwrap();
-    net.swap_input(middle, 0, Some(head)).unwrap();
+    net.swap_input(end, i0, Some((middle, o0))).unwrap();
+    net.swap_input(middle, i0, Some((head, o0))).unwrap();
 
+    assert!(net.node(head).unwrap().has_listeners());
     assert!(net.node_among_listeners(head.index(), end.index()));
     assert!(net.check_would_cycle(end, head).is_err());
-    expect_no_cycle(end, head, net.swap_input(head, 0, Some(end)));
+    expect_no_cycle(end, head, net.swap_input(head, i0, Some((end, o0))));
 }
