@@ -18,10 +18,10 @@ extern crate wiggles_value;
 
 use std::fmt;
 
-use wiggles_value::Data;
+use wiggles_value::{Data, Datatype};
 use rust_dmx::{DmxPort, Error as DmxPortError, OfflineDmxPort};
 pub use profiles::{Profile, PROFILES};
-pub use fixture::{DmxFixture, DmxValue, DmxChannelCount, FixtureError};
+pub use fixture::{DmxFixture, DmxValue, DmxChannelCount};
 
 mod fixture;
 mod profiles;
@@ -113,15 +113,16 @@ impl Eq for Universe {}
 // -------------------------
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PatchItem {
+pub struct PatchItem<S> {
     id: FixtureId,
     pub name: String,
     address: Option<(UniverseId, DmxAddress)>,
     active: bool,
     fixture: DmxFixture,
+    control_sources: Vec<Option<S>>,
 }
 
-impl PatchItem {
+impl<S> PatchItem<S> {
     /// Unique fixture id.
     pub fn id(&self) -> FixtureId { 
         self.id
@@ -147,8 +148,23 @@ impl PatchItem {
         self.fixture.channel_count()
     }
 
-    pub fn set_control(&mut self, control_id: usize, value: Data) -> Result<(), PatchError> {
-        self.fixture.set_control(control_id, value).map_err(|fe| PatchError::from_fixture_error(fe, self.id))
+    /// Set all of the control values of this fixture by providing a data source to retrieve its
+    /// inputs from.  The data source should return a default value rather than an error if one of
+    /// the source IDs is invalid.
+    /// TODO: decide how we want to handle source deletion, it would be nice to react to the source
+    /// going away by disconnecting the input and propagating that change out into the rest of the
+    /// world.
+    pub fn set_controls<F>(&mut self, data_source: F)
+        where F: Fn(&S, Datatype) -> Data
+    {
+        for (source, control) in self.control_sources.iter().zip(self.fixture.controls_mut()) {
+            
+            let data = match *source {
+                Some(ref s) => data_source(s, control.data_type()),
+                None => Data::default_with_type_hint(Some(control.data_type())),
+            };
+            control.set_value(data);
+        }
     }
 }
 
@@ -157,13 +173,13 @@ impl PatchItem {
 // -------------------------
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Patch {
+pub struct Patch<S> {
     universes: Vec<Option<Universe>>,
-    items: Vec<PatchItem>,
+    items: Vec<PatchItem<S>>,
     next_id: FixtureId,
 }
 
-impl Patch {
+impl<S> Patch<S> {
     pub fn new() -> Self {
         Patch {
             universes: Vec::new(),
@@ -184,7 +200,7 @@ impl Patch {
     }
 
     /// Get an immutable reference to the current patches.
-    pub fn items(&self) -> &Vec<PatchItem> {
+    pub fn items(&self) -> &Vec<PatchItem<S>> {
         &self.items
     }
 
@@ -236,12 +252,22 @@ impl Patch {
     /// Return the fixture id.
     pub fn add(&mut self, profile: &Profile, name: Option<String>) -> FixtureId {
         let id = self.next_id();
+        let fixture = profile.create_fixture();
+        let sources = {
+            let control_count = fixture.control_count();
+            let mut s = Vec::with_capacity(control_count);
+            for _ in 0..control_count {
+                s.push(None);
+            }
+            s
+        };
         let item = PatchItem {
             id: id,
             name: name.unwrap_or(profile.name().to_string()),
             address: None,
             active: true,
-            fixture: profile.create_fixture(),
+            fixture: fixture,
+            control_sources: sources,
         };
         self.items.push(item);
         id
@@ -267,7 +293,7 @@ impl Patch {
         }
 
     /// Remove a fixture by id, if it exists, and return it.
-    pub fn remove(&mut self, id: FixtureId) -> Result<PatchItem, PatchError> {
+    pub fn remove(&mut self, id: FixtureId) -> Result<PatchItem<S>, PatchError> {
         match self.items.iter().position(|item| item.id == id) {
             Some(index) => Ok(self.items.swap_remove(index)),
             None => Err(PatchError::InvalidFixtureId(id)),
@@ -275,12 +301,12 @@ impl Patch {
     }
 
     /// Get an immutable reference to a patch item by id, if it exists.
-    pub fn item(&self, id: FixtureId) -> Result<&PatchItem, PatchError> {
+    pub fn item(&self, id: FixtureId) -> Result<&PatchItem<S>, PatchError> {
         self.items.iter().find(|item| item.id == id).ok_or(PatchError::InvalidFixtureId(id))
     }
 
     /// Get a mutable reference to a patch item by id, if it exists.
-    pub fn item_mut(&mut self, id: FixtureId) -> Result<&mut PatchItem, PatchError> {
+    fn item_mut(&mut self, id: FixtureId) -> Result<&mut PatchItem<S>, PatchError> {
         self.items.iter_mut().find(|item| item.id == id).ok_or(PatchError::InvalidFixtureId(id))
     }
 
@@ -339,7 +365,7 @@ impl Patch {
             id: FixtureId,
             universe: UniverseId,
             address: DmxAddress)
-            -> Result<&PatchItem, PatchError> {
+            -> Result<&PatchItem<S>, PatchError> {
         let address = valid_address(address)?;
         // Use this value for indexes!
         let address_from_zero = address - 1;
@@ -378,7 +404,7 @@ impl Patch {
 
     /// Unpatch a fixture.
     /// Return a reference to the item if it exists.
-    pub fn unpatch(&mut self, id: FixtureId) -> Result<&PatchItem, PatchError> {
+    pub fn unpatch(&mut self, id: FixtureId) -> Result<&PatchItem<S>, PatchError> {
         let item = self.item_mut(id)?;
         item.address = None;
         Ok(item)
@@ -389,6 +415,28 @@ impl Patch {
     pub fn set_active(&mut self, id: FixtureId, state: bool) -> Result<(), PatchError> {
         self.item_mut(id)?.active = state;
         Ok(())
+    }
+
+    /// Set the control source for a particular control ID to the provided value.
+    pub fn set_control_source(
+        &mut self,
+        id: FixtureId,
+        control_id: usize,
+        source: Option<S>)
+        -> Result<(), PatchError>
+    {
+        let item = self.item_mut(id)?;
+        match item.control_sources.get_mut(control_id) {
+            Some(cs) => {
+                *cs = source;
+                Ok(())
+            }
+            None => Err(PatchError::ControlOutOfRange{
+                fixture: id,
+                control_id: control_id,
+                control_count: item.fixture.control_count(),
+            }),
+        }
     }
 
     /// Render every fixture to DMX.
@@ -431,7 +479,7 @@ impl Patch {
     }
 }
 
-impl Default for Patch {
+impl<S> Default for Patch<S> {
     fn default() -> Self {
         Patch::new()
     }
@@ -445,14 +493,8 @@ pub enum PatchError {
     AddressConflict(FixtureId, UniverseId, DmxAddress, Vec<FixtureId>),
     FixtureTooLongForAddress(DmxAddress, DmxChannelCount),
     NonEmptyUniverse(UniverseId),
-    Fixture(FixtureId, FixtureError),
     PortError(DmxPortError),
-}
-
-impl PatchError {
-    pub fn from_fixture_error(fe: FixtureError, id: FixtureId) -> Self {
-        PatchError::Fixture(id, fe)
-    }
+    ControlOutOfRange{fixture: FixtureId, control_id: usize, control_count: usize},
 }
 
 impl fmt::Display for PatchError {
@@ -477,11 +519,15 @@ impl fmt::Display for PatchError {
                     count,
                     addr),
             NonEmptyUniverse(id) => write!(f, "Universe {} is not empty.", id),
-            Fixture(ref id, ref e) => {
-                write!(f, "Fixture {} error: ", id)?;
-                e.fmt(f)
-            },
             PortError(ref e) => write!(f, "DMX port error: {}", e),
+            ControlOutOfRange{fixture, control_id, control_count} =>
+                write!(
+                    f,
+                    "Fixture {} only has {} controls, {} is out of range.",
+                    fixture,
+                    control_id,
+                    control_count,
+                ),
         }
     }
 }
@@ -496,15 +542,14 @@ impl std::error::Error for PatchError {
             AddressConflict(..) => "Addressing conflict.",
             FixtureTooLongForAddress(..) => "Channel count too high for address.",
             NonEmptyUniverse(_) => "Universe is not empty.",
-            Fixture(_, ref fe) => fe.description(),
             PortError(ref pe) => pe.description(),
+            ControlOutOfRange{..} => "Control ID out of range.",
         }
     }
 
     fn cause(&self) -> Option<&std::error::Error> {
         match *self {
             PatchError::PortError(ref pe) => Some(pe),
-            PatchError::Fixture(_, ref fe) => Some(fe),
             _ => None,
         }
     }

@@ -10,6 +10,8 @@ extern crate dataflow;
 extern crate dataflow_message;
 extern crate wiggles_value;
 
+mod fixture_data;
+
 use std::fmt;
 use std::time::Duration;
 use console_server::*;

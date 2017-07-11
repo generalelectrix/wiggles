@@ -24,9 +24,12 @@ fn unipolar_as_range(data: Data, min_val: DmxValue, max_val: DmxValue) -> DmxVal
 
 /// Spread a bipolar value evenly across a DMX interval.
 fn bipolar_as_range(data: Data, min_val: DmxValue, max_val: DmxValue) -> DmxValue {
-    // In this case, all we'd do is the same math as unipolar, so delegate to that
-    // function.  This is here to make it more clear what's going on.
-    unipolar_as_range(data, min_val, max_val)
+    debug_assert!(max_val > min_val);
+    let Bipolar(val) = data.into();
+    let val = (val + 1.0) / 2.0;
+    let range_delta = max_val as usize - min_val as usize + 1;
+    let scaled = min_val as usize + (val * range_delta as f64) as usize;
+    min(scaled, max_val as usize) as u8
 }
 
 /// Spread a bipolar value unevenly across two DMX intervals, with custom zero-point.

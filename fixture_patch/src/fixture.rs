@@ -5,6 +5,7 @@ use std::str::FromStr;
 use std::fmt;
 use std::marker::PhantomData;
 use std::error::Error;
+use std::slice::IterMut;
 use serde::{Serializer, Deserializer};
 use serde::de::{self, Visitor};
 use wiggles_value::{Datatype, Data};
@@ -48,6 +49,10 @@ impl FixtureControl {
     /// Get the value of this control.
     pub fn value(&self) -> Data {
         self.value
+    }
+    /// Get the native data type of this control.
+    pub fn data_type(&self) -> Datatype {
+        self.data_type
     }
 }
 
@@ -168,40 +173,13 @@ impl DmxFixture {
         debug_assert!(buffer.len() == self.channel_count as usize);
         (self.render_action.func)(&self.controls, buffer);
     }
-    
-    /// Set a control value.
-    pub fn set_control(&mut self, control_id: usize, value: Data) -> Result<(), FixtureError> {
-        if control_id >= self.controls.len() {
-            Err(FixtureError::InvalidControlId{id: control_id, control_count: self.controls.len()})
-        } else {
-            self.controls[control_id].set_value(value);
-            Ok(())
-        }
-    }
-}
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum FixtureError {
-    InvalidControlId{ id: usize, control_count: usize},
-}
-
-impl fmt::Display for FixtureError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            FixtureError::InvalidControlId{id, control_count} =>
-                write!(f, "Invalid control id {}, fixture has {} controls.", id, control_count),
-        }
-    }
-}
-
-impl Error for FixtureError {
-    fn description(&self) -> &str {
-        match *self {
-            FixtureError::InvalidControlId{..} => "Invalid control id."
-        }
+    pub fn control_count(&self) -> usize {
+        self.controls.len()
     }
 
-    fn cause(&self) -> Option<&Error> {
-        None
+    /// A mutable iterator over this fixture's control values, allowing them all to be set.
+    pub fn controls_mut(&mut self) -> IterMut<FixtureControl> {
+        self.controls.iter_mut()
     }
 }

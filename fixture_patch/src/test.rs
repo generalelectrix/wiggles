@@ -4,13 +4,16 @@ use super::profiles::dimmer::PROFILE as dimmer_profile;
 use super::profiles::clay_paky_astroraggi_power::PROFILE as astro_profile;
 use wiggles_value::*;
 
-fn assert_fixture_patched_at(p: &Patch, id: FixtureId, address: Option<(UniverseId, DmxAddress)>) {
+fn assert_fixture_patched_at<S>(p: &Patch<S>, id: FixtureId, address: Option<(UniverseId, DmxAddress)>) {
     assert_eq!(address, p.item(id).unwrap().address);
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+struct EmptyId;
+
 #[test]
 fn test_universe_create_and_delete() {
-    let mut patch = Patch::new();
+    let mut patch: Patch<EmptyId> = Patch::new();
     assert!(patch.universes().is_empty());
 
     let u = Universe::new_offline();
@@ -24,7 +27,7 @@ fn test_universe_create_and_delete() {
 
 #[test]
 fn test_no_remove_universe_with_fixtures() {
-    let mut patch = Patch::new();
+    let mut patch: Patch<EmptyId> = Patch::new();
     let uid = patch.add_universe(Universe::new_offline());
     let fid = patch.add_at_address(&dimmer_profile, None, uid, 1).unwrap();
     assert_eq!(PatchError::NonEmptyUniverse(uid), patch.remove_universe(uid, false).unwrap_err());
@@ -42,7 +45,7 @@ fn test_no_remove_universe_with_fixtures() {
 
 #[test]
 fn test_no_out_of_range_address() {
-    let mut patch = Patch::new();
+    let mut patch: Patch<EmptyId> = Patch::new();
     let uid = patch.add_universe(Universe::new_offline());
     let bad_addr = 600;
     assert_eq!(
@@ -52,14 +55,15 @@ fn test_no_out_of_range_address() {
 
 #[test]
 fn test_render() {
-    let mut patch = Patch::new();
+    let mut patch: Patch<EmptyId> = Patch::new();
     let uid = patch.add_universe(Universe::new_offline());
     let fid = patch.add_at_address(&dimmer_profile, None, uid, 1).unwrap();
-    fn assert_all_zeros(patch: &Patch, uid: UniverseId) {
+    fn assert_all_zeros<S>(patch: &Patch<S>, uid: UniverseId) {
         assert_eq!([0; 512][..], patch.universe(uid).unwrap().buffer[..]);
     }
     assert_all_zeros(&patch, uid);
-    patch.item_mut(fid).unwrap().set_control(0, Data::Unipolar(Unipolar(1.0)));
+    patch.set_control_source(fid, 0, Some(EmptyId)).unwrap();
+    patch.item_mut(fid).unwrap().set_controls(|_, _| Data::Unipolar(Unipolar(1.0)));
     let errs = patch.render();
     assert!(errs.is_empty());
     {
@@ -92,7 +96,7 @@ fn test_serde() {
     let json_patch = serde_json::to_string(&patch).unwrap();
     println!("{}", json_patch);
     // round-trip through the reader interface to emulate reading directly from a file
-    let json_round_trip_patch: Patch = serde_json::from_reader(json_patch.as_bytes()).unwrap();
+    let json_round_trip_patch: Patch<EmptyId> = serde_json::from_reader(json_patch.as_bytes()).unwrap();
     assert_eq!(patch, json_round_trip_patch);
 
     // serialize to bincode
