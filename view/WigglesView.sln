@@ -25,6 +25,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "core", "core", "{9908BA9D-B
 		src\core\Chart.fsx = src\core\Chart.fsx
 		src\core\Knob.fsx = src\core\Knob.fsx
 		src\core\Knobs.fsx = src\core\Knobs.fsx
+		src\core\ClockTypes.fsx = src\core\ClockTypes.fsx
+		src\core\DataflowTypes.fsx = src\core\DataflowTypes.fsx
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "patcher", "patcher", "{A551274F-F429-4609-8632-493AB759C119}"

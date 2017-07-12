@@ -31,7 +31,7 @@ pub enum Command {
     /// Get a summary of the state of every clock.  Used to initialize new clients.
     State,
     /// Create a new clock.
-    Create{class: String, name: String},
+    Create{kind: String, name: String},
     /// Delete an existing clock.
     Remove{id: ClockId, force: bool},
     /// Rename a clock.
@@ -47,7 +47,7 @@ pub enum Command {
 #[derive(Debug, Serialize, Clone, Deserialize)]
 pub struct ClockDescription {
     name: Arc<String>,
-    class: Arc<String>,
+    kind: Arc<String>,
     inputs: Vec<Option<ClockId>>,
 }
 
@@ -57,7 +57,7 @@ impl ClockDescription {
         let clock = node.inner();
         ClockDescription {
             name: Arc::new(clock.name().to_string()),
-            class: Arc::new(clock.class().to_string()),
+            kind: Arc::new(clock.class().to_string()),
             inputs: inputs,
         }
     }
@@ -71,7 +71,7 @@ pub enum Response {
     /// A summary of the state of every clock.
     State(Vec<(ClockId, ClockDescription)>),
     /// A new clock has been added.
-    New{id: ClockId, desc: ClockDescription},
+    New(ClockId, ClockDescription),
     /// A clock has been deleted.
     Removed(ClockId),
     /// A clock has been renamed.
@@ -117,8 +117,8 @@ pub fn handle_message(
         Classes => Ok((
             Messages::one(ResponseWithKnobs::Clock(Response::Classes(CLASSES.clone()))),
             None)),
-        Create{class, name} => {
-            let node = new_clock(&class, name).ok_or(Error::UnknownClass(class.clone()))?;
+        Create{kind, name} => {
+            let node = new_clock(&kind, name).ok_or(Error::UnknownClass(kind.clone()))?;
             let (id, node) = network.add(node);
             let clock = node.inner();
             // emit messages for all of the new knobs
@@ -134,10 +134,8 @@ pub fn handle_message(
             }
 
             // emit a message for the new clock we just added
-            messages.push(ResponseWithKnobs::Clock(Response::New{
-                id: id,
-                desc: ClockDescription::from_node(node),
-            }));
+            messages.push(ResponseWithKnobs::Clock(Response::New(
+                id, ClockDescription::from_node(node))));
             Ok((messages, Some(ResponseFilter::All)))
         }
         Remove{id, force} => {
