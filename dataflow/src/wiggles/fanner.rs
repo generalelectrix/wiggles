@@ -118,6 +118,10 @@ impl Wiggle for Fanner {
         &self.name
     }
 
+    fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
+
     /// Fanner is stateless, update does nothing.
     fn update(&mut self, _: Duration) -> Messages<KnobResponse<KnobAddr>> {
         Messages::none()

@@ -39,6 +39,9 @@ pub trait Wiggle {
     /// Return the name that has been assigned to this wiggle.
     fn name(&self) -> &str;
 
+    /// Rename this wiggle.
+    fn set_name(&mut self, name: String);
+
     /// Update the state of this wiggle using the provided update interval.
     /// Return a message collection of some kind.
     fn update(&mut self, dt: Duration) -> Messages<KnobResponse<KnobAddr>>;

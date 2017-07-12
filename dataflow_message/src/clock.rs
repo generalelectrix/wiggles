@@ -5,8 +5,10 @@ use std::error;
 use console_server::reactor::Messages;
 use console_server::clients::ResponseFilter;
 use wiggles_value::knob::{KnobDescription, Response as KnobResponse, Knobs};
-use dataflow::network::{InputId, NetworkError, OutputId};
+use dataflow::network::{InputId, NetworkError, OutputId, Node};
 use dataflow::clocks::{
+    Clock,
+    CompleteClock,
     ClockNetwork,
     ClockId,
     KnobAddr as ClockNodeKnobAddr,
@@ -24,11 +26,21 @@ pub struct SetInput {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Command {
+    /// Get a listing of every available type of clock.
     Classes,
+    /// Get a summary of the state of every clock.  Used to initialize new clients.
+    State,
+    /// Create a new clock.
     Create{class: String, name: String},
+    /// Delete an existing clock.
     Remove{id: ClockId, force: bool},
+    /// Rename a clock.
+    Rename(ClockId, String),
+    /// Assign the input of a clock.
     SetInput(SetInput),
+    /// Add a new input to a clock.
     PushInput(ClockId),
+    /// Remove an input from a clock.
     PopInput(ClockId),
 }
 
@@ -39,14 +51,36 @@ pub struct ClockDescription {
     inputs: Vec<Option<ClockId>>,
 }
 
+impl ClockDescription {
+    fn from_node(node: &Node<Box<CompleteClock>, ClockId, KnobResponse<ClockKnobAddr>>) -> Self {
+        let inputs = node.inputs().iter().map(|o| o.map(|(i, _)| i)).collect();
+        let clock = node.inner();
+        ClockDescription {
+            name: Arc::new(clock.name().to_string()),
+            class: Arc::new(clock.class().to_string()),
+            inputs: inputs,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Clone, Deserialize)]
 /// Response messages related to clock actions.
 pub enum Response {
+    /// A listing of every available type of clock.
     Classes(Arc<Vec<String>>),
+    /// A summary of the state of every clock.
+    State(Vec<(ClockId, ClockDescription)>),
+    /// A new clock has been added.
     New{id: ClockId, desc: ClockDescription},
+    /// A clock has been deleted.
     Removed(ClockId),
+    /// A clock has been renamed.
+    Renamed(ClockId, Arc<String>),
+    /// A clock's input has been reassigned.
     SetInput(SetInput),
+    /// A clock has had a new input added.
     PushInput(ClockId),
+    /// A clock has had an input removed.
     PopInput(ClockId),
 }
 
@@ -74,6 +108,12 @@ pub fn handle_message(
 {
     use self::Command::*;
     match command {
+        State => {
+            let state = network.nodes()
+                .map(|(clock_id, node)| (clock_id, ClockDescription::from_node(node)))
+                .collect();
+            Ok((Messages::one(ResponseWithKnobs::Clock(Response::State(state))), None))
+        }
         Classes => Ok((
             Messages::one(ResponseWithKnobs::Clock(Response::Classes(CLASSES.clone()))),
             None)),
@@ -94,15 +134,9 @@ pub fn handle_message(
             }
 
             // emit a message for the new clock we just added
-            let inputs = node.inputs().iter().map(|o| o.map(|(i, _)| i)).collect();
-            let desc = ClockDescription {
-                name: Arc::new(clock.name().to_string()),
-                class: Arc::new(class),
-                inputs: inputs,
-            };
             messages.push(ResponseWithKnobs::Clock(Response::New{
                 id: id,
-                desc: desc
+                desc: ClockDescription::from_node(node),
             }));
             Ok((messages, Some(ResponseFilter::All)))
         }
@@ -117,6 +151,12 @@ pub fn handle_message(
             // emit a message indicating remove of the clock itself
             messages.push(ResponseWithKnobs::Clock(Response::Removed(id)));
             Ok((messages, Some(ResponseFilter::All)))
+        }
+        Rename(clock, name) => {
+            network.node_inner_mut(clock)?.set_name(name.clone());
+            Ok((
+                Messages::one(ResponseWithKnobs::Clock(Response::Renamed(clock, Arc::new(name)))),
+                Some(ResponseFilter::All)))
         }
         SetInput(set) => {
             let target = set.target.map(|t| (t, o0));

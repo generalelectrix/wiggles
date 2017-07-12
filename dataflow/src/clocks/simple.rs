@@ -132,6 +132,10 @@ impl Clock for SimpleClock {
         &self.name
     }
 
+    fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
+
     /// Update the state of this clock using the provided update interval.
     /// Return a message collection of some kind.
     fn update(&mut self, dt: Duration) -> Messages<KnobResponse<KnobAddr>> {

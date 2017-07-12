@@ -5,8 +5,10 @@ use std::error;
 use console_server::reactor::Messages;
 use console_server::clients::ResponseFilter;
 use wiggles_value::knob::{KnobDescription, Response as KnobResponse, Knobs};
-use dataflow::network::{InputId, NetworkError, OutputId};
+use dataflow::network::{InputId, NetworkError, OutputId, Node};
 use dataflow::wiggles::{
+    Wiggle,
+    CompleteWiggle,
     WiggleNetwork,
     WiggleId,
     KnobAddr as WiggleNodeKnobAddr,
@@ -25,11 +27,15 @@ pub struct SetInput {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Command {
     Classes,
+    State,
     Create{class: String, name: String},
     Remove{id: WiggleId, force: bool},
+    Rename(WiggleId, String),
     SetInput(SetInput),
     PushInput(WiggleId),
     PopInput(WiggleId),
+    PushOutput(WiggleId),
+    PopOutput(WiggleId),
     SetClock(WiggleId, Option<ClockId>),
 }
 
@@ -44,18 +50,40 @@ pub struct WiggleDescription {
     name: Arc<String>,
     class: Arc<String>,
     inputs: Vec<Option<(WiggleId, OutputId)>>,
+    outputs: usize,
     clock: UsesClock,
+}
+
+impl WiggleDescription {
+    fn from_node(node: &Node<Box<CompleteWiggle>, WiggleId, KnobResponse<WiggleKnobAddr>>) -> Self {
+        let wiggle = node.inner();
+        let clock_spec = match wiggle.clock_source() {
+            Ok(source) => UsesClock::Yes(source),
+            Err(_) => UsesClock::No,
+        };
+        WiggleDescription {
+            name: Arc::new(wiggle.name().to_string()),
+            class: Arc::new(wiggle.class().to_string()),
+            inputs: node.inputs().to_vec(),
+            outputs: node.output_count(),
+            clock: clock_spec,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// Response messages related to wiggle actions.
 pub enum Response {
     Classes(Arc<Vec<String>>),
+    State(Vec<(WiggleId, WiggleDescription)>),
     New{id: WiggleId, desc: WiggleDescription},
     Removed(WiggleId),
+    Renamed(WiggleId, Arc<String>),
     SetInput(SetInput),
     PushInput(WiggleId),
     PopInput(WiggleId),
+    PushOutput(WiggleId),
+    PopOutput(WiggleId),
     SetClock(WiggleId, Option<ClockId>),
 }
 
@@ -84,6 +112,12 @@ pub fn handle_message(
         Classes => Ok((
             Messages::one(ResponseWithKnobs::Wiggle(Response::Classes(CLASSES.clone()))),
             None)),
+        State => {
+            let state = network.nodes()
+                .map(|(wiggle_id, node)| (wiggle_id, WiggleDescription::from_node(node)))
+                .collect();
+            Ok((Messages::one(ResponseWithKnobs::Wiggle(Response::State(state))), None))
+        }
         Create{class, name} => {
             let node = new_wiggle(&class, name).ok_or(Error::UnknownClass(class.clone()))?;
             let (id, node) = network.add(node);
@@ -100,21 +134,9 @@ pub fn handle_message(
                 messages.push(msg);
             }
 
-            let clock_spec = match wiggle.clock_source() {
-                Ok(source) => UsesClock::Yes(source),
-                Err(_) => UsesClock::No,
-            };
-
-            // emit a message for the new wiggle we just added
-            let desc = WiggleDescription {
-                name: Arc::new(wiggle.name().to_string()),
-                class: Arc::new(class),
-                inputs: node.inputs().to_vec(),
-                clock: clock_spec,
-            };
             messages.push(ResponseWithKnobs::Wiggle(Response::New{
                 id: id,
-                desc: desc,
+                desc: WiggleDescription::from_node(node),
             }));
             Ok((messages, Some(ResponseFilter::All)))
         }
@@ -130,22 +152,32 @@ pub fn handle_message(
             messages.push(ResponseWithKnobs::Wiggle(Response::Removed(id)));
             Ok((messages, Some(ResponseFilter::All)))
         }
+        Rename(wiggle, name) => {
+            network.node_inner_mut(wiggle)?.set_name(name.clone());
+            Ok((
+                Messages::one(ResponseWithKnobs::Wiggle(Response::Renamed(wiggle, Arc::new(name)))),
+                Some(ResponseFilter::All)))
+        }
         SetInput(set) => {
             network.swap_input(set.wiggle, set.input, set.target)?;
             let msg = ResponseWithKnobs::Wiggle(Response::SetInput(set));
             Ok((Messages::one(msg), Some(ResponseFilter::All)))
         }
         PushInput(id) => {
-            let (_, mut knob_messages) = network.push_input(id)?;
-            let mut messages = knob_messages.drain().map(ResponseWithKnobs::Knob).collect::<Messages<_>>();
-            messages.push(ResponseWithKnobs::Wiggle(Response::PushInput(id)));
-            Ok((messages, Some(ResponseFilter::All)))
+            let (_, knob_messages) = network.push_input(id)?;
+            handle_io_change(id, knob_messages, Response::PushInput)
         }
         PopInput(id) => {
-            let mut knob_messages = network.pop_input(id)?;
-            let mut messages = knob_messages.drain().map(ResponseWithKnobs::Knob).collect::<Messages<_>>();
-            messages.push(ResponseWithKnobs::Wiggle(Response::PopInput(id)));
-            Ok((messages, Some(ResponseFilter::All)))
+            let knob_messages = network.pop_input(id)?;
+            handle_io_change(id, knob_messages, Response::PopInput)
+        }
+        PushOutput(id) => {
+            let (_, knob_messages) = network.push_output(id)?;
+            handle_io_change(id, knob_messages, Response::PushOutput)
+        }
+        PopOutput(id) => {
+            let knob_messages = network.pop_output(id)?;
+            handle_io_change(id, knob_messages, Response::PopOutput)
         }
         SetClock(id, target) => {
             match network.node_inner_mut(id)?.set_clock(target) {
@@ -159,7 +191,18 @@ pub fn handle_message(
             }
         }
     }
+}
 
+fn handle_io_change<F>(
+    id: WiggleId,
+    mut knob_messages: Messages<KnobResponse<WiggleKnobAddr>>,
+    resp: F)
+    -> Result<(Messages<ResponseWithKnobs>, Option<ResponseFilter>), Error>
+        where F: Fn(WiggleId) -> Response
+{
+    let mut messages = knob_messages.drain().map(ResponseWithKnobs::Knob).collect::<Messages<_>>();
+    messages.push(ResponseWithKnobs::Wiggle(resp(id)));
+    Ok((messages, Some(ResponseFilter::All)))
 }
 
 #[derive(Debug)]

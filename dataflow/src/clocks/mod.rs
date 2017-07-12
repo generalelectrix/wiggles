@@ -10,6 +10,7 @@ pub mod multiplier;
 mod serde;
 
 pub use self::clock::{
+    Clock,
     ClockId,
     CompleteClock,
     ClockKnobAddr,

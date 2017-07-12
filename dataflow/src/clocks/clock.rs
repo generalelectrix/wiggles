@@ -111,6 +111,9 @@ pub trait Clock {
     /// Return the name that has been assigned to this clock.
     fn name(&self) -> &str;
 
+    /// Change the name assigned to this clock.
+    fn set_name(&mut self, name: String);
+
     /// Update the state of this clock using the provided update interval.
     /// Return a message collection of some kind.
     fn update(&mut self, dt: Duration) -> Messages<KnobResponse<KnobAddr>>;

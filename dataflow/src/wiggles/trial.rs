@@ -102,6 +102,10 @@ impl Wiggle for TestWiggle {
         &self.name
     }
 
+    fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
+
     /// Update the state of this wiggle using the provided update interval.
     fn update(&mut self, _: Duration) -> Messages<KnobResponse<KnobAddr>> {
         Messages::none()

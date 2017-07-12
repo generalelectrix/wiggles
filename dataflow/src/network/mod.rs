@@ -212,6 +212,19 @@ impl<N, I, M> Network<N, I, M>
         self.node(id).map(|_| ())
     }
 
+    /// Get an iterator over every filled node bundled with its NodeId.
+    pub fn nodes<'a>(&'a self) -> Box<Iterator<Item=(I, &'a Node<N, I, M>)> + 'a>{
+        let iter = self.slots.iter()
+            .enumerate()
+            .filter_map(|(i, slot)|
+                match slot.node {
+                    Some(ref node) => Some((I::new(i as NodeIndex, slot.gen_id), node)),
+                    None => None
+                }
+            );
+        Box::new(iter)
+    }
+
     /// Get an immutable reference to a node, if it exists.
     pub fn node(&self, id: I) -> Result<&Node<N, I, M>, NetworkError<I>> {
         match self.slots.get(id.index() as usize) {
@@ -650,6 +663,11 @@ impl<N, I, M> Node<N, I, M>
     /// Return an immutable slice of this node's inputs.
     pub fn inputs(&self) -> &[Option<(I, OutputId)>] {
         self.inputs.as_slice()
+    }
+
+    /// Return the number of outputs this node currently has.
+    pub fn output_count(&self) -> usize {
+        self.outputs.len()
     }
 
     /// Return Ok if the provided output ID is valid for this node.

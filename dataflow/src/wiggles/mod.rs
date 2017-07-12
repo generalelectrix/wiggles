@@ -11,6 +11,7 @@ pub mod blender;
 pub mod fanner;
 
 pub use self::wiggle::{
+    Wiggle,
     WiggleId,
     CompleteWiggle,
     WiggleKnobAddr,
