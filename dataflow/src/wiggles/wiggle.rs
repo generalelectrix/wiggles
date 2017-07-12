@@ -24,7 +24,7 @@ pub trait WiggleProvider {
         &self,
         wiggle_id: WiggleId,
         output_id: OutputId,
-        phase_offset: Unipolar,
+        phase_offset: f64,
         type_hint: Option<Datatype>,
         clocks: &ClockProvider)
         -> Data;
@@ -49,7 +49,7 @@ pub trait Wiggle {
     /// Also provide access to the clock network if this node needs it.
     fn render(
         &self,
-        phase_offset: Unipolar,
+        phase_offset: f64,
         type_hint: Option<Datatype>,
         inputs: &[Option<(WiggleId, OutputId)>],
         output: OutputId,
@@ -107,7 +107,7 @@ impl WiggleProvider for WiggleNetwork {
         &self,
         wiggle_id: WiggleId,
         output_id: OutputId,
-        phase_offset: Unipolar,
+        phase_offset: f64,
         type_hint: Option<Datatype>,
         clocks: &ClockProvider)
         -> Data

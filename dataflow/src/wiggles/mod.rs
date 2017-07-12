@@ -8,6 +8,7 @@ pub mod wiggle;
 mod serde;
 pub mod trial;
 pub mod blender;
+pub mod fanner;
 
 pub use self::wiggle::{
     WiggleId,

@@ -198,7 +198,7 @@ impl Wiggle for Blender {
     /// Multiply every input by its level and then blend them all.
     fn render(
         &self,
-        phase_offset: Unipolar,
+        phase_offset: f64,
         type_hint: Option<Datatype>,
         inputs: &[Option<(WiggleId, OutputId)>],
         _: OutputId,

@@ -74,7 +74,7 @@ impl ClockValue {
 
     /// Return this clock value's phase, shifted by the provided amount.
     /// The output is always in range.
-    pub fn phase_shift(&self, Unipolar(offset): Unipolar) -> Unipolar {
+    pub fn phase_shift(&self, offset: f64) -> Unipolar {
         Unipolar(modulo_one(self.phase + offset))
     }
 }

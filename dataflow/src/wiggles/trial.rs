@@ -109,7 +109,7 @@ impl Wiggle for TestWiggle {
 
     fn render(
         &self,
-        phase_offset: Unipolar,
+        phase_offset: f64,
         type_hint: Option<Datatype>,
         _: &[Option<(WiggleId, OutputId)>],
         _: OutputId,
