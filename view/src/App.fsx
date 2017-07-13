@@ -6,6 +6,7 @@
 #r "../node_modules/fable-elmish-react/Fable.Elmish.React.dll"
 #load "core/Base.fsx"
 #load "core/Knobs.fsx"
+#load "core/Clocks.fsx"
 #load "patcher/Patcher.fsx"
 
 open Fable.Core
@@ -42,12 +43,16 @@ type ShowModel = {
 type ShowServerCommand =
     | Patcher of PatchTypes.PatchServerRequest<WiggleId>
     | Knob of Knobs.ServerCommand<KnobAddress>
+    | Clock of ClockTypes.Command
+    //| Wiggle of WiggleTypes.Command
   
 [<RequireQualifiedAccess>]
 type ShowServerResponse =
     | Error of string
     | Patcher of PatchTypes.PatchServerResponse<WiggleId>
     | Knob of Knobs.ServerResponse<KnobAddress>
+    | Clock of ClockTypes.Response
+    //|Wiggle of WiggleTypes.Response
 
 [<RequireQualifiedAccess>]
 type ShowMessage =

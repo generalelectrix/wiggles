@@ -10,6 +10,7 @@ import { makeGeneric, compareUnions, equalsUnions } from "fable-core/Util";
 import { view as view_1, update as update_1, initCommands as initCommands_2, initialModel, Message as Message_1, Model } from "./patcher/Patcher";
 import _Map from "fable-core/Map";
 import { Model as Model_1 } from "./core/Knob";
+import { Response, Command } from "./core/ClockTypes";
 import { viewOne, update as update_2, initModel as initModel_1, Message, ServerResponse, ServerCommand } from "./core/Knobs";
 import { PatchServerResponse, PatchServerRequest } from "./patcher/PatchTypes";
 import { Position, NavItem, Model as Model_2, Item } from "./core/Navbar";
@@ -105,6 +106,7 @@ export var ShowServerCommand = function () {
         type: "App.ShowServerCommand",
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
+          Clock: [Command],
           Knob: [makeGeneric(ServerCommand, {
             a: "number"
           })],
@@ -144,6 +146,7 @@ export var ShowServerResponse = function () {
         type: "App.ShowServerResponse",
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
+          Clock: [Response],
           Error: ["string"],
           Knob: [makeGeneric(ServerResponse, {
             a: "number"
@@ -227,16 +230,18 @@ export var initCommands = CmdModule.batch(map(function (msg) {
   return CmdModule.ofMsg(msg);
 }, map(function (message) {
   return exclusive(message);
-}, concat(ofArray([initCommands_1(), map(function ($var288) {
-  return new ServerCommand_1("Console", [new ShowServerCommand("Patcher", [$var288])]);
+}, concat(ofArray([initCommands_1(), map(function ($var314) {
+  return new ServerCommand_1("Console", [new ShowServerCommand("Patcher", [$var314])]);
 }, initCommands_2())])))));
 export function wrapShowResponse(message) {
-  if (message.Case === "Patcher") {
+  if (message.Case === "Error") {
+    return new ShowMessage("Error", [message.Fields[0]]);
+  } else if (message.Case === "Patcher") {
     return new ShowMessage("Patcher", [new Message_1("Response", [message.Fields[0]])]);
   } else if (message.Case === "Knob") {
     return new ShowMessage("Knob", [new Message("Response", [message.Fields[0]])]);
   } else {
-    return new ShowMessage("Error", [message.Fields[0]]);
+    throw new Error("/Users/macklin/src/wiggles/view/src/App.fsx", 110, 10);
   }
 }
 export function updateShow(message, model) {
@@ -244,8 +249,8 @@ export function updateShow(message, model) {
     return [new ShowModel(message.Fields[0], model.patcher, model.knobs), CmdModule.none()];
   } else if (message.Case === "Patcher") {
     var patternInput = update_1(message.Fields[0], model.patcher);
-    return [new ShowModel(model.page, patternInput[0], model.knobs), CmdModule.map(function ($var289) {
-      return new Message_2("Inner", [new ShowMessage("Patcher", [$var289])]);
+    return [new ShowModel(model.page, patternInput[0], model.knobs), CmdModule.map(function ($var315) {
+      return new Message_2("Inner", [new ShowMessage("Patcher", [$var315])]);
     }, patternInput[1])];
   } else if (message.Case === "Knob") {
     var updatedKnobs = update_2(message.Fields[0], model.knobs);
@@ -257,11 +262,11 @@ export function updateShow(message, model) {
 export function viewShow(openModal, model, dispatch, dispatchServer) {
   if (model.page.Case === "KnobTest") {
     var knobs = toList(map_1(function (tupledArg) {
-      return viewOne(tupledArg[0], tupledArg[1], function ($var290) {
+      return viewOne(tupledArg[0], tupledArg[1], function ($var316) {
         return dispatch(function (arg0) {
           return new ShowMessage("Knob", [arg0]);
-        }($var290));
-      }, function ($var291) {
+        }($var316));
+      }, function ($var317) {
         return dispatchServer(function () {
           var f = function f(arg0_1) {
             return new ShowServerCommand("Knob", [arg0_1]);
@@ -270,16 +275,16 @@ export function viewShow(openModal, model, dispatch, dispatchServer) {
           return function (tupledArg_1) {
             return liftResponseAndFilter(f, tupledArg_1[0], tupledArg_1[1]);
           };
-        }()($var291));
+        }()($var317));
       });
     }, model.knobs));
     return createElement.apply(undefined, ["div", {}].concat(_toConsumableArray(knobs)));
   } else {
-    return view_1(openModal, model.patcher, function ($var292) {
+    return view_1(openModal, model.patcher, function ($var318) {
       return dispatch(function (arg0_2) {
         return new ShowMessage("Patcher", [arg0_2]);
-      }($var292));
-    }, function ($var293) {
+      }($var318));
+    }, function ($var319) {
       return dispatchServer(function () {
         var f_1 = function f_1(arg0_3) {
           return new ShowServerCommand("Patcher", [arg0_3]);
@@ -288,11 +293,11 @@ export function viewShow(openModal, model, dispatch, dispatchServer) {
         return function (tupledArg_2) {
           return liftResponseAndFilter(f_1, tupledArg_2[0], tupledArg_2[1]);
         };
-      }()($var293));
+      }()($var319));
     });
   }
 }
-var patternInput_144 = openSocket(function (arg0) {
+var patternInput_149 = openSocket(function (arg0) {
   return new Message_2("Socket", [arg0]);
 }, {
   rsp: makeGeneric(ServerResponse_1, {
@@ -304,8 +309,8 @@ var patternInput_144 = openSocket(function (arg0) {
     msg: ShowMessage
   })
 });
-export var subscription = patternInput_144[0];
-export var send = patternInput_144[1];
+export var subscription = patternInput_149[0];
+export var send = patternInput_149[1];
 export function update(msg, model) {
   return update_3(initCommands, function (arg00) {
     send(arg00);

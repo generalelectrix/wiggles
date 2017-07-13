@@ -8,12 +8,10 @@ open Elmish
 open Util
 open DataflowTypes
 
-type ClockId = ClockId of NodeIndex * GenerationId
-
 type SetInput = {
     clock: ClockId
     input: InputId
-    target: Option<ClockId>
+    target: ClockId option
 }
 
 type CreateClock = {
@@ -26,6 +24,7 @@ type RemoveClock = {
     force: bool
 }
 
+[<RequireQualifiedAccess>]
 type Command =
     /// Get a listing of every available type of clock.
     | Classes
@@ -50,6 +49,7 @@ type ClockDescription = {
     inputs: ClockId option list
 }
 
+[<RequireQualifiedAccess>]
 type Response =
     /// A listing of every available type of clock.
     | Classes of string list

@@ -1,5 +1,7 @@
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 import { setType } from "fable-core/Symbol";
@@ -8,10 +10,11 @@ import { compare, compareUnions, equalsUnions, makeGeneric, compareRecords, equa
 import { view as view_1, updateFromValueChange, fromDesc, update as update_1, Message as Message_1, KnobDescription, Data } from "./Knob";
 import { remove, add, tryFind, create } from "fable-core/Map";
 import GenericComparer from "fable-core/GenericComparer";
-import { logError } from "./Util";
+import { transformMapItem, logError } from "./Util";
 import { fsFormat } from "fable-core/String";
 import { ResponseFilter } from "./Types";
 import { createElement } from "react";
+import { filter as filter_1, map as map_1, toList } from "fable-core/Seq";
 export var ValueChange = function () {
   function ValueChange(addr, value) {
     _classCallCheck(this, ValueChange);
@@ -220,12 +223,12 @@ export function operateOnKnob(addr, op, model) {
 export function update(message, model) {
   if (message.Case === "Particular") {
     return function () {
-      var op = function op(model_1) {
+      var f = function f(model_1) {
         return update_1(message.Fields[1], model_1);
       };
 
-      return function (model_2) {
-        return operateOnKnob(message.Fields[0], op, model_2);
+      return function (map) {
+        return transformMapItem(message.Fields[0], f, map);
       };
     }()(model);
   } else if (message.Fields[0].Case === "KnobAdded") {
@@ -235,8 +238,8 @@ export function update(message, model) {
       return remove(message.Fields[0].Fields[0], table);
     }(model);
   } else {
-    return operateOnKnob(message.Fields[0].Fields[0].addr, function (model_3) {
-      return updateFromValueChange(message.Fields[0].Fields[0].value, model_3);
+    return transformMapItem(message.Fields[0].Fields[0].addr, function (model_2) {
+      return updateFromValueChange(message.Fields[0].Fields[0].value, model_2);
     }, model);
   }
 }
@@ -266,4 +269,11 @@ export function view(addr, model, dispatchLocal, dispatchServer) {
   } else {
     return viewOne(addr, matchValue, dispatchLocal, dispatchServer);
   }
+}
+export function viewAllWith(filter, model, dispatchLocal, dispatchServer) {
+  return createElement.apply(undefined, ["div", {}].concat(_toConsumableArray(toList(map_1(function (tupledArg) {
+    return viewOne(tupledArg[0], tupledArg[1], dispatchLocal, dispatchServer);
+  }, filter_1(function (tupledArg_1) {
+    return filter(tupledArg_1[0]);
+  }, model))))));
 }

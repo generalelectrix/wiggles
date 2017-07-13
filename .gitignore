@@ -61,4 +61,7 @@ Cargo.lock
 *.userprefs
 
 # save show tests
-core_console_test/show_library/*
+console/show_library/*
+
+# editor
+.vscode

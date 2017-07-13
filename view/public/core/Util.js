@@ -4,9 +4,10 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { ResultModule, Result as Result_1 } from "fable-elmish/result";
 import { compareUnions, equalsUnions, GenericParam, toString } from "fable-core/Util";
-import { trim } from "fable-core/String";
+import { fsFormat, trim } from "fable-core/String";
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
+import { add, tryFind } from "fable-core/Map";
 export var EnterKey = 13;
 export var EscapeKey = 27;
 export var Result = function (__exports) {
@@ -140,4 +141,23 @@ export function logException(msg, e) {
 }
 export function logError(msg) {
   console.error(msg);
+}
+export function transformMapItem(key, f, map) {
+  var matchValue = function (table) {
+    return tryFind(key, table);
+  }(map);
+
+  if (matchValue == null) {
+    logError(fsFormat("Tried to operate on map key %+A but it is not present.")(function (x) {
+      return x;
+    })(key));
+    return map;
+  } else {
+    return function () {
+      var value = f(matchValue);
+      return function (table_1) {
+        return add(key, value, table_1);
+      };
+    }()(map);
+  }
 }

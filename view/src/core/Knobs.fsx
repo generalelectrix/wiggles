@@ -67,7 +67,7 @@ let update message model =
     match message with
     | Response(ServerResponse.ValueChange(vc)) ->
         model
-        |> operateOnKnob vc.addr (Knob.updateFromValueChange vc.value)
+        |> transformMapItem vc.addr (Knob.updateFromValueChange vc.value)
     | Response(ServerResponse.KnobAdded(ka)) ->
         model
         |> Map.add ka.addr (Knob.fromDesc ka.desc)
@@ -76,7 +76,7 @@ let update message model =
         |> Map.remove addr
     | Particular(addr, msg) ->
         model
-        |> operateOnKnob addr (Knob.update msg)
+        |> transformMapItem addr (Knob.update msg)
 
 /// Render a particular knob using the provided address.
 let viewOne addr knob dispatchLocal dispatchServer =
@@ -95,3 +95,12 @@ let view addr model dispatchLocal dispatchServer =
     | None ->
         logError (sprintf "Could not view knob at address %+A because it is not present." addr)
         R.div [] []
+
+/// Display every knob for which filter addr returns true.
+let viewAllWith filter model dispatchLocal dispatchServer =
+    model
+    |> Map.toSeq
+    |> Seq.filter (fun (addr, knob) -> filter addr)
+    |> Seq.map (fun (addr, knob) -> viewOne addr knob dispatchLocal dispatchServer)
+    |> List.ofSeq
+    |> R.div []

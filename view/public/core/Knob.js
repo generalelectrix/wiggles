@@ -284,8 +284,8 @@ export var Unipolar = function (__exports) {
   };
 
   var view = __exports.view = function (name, model, dispatchLocal, dispatchChange) {
-    return viewSlider(function ($var159) {
-      return new Data("Wiggle", [new Wiggle.Data("Unipolar", [$var159])]);
+    return viewSlider(function ($var162) {
+      return new Data("Wiggle", [new Wiggle.Data("Unipolar", [$var162])]);
     }, name, model, dispatchLocal, dispatchChange);
   };
 
@@ -297,8 +297,8 @@ export var Bipolar = function (__exports) {
   };
 
   var view = __exports.view = function (name, model, dispatchLocal, dispatchChange) {
-    return viewSlider(function ($var160) {
-      return new Data("Wiggle", [new Wiggle.Data("Bipolar", [$var160])]);
+    return viewSlider(function ($var163) {
+      return new Data("Wiggle", [new Wiggle.Data("Bipolar", [$var163])]);
     }, name, model, dispatchLocal, dispatchChange);
   };
 
@@ -310,8 +310,8 @@ export var RateModule = function (__exports) {
   };
 
   var view = __exports.view = function (name, model, dispatchLocal, dispatchChange) {
-    return viewSlider(function ($var161) {
-      return new Data("Rate", [new Rate("Bpm", [$var161])]);
+    return viewSlider(function ($var164) {
+      return new Data("Rate", [new Rate("Bpm", [$var164])]);
     }, name, model, dispatchLocal, dispatchChange);
   };
 
@@ -552,37 +552,37 @@ export var Message = function () {
 setType("Knob.Message", Message);
 export function updateFromValueChange(data, model) {
   var matchValue = [data, model.data];
-  var $var162 = matchValue[0].Case === "Rate" ? matchValue[1].Case === "Rate" ? [2, matchValue[0].Fields[0], matchValue[1].Fields[0]] : [6] : matchValue[0].Case === "Button" ? matchValue[1].Case === "Button" ? [3, matchValue[0].Fields[0]] : [6] : matchValue[0].Case === "UFloat" ? matchValue[1].Case === "UFloat" ? [4, matchValue[0].Fields[0], matchValue[1].Fields[0]] : [6] : matchValue[0].Case === "Picker" ? matchValue[1].Case === "Picker" ? [5, matchValue[0].Fields[0], matchValue[1].Fields[0]] : [6] : matchValue[0].Fields[0].Case === "Bipolar" ? matchValue[1].Case === "Bipolar" ? [1, matchValue[0].Fields[0].Fields[0], matchValue[1].Fields[0]] : [6] : matchValue[1].Case === "Unipolar" ? [0, matchValue[0].Fields[0].Fields[0], matchValue[1].Fields[0]] : [6];
+  var $var165 = matchValue[0].Case === "Rate" ? matchValue[1].Case === "Rate" ? [2, matchValue[0].Fields[0], matchValue[1].Fields[0]] : [6] : matchValue[0].Case === "Button" ? matchValue[1].Case === "Button" ? [3, matchValue[0].Fields[0]] : [6] : matchValue[0].Case === "UFloat" ? matchValue[1].Case === "UFloat" ? [4, matchValue[0].Fields[0], matchValue[1].Fields[0]] : [6] : matchValue[0].Case === "Picker" ? matchValue[1].Case === "Picker" ? [5, matchValue[0].Fields[0], matchValue[1].Fields[0]] : [6] : matchValue[0].Fields[0].Case === "Bipolar" ? matchValue[1].Case === "Bipolar" ? [1, matchValue[0].Fields[0].Fields[0], matchValue[1].Fields[0]] : [6] : matchValue[1].Case === "Unipolar" ? [0, matchValue[0].Fields[0].Fields[0], matchValue[1].Fields[0]] : [6];
 
-  switch ($var162[0]) {
+  switch ($var165[0]) {
     case 0:
-      var newDat = new Model_1($var162[2].uniqueId, $var162[1], $var162[2].min, $var162[2].max, $var162[2].step, $var162[2].detents, $var162[2].inputEventHasFired);
+      var newDat = new Model_1($var165[2].uniqueId, $var165[1], $var165[2].min, $var165[2].max, $var165[2].step, $var165[2].detents, $var165[2].inputEventHasFired);
       var data_1 = new ViewModel("Unipolar", [newDat]);
       return new Model(model.name, data_1);
 
     case 1:
-      var newDat_1 = new Model_1($var162[2].uniqueId, $var162[1], $var162[2].min, $var162[2].max, $var162[2].step, $var162[2].detents, $var162[2].inputEventHasFired);
+      var newDat_1 = new Model_1($var165[2].uniqueId, $var165[1], $var165[2].min, $var165[2].max, $var165[2].step, $var165[2].detents, $var165[2].inputEventHasFired);
       var data_2 = new ViewModel("Bipolar", [newDat_1]);
       return new Model(model.name, data_2);
 
     case 2:
       var newDat_2 = void 0;
-      var value = $var162[1].inBpm();
-      newDat_2 = new Model_1($var162[2].uniqueId, value, $var162[2].min, $var162[2].max, $var162[2].step, $var162[2].detents, $var162[2].inputEventHasFired);
+      var value = $var165[1].inBpm();
+      newDat_2 = new Model_1($var165[2].uniqueId, value, $var165[2].min, $var165[2].max, $var165[2].step, $var165[2].detents, $var165[2].inputEventHasFired);
       var data_3 = new ViewModel("Rate", [newDat_2]);
       return new Model(model.name, data_3);
 
     case 3:
-      var data_4 = new ViewModel("Button", [$var162[1]]);
+      var data_4 = new ViewModel("Button", [$var165[1]]);
       return new Model(model.name, data_4);
 
     case 4:
-      var newDat_3 = new Model_1($var162[2].uniqueId, $var162[1], $var162[2].min, $var162[2].max, $var162[2].step, $var162[2].detents, $var162[2].inputEventHasFired);
+      var newDat_3 = new Model_1($var165[2].uniqueId, $var165[1], $var165[2].min, $var165[2].max, $var165[2].step, $var165[2].detents, $var165[2].inputEventHasFired);
       var data_5 = new ViewModel("UFloat", [newDat_3]);
       return new Model(model.name, data_5);
 
     case 5:
-      var data_6 = new ViewModel("Picker", [Picker.update($var162[1], $var162[2])]);
+      var data_6 = new ViewModel("Picker", [Picker.update($var165[1], $var165[2])]);
       return new Model(model.name, data_6);
 
     case 6:
@@ -640,40 +640,40 @@ export function update(message, model) {
 }
 export function view(model, dispatchLocal, dispatchChange) {
   if (model.data.Case === "Bipolar") {
-    return Bipolar.view(model.name, model.data.Fields[0], function ($var163) {
+    return Bipolar.view(model.name, model.data.Fields[0], function ($var166) {
       return dispatchLocal(function (arg0) {
         return new Message("Slider", [arg0]);
-      }($var163));
-    }, dispatchChange);
-  } else if (model.data.Case === "Rate") {
-    return RateModule.view(model.name, model.data.Fields[0], function ($var164) {
-      return dispatchLocal(function (arg0_1) {
-        return new Message("Slider", [arg0_1]);
-      }($var164));
-    }, dispatchChange);
-  } else if (model.data.Case === "UFloat") {
-    return UFloat.view(model.name, model.data.Fields[0], function ($var165) {
-      return dispatchLocal(function (arg0_2) {
-        return new Message("Slider", [arg0_2]);
-      }($var165));
-    }, dispatchChange);
-  } else if (model.data.Case === "Button") {
-    return Button.view(model.name, model.data.Fields[0], function ($var166) {
-      return dispatchLocal(function (arg0_3) {
-        return new Message("Button", [arg0_3]);
       }($var166));
     }, dispatchChange);
-  } else if (model.data.Case === "Picker") {
-    return Picker.view(model.name, model.data.Fields[0], function ($var167) {
-      return dispatchLocal(function (arg0_4) {
-        return new Message("Picker", [arg0_4]);
+  } else if (model.data.Case === "Rate") {
+    return RateModule.view(model.name, model.data.Fields[0], function ($var167) {
+      return dispatchLocal(function (arg0_1) {
+        return new Message("Slider", [arg0_1]);
       }($var167));
     }, dispatchChange);
+  } else if (model.data.Case === "UFloat") {
+    return UFloat.view(model.name, model.data.Fields[0], function ($var168) {
+      return dispatchLocal(function (arg0_2) {
+        return new Message("Slider", [arg0_2]);
+      }($var168));
+    }, dispatchChange);
+  } else if (model.data.Case === "Button") {
+    return Button.view(model.name, model.data.Fields[0], function ($var169) {
+      return dispatchLocal(function (arg0_3) {
+        return new Message("Button", [arg0_3]);
+      }($var169));
+    }, dispatchChange);
+  } else if (model.data.Case === "Picker") {
+    return Picker.view(model.name, model.data.Fields[0], function ($var170) {
+      return dispatchLocal(function (arg0_4) {
+        return new Message("Picker", [arg0_4]);
+      }($var170));
+    }, dispatchChange);
   } else {
-    return Unipolar.view(model.name, model.data.Fields[0], function ($var168) {
+    return Unipolar.view(model.name, model.data.Fields[0], function ($var171) {
       return dispatchLocal(function (arg0_5) {
         return new Message("Slider", [arg0_5]);
-      }($var168));
+      }($var171));
     }, dispatchChange);
   }
 }

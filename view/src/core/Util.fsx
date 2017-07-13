@@ -109,3 +109,13 @@ let logException msg (e: System.Exception) = Browser.console.error(msg, e)
 
 /// Print an error message to the console.
 let logError msg = Browser.console.error(msg) |> ignore
+
+/// Operate on a particular key's value if it is present, replacing its value with that returned by f.
+/// Log an error if the key is missing and return the same collection unchanged.
+let transformMapItem key f map =
+    match map |> Map.tryFind key with
+    | Some(v) ->
+        map |> Map.add key (f v)
+    | None ->
+        logError (sprintf "Tried to operate on map key %+A but it is not present." key)
+        map

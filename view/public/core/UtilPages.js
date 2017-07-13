@@ -201,10 +201,10 @@ export var LoadShow = function (__exports) {
   var view = __exports.view = function (shows, model, onComplete, dispatch, dispatchServer) {
     var showTable = view_1(map(function (arg0) {
       return new Row("Row", [arg0]);
-    }, shows), model.table, function ($var97) {
+    }, shows), model.table, function ($var100) {
       return dispatch(function (arg0_1) {
         return new Message("Table", [arg0_1]);
-      }($var97));
+      }($var100));
     });
     var loadButton_1 = loadButton(shows, model, onComplete, dispatchServer);
     return createElement("div", {}, Grid.fullRow(ofArray([showTable])), Grid.fullRow(ofArray([loadModeSelector(model.loadSpec, dispatch)])), Grid.layout(ofArray([[1, ofArray([loadButton_1])], [1, ofArray([cancelButton(onComplete)])]])));

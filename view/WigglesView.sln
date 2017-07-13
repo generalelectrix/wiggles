@@ -5,7 +5,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		public\index.html = public\index.html
 		src\App.fsx = src\App.fsx
-		src\CoreTest.fsx = src\CoreTest.fsx
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "core", "core", "{9908BA9D-B0C7-49CF-9E81-F522FE710BE5}"
@@ -27,6 +26,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "core", "core", "{9908BA9D-B
 		src\core\Knobs.fsx = src\core\Knobs.fsx
 		src\core\ClockTypes.fsx = src\core\ClockTypes.fsx
 		src\core\DataflowTypes.fsx = src\core\DataflowTypes.fsx
+		src\core\Clocks.fsx = src\core\Clocks.fsx
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "patcher", "patcher", "{A551274F-F429-4609-8632-493AB759C119}"

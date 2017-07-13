@@ -6,7 +6,20 @@ module DataflowTypes
 open Elmish
 open Util
 
-type NodeIndex = uint32
-type GenerationId = uint32
-type InputId = uint32
-type OutputId = uint32
+type NodeIndex = int
+type GenerationId = int
+type InputId = int
+type OutputId = int
+
+type ClockId = ClockId of NodeIndex * GenerationId
+type WiggleId = WiggleId of NodeIndex * GenerationId
+
+type KnobAddr = int
+
+type ClockKnobAddr = ClockId * KnobAddr
+type WiggleKnobAddr = WiggleId * KnobAddr
+
+/// Top-level knob address type.
+type KnobAddress =
+    | Clock of ClockKnobAddr
+    | Wiggle of WiggleKnobAddr
