@@ -21,18 +21,17 @@ open Socket
 open Bootstrap
 
 // If true, log verbose and interactive messages to the javascript console on every update.
-let withConsoleTrace = true
+let withConsoleTrace = false
+let logSocketTraffic = false
 
 type Page =
     | Patcher
     | KnobTest
     | ClockTest
 
-// FIXME placeholder
-type KnobAddress = int
+type KnobAddress = DataflowTypes.KnobAddress
 
-// FIXME placeholder
-type WiggleId = int
+type WiggleId = DataflowTypes.WiggleId
 
 type ShowModel = {
     page: Page
@@ -85,11 +84,10 @@ let clockTestNavItem: Navbar.Item<ConcreteMessage> = {
 }
 
 let navbar: Navbar.Model<ConcreteMessage> = {
-    leftItems = [
-        Navbar.Dropdown (Base.utilDropdown())
+    leftItems =
+       [Navbar.Dropdown (Base.utilDropdown())
         Navbar.Single knobTestNavItem
-        Navbar.Single clockTestNavItem
-    ]
+        Navbar.Single clockTestNavItem]
     rightItems = [Navbar.Single patcherNavItem]
     activeItem = Navbar.Right(0)
 }
@@ -113,7 +111,7 @@ let initCommands =
     [
         Base.initCommands
         Patcher.initCommands |> List.map (ShowServerCommand.Patcher >> ServerCommand.Console)
-
+        Knobs.initCommands |> List.map (ShowServerCommand.Knob >> ServerCommand.Console)
         Clocks.initCommands |> List.map (ShowServerCommand.Clock >> ServerCommand.Console)
     ]
     |> List.concat
@@ -129,6 +127,7 @@ let wrapShowResponse (message: ShowServerResponse) =
     | ShowServerResponse.Error(e) -> e |> ShowMessage.Error
     | ShowServerResponse.Patcher(m) -> m |> Patcher.Message.Response |> ShowMessage.Patcher
     | ShowServerResponse.Knob(k) -> k |> Knobs.Message.Response |> ShowMessage.Knob
+    | ShowServerResponse.Clock(c) -> c |> Clocks.Message.Response |> ShowMessage.Clock
 
 let updateShow message model : ShowModel * Cmd<ConcreteMessage> =
     match message with
@@ -141,6 +140,9 @@ let updateShow message model : ShowModel * Cmd<ConcreteMessage> =
     | ShowMessage.Knob(msg) ->
         let updatedKnobs = Knobs.update msg model.knobs
         {model with knobs = updatedKnobs}, Cmd.none
+    | ShowMessage.Clock(msg) ->
+        let updatedClocks = Clocks.update msg model.clocks
+        {model with clocks = updatedClocks}, Cmd.none
 
 let viewShow openModal model dispatch dispatchServer =
     match model.page with
@@ -162,10 +164,20 @@ let viewShow openModal model dispatch dispatchServer =
                     ((Base.liftResponseAndFilter ShowServerCommand.Knob) >> dispatchServer))
             |> List.ofSeq
         R.div [] knobs
+    | ClockTest ->
+        Clocks.view
+            model.knobs
+            model.clocks
+            (ShowMessage.Knob >> dispatch)
+            (ShowMessage.Clock >> dispatch)
+            ((Base.liftResponseAndFilter ShowServerCommand.Knob) >> dispatchServer)
+            ((Base.liftResponseAndFilter ShowServerCommand.Clock) >> dispatchServer)
 
 // Launch the websocket we'll use to talk to the server.
 let (subscription, send) =
-    openSocket<ServerResponse<ShowServerResponse>, ConcreteMessage> Base.Message.Socket
+    openSocket<ServerResponse<ShowServerResponse>, ConcreteMessage>
+        logSocketTraffic
+        Base.Message.Socket
 
 let update
         (msg: ConcreteMessage)

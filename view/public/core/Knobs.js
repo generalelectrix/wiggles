@@ -6,85 +6,17 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { compare, compareUnions, equalsUnions, makeGeneric, compareRecords, equalsRecords, GenericParam } from "fable-core/Util";
-import { view as view_1, updateFromValueChange, fromDesc, update as update_1, Message as Message_1, KnobDescription, Data } from "./Knob";
+import { compare, Tuple, makeGeneric, compareUnions, equalsUnions, GenericParam } from "fable-core/Util";
+import { view as view_1, fromDesc, updateFromValueChange, update as update_1, Message as Message_1, KnobDescription, Data } from "./Knob";
+import { map as map_2, ofArray } from "fable-core/List";
+import List from "fable-core/List";
 import { remove, add, tryFind, create } from "fable-core/Map";
 import GenericComparer from "fable-core/GenericComparer";
 import { transformMapItem, logError } from "./Util";
 import { fsFormat } from "fable-core/String";
 import { ResponseFilter } from "./Types";
 import { createElement } from "react";
-import { filter as filter_1, map as map_1, toList } from "fable-core/Seq";
-export var ValueChange = function () {
-  function ValueChange(addr, value) {
-    _classCallCheck(this, ValueChange);
-
-    this.addr = addr;
-    this.value = value;
-  }
-
-  _createClass(ValueChange, [{
-    key: _Symbol.reflection,
-    value: function () {
-      return {
-        type: "Knobs.ValueChange",
-        interfaces: ["FSharpRecord", "System.IEquatable", "System.IComparable"],
-        properties: {
-          addr: GenericParam("a"),
-          value: Data
-        }
-      };
-    }
-  }, {
-    key: "Equals",
-    value: function (other) {
-      return equalsRecords(this, other);
-    }
-  }, {
-    key: "CompareTo",
-    value: function (other) {
-      return compareRecords(this, other);
-    }
-  }]);
-
-  return ValueChange;
-}();
-setType("Knobs.ValueChange", ValueChange);
-export var KnobAdded = function () {
-  function KnobAdded(addr, desc) {
-    _classCallCheck(this, KnobAdded);
-
-    this.addr = addr;
-    this.desc = desc;
-  }
-
-  _createClass(KnobAdded, [{
-    key: _Symbol.reflection,
-    value: function () {
-      return {
-        type: "Knobs.KnobAdded",
-        interfaces: ["FSharpRecord", "System.IEquatable", "System.IComparable"],
-        properties: {
-          addr: GenericParam("a"),
-          desc: KnobDescription
-        }
-      };
-    }
-  }, {
-    key: "Equals",
-    value: function (other) {
-      return equalsRecords(this, other);
-    }
-  }, {
-    key: "CompareTo",
-    value: function (other) {
-      return compareRecords(this, other);
-    }
-  }]);
-
-  return KnobAdded;
-}();
-setType("Knobs.KnobAdded", KnobAdded);
+import { filter as filter_1, map as map_3, toList } from "fable-core/Seq";
 export var ServerCommand = function () {
   function ServerCommand(caseName, fields) {
     _classCallCheck(this, ServerCommand);
@@ -100,9 +32,8 @@ export var ServerCommand = function () {
         type: "Knobs.ServerCommand",
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
-          Set: [makeGeneric(ValueChange, {
-            a: GenericParam("a")
-          })]
+          Set: [GenericParam("a"), Data],
+          State: []
         }
       };
     }
@@ -136,13 +67,12 @@ export var ServerResponse = function () {
         type: "Knobs.ServerResponse",
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
-          KnobAdded: [makeGeneric(KnobAdded, {
-            a: GenericParam("a")
+          Added: [GenericParam("a"), KnobDescription],
+          Removed: [GenericParam("a")],
+          State: [makeGeneric(List, {
+            T: Tuple([GenericParam("a"), KnobDescription])
           })],
-          KnobRemoved: [GenericParam("a")],
-          ValueChange: [makeGeneric(ValueChange, {
-            a: GenericParam("a")
-          })]
+          ValueChange: [GenericParam("a"), Data]
         }
       };
     }
@@ -163,6 +93,9 @@ export var ServerResponse = function () {
 setType("Knobs.ServerResponse", ServerResponse);
 export function initModel() {
   return create(null, new GenericComparer(compare));
+}
+export function initCommands() {
+  return ofArray([new ServerCommand("State", [])]);
 }
 export var Message = function () {
   function Message(caseName, fields) {
@@ -231,21 +164,36 @@ export function update(message, model) {
         return transformMapItem(message.Fields[0], f, map);
       };
     }()(model);
-  } else if (message.Fields[0].Case === "KnobAdded") {
-    return add(message.Fields[0].Fields[0].addr, fromDesc(message.Fields[0].Fields[0].desc), model);
-  } else if (message.Fields[0].Case === "KnobRemoved") {
-    return function (table) {
-      return remove(message.Fields[0].Fields[0], table);
+  } else if (message.Fields[0].Case === "ValueChange") {
+    return function () {
+      var f_1 = function f_1(model_2) {
+        return updateFromValueChange(message.Fields[0].Fields[1], model_2);
+      };
+
+      return function (map_1) {
+        return transformMapItem(message.Fields[0].Fields[0], f_1, map_1);
+      };
+    }()(model);
+  } else if (message.Fields[0].Case === "Added") {
+    return function () {
+      var value = fromDesc(message.Fields[0].Fields[1]);
+      return function (table) {
+        return add(message.Fields[0].Fields[0], value, table);
+      };
+    }()(model);
+  } else if (message.Fields[0].Case === "Removed") {
+    return function (table_1) {
+      return remove(message.Fields[0].Fields[0], table_1);
     }(model);
   } else {
-    return transformMapItem(message.Fields[0].Fields[0].addr, function (model_2) {
-      return updateFromValueChange(message.Fields[0].Fields[0].value, model_2);
-    }, model);
+    return create(map_2(function (tupledArg) {
+      return [tupledArg[0], fromDesc(tupledArg[1])];
+    }, message.Fields[0].Fields[0]), new GenericComparer(compare));
   }
 }
 export function viewOne(addr, knob, dispatchLocal, dispatchServer) {
   var dispatchChange = function dispatchChange(data) {
-    dispatchServer([new ResponseFilter("AllButSelf", []), new ServerCommand("Set", [new ValueChange(addr, data)])]);
+    dispatchServer([new ResponseFilter("AllButSelf", []), new ServerCommand("Set", [addr, data])]);
   };
 
   var dispatchLocal_1 = function dispatchLocal_1(msg) {
@@ -271,7 +219,7 @@ export function view(addr, model, dispatchLocal, dispatchServer) {
   }
 }
 export function viewAllWith(filter, model, dispatchLocal, dispatchServer) {
-  return createElement.apply(undefined, ["div", {}].concat(_toConsumableArray(toList(map_1(function (tupledArg) {
+  return createElement.apply(undefined, ["div", {}].concat(_toConsumableArray(toList(map_3(function (tupledArg) {
     return viewOne(tupledArg[0], tupledArg[1], dispatchLocal, dispatchServer);
   }, filter_1(function (tupledArg_1) {
     return filter(tupledArg_1[0]);

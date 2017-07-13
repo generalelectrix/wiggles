@@ -11,8 +11,8 @@ type GenerationId = int
 type InputId = int
 type OutputId = int
 
-type ClockId = ClockId of NodeIndex * GenerationId
-type WiggleId = WiggleId of NodeIndex * GenerationId
+type ClockId = NodeIndex * GenerationId
+type WiggleId = NodeIndex * GenerationId
 
 type KnobAddr = int
 

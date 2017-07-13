@@ -44,7 +44,7 @@ export var SocketMessage = function () {
   return SocketMessage;
 }();
 setType("Socket.SocketMessage", SocketMessage);
-export function openSocket(wrapSocketMessage, _genArgs) {
+export function openSocket(logTraffic, wrapSocketMessage, _genArgs) {
   var host = "ws://127.0.0.1:2794";
   var ws = new WebSocket(host, "wiggles");
 
@@ -54,15 +54,23 @@ export function openSocket(wrapSocketMessage, _genArgs) {
         ws.addEventListener('message', function (event) {
           try {
             var message = event.data;
-            fsFormat("Received message: %s")(function (x) {
-              console.log(x);
-            })(message);
+
+            if (logTraffic) {
+              fsFormat("Received message: %s")(function (x) {
+                console.log(x);
+              })(message);
+            }
+
             var deserialized = ofJson(message, {
               T: _genArgs.rsp
             });
-            fsFormat("Deserailized to %+A")(function (x) {
-              console.log(x);
-            })(deserialized);
+
+            if (logTraffic) {
+              fsFormat("Deserailized to %+A")(function (x) {
+                console.log(x);
+              })(deserialized);
+            }
+
             dispatch(messageWrapper(deserialized));
           } catch (e) {
             logException("Message deserialization error:", e);
@@ -84,9 +92,12 @@ export function openSocket(wrapSocketMessage, _genArgs) {
 
   var send = function send(msg) {
     var jsonMessage = toJson(msg);
-    fsFormat("Sending message from socket: %s")(function (x) {
-      console.log(x);
-    })(jsonMessage);
+
+    if (logTraffic) {
+      fsFormat("Sending message from socket: %s")(function (x) {
+        console.log(x);
+      })(jsonMessage);
+    }
 
     try {
       ws.send(jsonMessage);

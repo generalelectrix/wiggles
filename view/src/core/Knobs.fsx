@@ -21,26 +21,17 @@ open Util
 open Bootstrap
 open Knob
 
-type ValueChange<'a> = {
-    addr: 'a
-    value: Data
-}
-
-type KnobAdded<'a> = {
-    addr: 'a
-    desc: KnobDescription
-}
-
 [<RequireQualifiedAccess>]
 type ServerCommand<'a> =
-    | Set of ValueChange<'a>
-
+    | State
+    | Set of 'a * Data
 
 [<RequireQualifiedAccess>]
 type ServerResponse<'a> =
-    | ValueChange of ValueChange<'a>
-    | KnobAdded of KnobAdded<'a>
-    | KnobRemoved of 'a
+    | State of ('a * KnobDescription) list
+    | ValueChange of 'a * Data
+    | Added of 'a * KnobDescription
+    | Removed of 'a
 
 //! Immutable binary tree of knobs, indexed by address.
 //! We may need to investigate making this a mutable collection if performance under heavy update
@@ -48,6 +39,8 @@ type ServerResponse<'a> =
 type Model<'a when 'a: comparison> = Map<'a, Knob.Model>
 
 let initModel() = Map.empty
+
+let initCommands = [ServerCommand.State]
 
 type Message<'a> =
     | Response of ServerResponse<'a>
@@ -65,13 +58,17 @@ let operateOnKnob addr op model =
 
 let update message model =
     match message with
-    | Response(ServerResponse.ValueChange(vc)) ->
+    | Response(ServerResponse.State(state)) ->
+        state
+        |> List.map (fun (addr, desc) -> (addr, Knob.fromDesc desc))
+        |> Map.ofList
+    | Response(ServerResponse.ValueChange(addr, value)) ->
         model
-        |> transformMapItem vc.addr (Knob.updateFromValueChange vc.value)
-    | Response(ServerResponse.KnobAdded(ka)) ->
+        |> transformMapItem addr (Knob.updateFromValueChange value)
+    | Response(ServerResponse.Added(addr, desc)) ->
         model
-        |> Map.add ka.addr (Knob.fromDesc ka.desc)
-    | Response(ServerResponse.KnobRemoved(addr)) ->
+        |> Map.add addr (Knob.fromDesc desc)
+    | Response(ServerResponse.Removed(addr)) ->
         model
         |> Map.remove addr
     | Particular(addr, msg) ->
@@ -81,7 +78,7 @@ let update message model =
 /// Render a particular knob using the provided address.
 let viewOne addr knob dispatchLocal dispatchServer =
     let dispatchChange data =
-        (AllButSelf, ServerCommand.Set({addr = addr; value = data}))
+        (AllButSelf, ServerCommand.Set(addr, data))
         |> dispatchServer
     let dispatchLocal msg = (addr, msg) |> Particular |> dispatchLocal 
     Knob.view knob dispatchLocal dispatchChange
@@ -97,7 +94,7 @@ let view addr model dispatchLocal dispatchServer =
         R.div [] []
 
 /// Display every knob for which filter addr returns true.
-let viewAllWith filter model dispatchLocal dispatchServer =
+let viewAllWith filter (model: Model<_>) dispatchLocal dispatchServer =
     model
     |> Map.toSeq
     |> Seq.filter (fun (addr, knob) -> filter addr)

@@ -47,11 +47,11 @@ export function update(message, model) {
 function okButton(model, onOk, onComplete) {
   var onClick = function onClick(_arg1) {
     var matchValue = model.editBox.value;
-    var $var86 = matchValue != null ? matchValue.Case === "Ok" ? [0, matchValue.Fields[0]] : [1] : [1];
+    var $var87 = matchValue != null ? matchValue.Case === "Ok" ? [0, matchValue.Fields[0]] : [1] : [1];
 
-    switch ($var86[0]) {
+    switch ($var87[0]) {
       case 0:
-        onOk($var86[1]);
+        onOk($var87[1]);
         onComplete(null);
         break;
 

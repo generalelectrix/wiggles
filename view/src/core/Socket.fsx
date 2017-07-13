@@ -23,7 +23,7 @@ type SocketMessage =
 /// Returns a subscription that will produce a stream of messages received, as well as a function
 /// that will send a message on the socket.
 /// Pass a function that lifts a socket message into the overall message type for this application.
-let openSocket<'rsp, 'msg> (wrapSocketMessage: SocketMessage -> 'msg) =
+let openSocket<'rsp, 'msg> logTraffic (wrapSocketMessage: SocketMessage -> 'msg) =
 
     // let host = sprintf "ws://%s/" Browser.window.location.host
     let host = "ws://127.0.0.1:2794"
@@ -42,9 +42,9 @@ let openSocket<'rsp, 'msg> (wrapSocketMessage: SocketMessage -> 'msg) =
                 fun (event: Browser.MessageEvent) ->
                     try
                         let message: string = unbox event.data
-                        printfn "Received message: %s" (message)
+                        if logTraffic then printfn "Received message: %s" (message)
                         let deserialized: 'rsp = message |> ofJson
-                        printfn "Deserailized to %+A" deserialized
+                        if logTraffic then printfn "Deserailized to %+A" deserialized
                         deserialized
                         |> messageWrapper
                         |> dispatch
@@ -65,7 +65,7 @@ let openSocket<'rsp, 'msg> (wrapSocketMessage: SocketMessage -> 'msg) =
     /// Send a message using the socket, catching an exception and printing it to the console.
     let send msg =
         let jsonMessage = msg |> toJson
-        printfn "Sending message from socket: %s" jsonMessage
+        if logTraffic then printfn "Sending message from socket: %s" jsonMessage
         try
             ws.send jsonMessage
         with e ->

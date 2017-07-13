@@ -54,7 +54,7 @@ module NewClock =
 
     /// Render clock kind selector drop-down.
     let private viewKindSelector kinds selected dispatch =
-        let options = kinds List.map (fun kind -> R.option [ Value (Case1 kind) ] [ R.str kind ])
+        let options = kinds |> List.map (fun kind -> R.option [ Value (Case1 kind) ] [ R.str kind ])
 
         R.div [] [
             R.select [
@@ -67,6 +67,7 @@ module NewClock =
     /// View the new clock creator.
     let view kinds model dispatchLocal dispatchServer =
         R.div [] [
+            R.h4 [] [R.str "Create new clock"]
             EditBox.view None "" model.name (NameEdit >> dispatchLocal)
             R.label [] [
                 R.str "Kind:"
@@ -77,8 +78,10 @@ module NewClock =
                 OnClick (fun _ ->
                     match model.name with
                     | EditBox.Parsed(name) ->
-                        {kind = model.selectedKind; name = name}
+                        let create: CreateClock = {kind = model.selectedKind; name = name}
+                        create
                         |> Command.Create
+                        |> all
                         |> dispatchServer
                     | _ -> ())
             ] [ R.str "Create" ]
@@ -115,7 +118,10 @@ let updateFromServer response model =
         transformClock id transform
 
     match response with
-    | Response.Classes(cls) -> {model with kinds = cls}
+    | Response.Classes(cls) ->
+        {model with
+            kinds = cls
+            newClock = {model.newClock with selectedKind = List.head cls}}
     | Response.State(state) -> {model with clocks = state |> Map.ofList}
     | Response.New(id, desc) -> {model with clocks = model.clocks |> Map.add id desc}
     | Response.Removed(id) -> {model with clocks = model.clocks |> Map.remove id}
@@ -150,7 +156,10 @@ let private inputSelector clockId inputId (currentValue: ClockId option) (clocks
             [ Value (Case1 (toJson (Some id))) ]
             [ R.str cd.name ]
 
-    let options = clocks |> Map.toSeq |> Seq.map option |> List.ofSeq
+    let options = [
+        yield R.option [ Value (Case1 (toJson None)) ] [ R.str "{disconnected}" ]
+        for clock in clocks |> Map.toSeq do yield option clock
+    ]
 
     R.div [] [
         R.select [
@@ -186,7 +195,9 @@ let viewClock
         | Clock(id, _) when clockId = id -> true
         | _ -> false
 
-    R.div [] [
+    R.div [
+        Style [CSSProp.Width "200px"]
+    ] [
         R.str (sprintf "%s (%s)" clock.name clock.kind)
         inputSelectors
         Knobs.viewAllWith addrFilter knobs dispatchKnobLocal dispatchKnobServer
@@ -201,7 +212,7 @@ let viewAllClocks clocks knobs dispatchKnobLocal dispatchKnobServer dispatchCloc
     |> List.ofSeq
     |> R.div []
 
-let view knobs model dispatchClock dispatchKnob dispatchKnobServer dispatchClockServer =
+let view knobs model dispatchKnob dispatchClock dispatchKnobServer dispatchClockServer =
     // Draw the new clock editor first.
     R.div [] [
         NewClock.view model.kinds model.newClock (NewClock >> dispatchClock) dispatchClockServer

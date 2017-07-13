@@ -349,8 +349,8 @@ function viewNavSection(leftSide, active, items, dispatch, dispatchLocal) {
   return createElement.apply(undefined, ["ul", {
     className: leftSide ? "nav navbar-nav" : "nav navbar-nav navbar-right"
   }].concat(_toConsumableArray(function (list) {
-    return mapIndexed(function ($var25, $var26) {
-      return viewItem($var25)($var26);
+    return mapIndexed(function ($var26, $var27) {
+      return viewItem($var26)($var27);
     }, list);
   }(items))));
 }

@@ -4,8 +4,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { ClockId } from "./DataflowTypes";
-import { Tuple, makeGeneric, compareUnions, equalsUnions, compareRecords, equalsRecords, Option } from "fable-core/Util";
+import { makeGeneric, compareUnions, equalsUnions, compareRecords, equalsRecords, Option, Tuple } from "fable-core/Util";
 import List from "fable-core/List";
 export var SetInput = function () {
   function SetInput(clock, input, target) {
@@ -23,9 +22,9 @@ export var SetInput = function () {
         type: "ClockTypes.SetInput",
         interfaces: ["FSharpRecord", "System.IEquatable", "System.IComparable"],
         properties: {
-          clock: ClockId,
+          clock: Tuple(["number", "number"]),
           input: "number",
-          target: Option(ClockId)
+          target: Option(Tuple(["number", "number"]))
         }
       };
     }
@@ -94,7 +93,7 @@ export var RemoveClock = function () {
         type: "ClockTypes.RemoveClock",
         interfaces: ["FSharpRecord", "System.IEquatable", "System.IComparable"],
         properties: {
-          id: ClockId,
+          id: Tuple(["number", "number"]),
           force: "boolean"
         }
       };
@@ -131,10 +130,10 @@ export var Command = function () {
         cases: {
           Classes: [],
           Create: [CreateClock],
-          PopInput: [ClockId],
-          PushInput: [ClockId],
+          PopInput: [Tuple(["number", "number"])],
+          PushInput: [Tuple(["number", "number"])],
           Remove: [RemoveClock],
-          Rename: [ClockId, "string"],
+          Rename: [Tuple(["number", "number"]), "string"],
           SetInput: [SetInput],
           State: []
         }
@@ -174,7 +173,7 @@ export var ClockDescription = function () {
           name: "string",
           kind: "string",
           inputs: makeGeneric(List, {
-            T: Option(ClockId)
+            T: Option(Tuple(["number", "number"]))
           })
         }
       };
@@ -212,14 +211,14 @@ export var Response = function () {
           Classes: [makeGeneric(List, {
             T: "string"
           })],
-          New: [ClockId, ClockDescription],
-          PopInput: [ClockId],
-          PushInput: [ClockId],
-          Removed: [ClockId],
-          Renamed: [ClockId, "string"],
+          New: [Tuple(["number", "number"]), ClockDescription],
+          PopInput: [Tuple(["number", "number"])],
+          PushInput: [Tuple(["number", "number"])],
+          Removed: [Tuple(["number", "number"])],
+          Renamed: [Tuple(["number", "number"]), "string"],
           SetInput: [SetInput],
           State: [makeGeneric(List, {
-            T: Tuple([ClockId, ClockDescription])
+            T: Tuple([Tuple(["number", "number"]), ClockDescription])
           })]
         }
       };

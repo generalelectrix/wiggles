@@ -126,11 +126,11 @@ export function view(onValueChange, model, dispatch) {
   var onInput = function onInput(e) {
     dispatch(new Message("InputHasFired", []));
     var matchValue = parseFloat(e.target.value);
-    var $var60 = matchValue != null ? matchValue !== model.value ? [0, matchValue] : [1] : [1];
+    var $var61 = matchValue != null ? matchValue !== model.value ? [0, matchValue] : [1] : [1];
 
-    switch ($var60[0]) {
+    switch ($var61[0]) {
       case 0:
-        valueChangeAction($var60[1]);
+        valueChangeAction($var61[1]);
         break;
 
       case 1:
