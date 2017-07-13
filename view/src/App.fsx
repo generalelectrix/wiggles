@@ -26,6 +26,7 @@ let withConsoleTrace = true
 type Page =
     | Patcher
     | KnobTest
+    | ClockTest
 
 // FIXME placeholder
 type KnobAddress = int
@@ -37,6 +38,7 @@ type ShowModel = {
     page: Page
     patcher: Patcher.Model<WiggleId>
     knobs: Knobs.Model<KnobAddress>
+    clocks: Clocks.Model
 }
 
 [<RequireQualifiedAccess>]
@@ -60,6 +62,7 @@ type ShowMessage =
     | SetPage of Page
     | Patcher of Patcher.Message<WiggleId>
     | Knob of Knobs.Message<KnobAddress>
+    | Clock of Clocks.Message
 
 /// Type alias to ensure that generic inference gets the right types all the way down.
 type ConcreteMessage = Base.Message<ShowServerCommand, ShowServerResponse, ShowMessage>
@@ -76,8 +79,17 @@ let knobTestNavItem: Navbar.Item<ConcreteMessage> = {
     onClick = (fun dispatch -> ShowMessage.SetPage KnobTest |> Base.Message.Inner |> dispatch)
 }
 
+let clockTestNavItem: Navbar.Item<ConcreteMessage> = {
+    text = "Clocks"
+    onClick = (fun dispatch -> ShowMessage.SetPage ClockTest |> Base.Message.Inner |> dispatch)
+}
+
 let navbar: Navbar.Model<ConcreteMessage> = {
-    leftItems = [Navbar.Dropdown (Base.utilDropdown()); Navbar.Single knobTestNavItem]
+    leftItems = [
+        Navbar.Dropdown (Base.utilDropdown())
+        Navbar.Single knobTestNavItem
+        Navbar.Single clockTestNavItem
+    ]
     rightItems = [Navbar.Single patcherNavItem]
     activeItem = Navbar.Right(0)
 }
@@ -86,6 +98,7 @@ let initShowModel () = {
     page = Patcher
     patcher = Patcher.initialModel()
     knobs = Knobs.initModel()
+    clocks = Clocks.initModel()
 }
 
 /// Master function to initialize the whole interface.
@@ -97,7 +110,12 @@ let initModel () = (Base.initModel navbar (initShowModel()), Cmd.none)
 /// We assume that these are query-only and the responses are all filtered to just this
 /// client.
 let initCommands =
-    [Base.initCommands; Patcher.initCommands |> List.map (ShowServerCommand.Patcher >> ServerCommand.Console)]
+    [
+        Base.initCommands
+        Patcher.initCommands |> List.map (ShowServerCommand.Patcher >> ServerCommand.Console)
+
+        Clocks.initCommands |> List.map (ShowServerCommand.Clock >> ServerCommand.Console)
+    ]
     |> List.concat
     |> List.map exclusive
     |> List.map Cmd.ofMsg

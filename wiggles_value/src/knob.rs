@@ -131,26 +131,37 @@ impl<T, A> Knobs<A> for Box<T> where T: Knobs<A> + ?Sized {
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum Command<A> {
-    Set{addr: A, value: Data},
+    /// Set the value of a particular knob.
+    Set(A, Data),
+    /// A summary of the state of every knob in this system.
+    State,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 /// Responses related to actions on individual knobs or a knob subsystem.
 pub enum Response<A> {
-    ValueChange{addr: A, value: Data},
-    Added{addr: A, desc: KnobDescription},
+    ValueChange(A, Data),
+    State(Vec<(A, KnobDescription)>),
+    Added(A, KnobDescription),
     Removed(A),
 }
 
 impl<A> Response<A> {
     /// Use the provided function to lift this knob message into a higher address space.
     pub fn lift_address<NewAddr, F>(self, lifter: F) -> Response<NewAddr>
-        where F: FnOnce(A) -> NewAddr
+        where F: Fn(A) -> NewAddr
     {
         use self::Response::*;
         match self {
-            ValueChange{addr, value} => ValueChange{addr: lifter(addr), value: value},
-            Added{addr, desc} => Added{addr: lifter(addr), desc: desc},
+            ValueChange(addr, value) => ValueChange(lifter(addr), value),
+            State(mut descs) => {
+                let mut lifted = Vec::with_capacity(descs.len());
+                for (addr, desc) in descs.drain(..) {
+                    lifted.push((lifter(addr), desc))
+                }
+                State(lifted)
+            }
+            Added(addr, desc) => Added(lifter(addr), desc),
             Removed(addr) => Removed(lifter(addr)),
         }
     }
@@ -210,20 +221,4 @@ pub fn badtype<A>(expected: Datatype, provided: Data) -> Error<A> {
 /// Shorthand for KnobError::InvalidAddress.
 pub fn badaddr<A>(add: A) -> Error<A> {
     Error::InvalidAddress(add)
-}
-
-/// Use a knob subsystem to handle a command message.
-/// This is a standalone function rather than a trait method to make it clear that this is assumed
-/// to sit at only the top layer of a knob address space hierarchy.
-pub fn handle_command<A: Clone, K: Knobs<A>>(
-    knob_system: &mut K,
-    command: Command<A>)
-    -> Result<Messages<Response<A>>, Error<A>>
-{
-    match command {
-        Command::Set{addr, value} => {
-            knob_system.set_knob(addr.clone(), value.clone())?;
-            Ok(Messages::one(Response::ValueChange{addr, value}))
-        }
-    }
 }

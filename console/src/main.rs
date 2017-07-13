@@ -39,8 +39,9 @@ use dataflow_message::wiggle::{
 use wiggles_value::knob::{
     Response as KnobResponse,
     Command as KnobCommand,
-    handle_command as handle_knob_message,
     Error as KnobError,
+    Knobs,
+    KnobDescription,
 };
 
 #[derive(Serialize, Deserialize, Default)]
@@ -152,19 +153,36 @@ impl TestConsole {
     {
         
         let result = match message {
-            KnobCommand::Set{addr, value} => {
+            KnobCommand::Set(addr, value) => {
                 match addr {
                     KnobAddress::Clock(a) => {
-                        let inner_cmd = KnobCommand::Set{addr: a, value: value};
-                        let result = handle_knob_message(&mut self.clocks, inner_cmd);
+                        let result =
+                            self.clocks.set_knob(a.clone(), value.clone())
+                                .map(|()| Messages::one(KnobResponse::ValueChange(a, value)));
                         lift_knob_result(result, &KnobAddress::Clock)
                     }
-                    KnobAddress::Wiggle(w) => {
-                        let inner_cmd = KnobCommand::Set{addr: w, value: value};
-                        let result = handle_knob_message(&mut self.wiggles, inner_cmd);
+                    KnobAddress::Wiggle(a) => {
+                        let result =
+                            self.wiggles.set_knob(a.clone(), value.clone())
+                                .map(|()| Messages::one(KnobResponse::ValueChange(a, value)));
                         lift_knob_result(result, &KnobAddress::Wiggle)
                     }
                 }
+            }
+            KnobCommand::State => {
+                fn lift_state<A, K: Knobs<A>, F>(
+                    knob_system: &K, lifter: F)
+                    -> Vec<(KnobAddress, KnobDescription)>
+                    where F: Fn(A) -> KnobAddress
+                {
+                    let mut knobs = knob_system.knobs();
+                    let knobs = knobs.drain(..).map(|(addr, desc)| (lifter(addr), desc)).collect();
+                    knobs
+                }
+                let mut clock_knobs = lift_state(&self.clocks, KnobAddress::Clock);
+                let wiggle_knobs = lift_state(&self.wiggles, KnobAddress::Wiggle);
+                clock_knobs.extend(wiggle_knobs);
+                Ok(Messages::one(KnobResponse::State(clock_knobs)))
             }
         };
         handle_error(result.map(|r| (r, None)), client_data, Response::Knob)

@@ -295,7 +295,7 @@ impl<S> Patch<S> {
             match self.repatch(id, universe, address) {
                 Ok(_) => Ok(id),
                 Err(e) => {
-                    self.remove(id);
+                    self.remove(id).expect("We just added this fixture, it must be present.");
                     Err(e)
                 }
             }

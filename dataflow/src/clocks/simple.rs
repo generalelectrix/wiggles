@@ -145,7 +145,7 @@ impl Clock for SimpleClock {
             self.should_reset = false;
             // emit a message that we changed this knob value.
             Messages::one(
-                KnobResponse::ValueChange{addr: RESET_KNOB_ADDR, value: Data::Button(false)})
+                KnobResponse::ValueChange(RESET_KNOB_ADDR, Data::Button(false)))
         }
         else {
             // determine how much phase has elapsed

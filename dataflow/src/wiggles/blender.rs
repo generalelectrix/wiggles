@@ -98,10 +98,7 @@ impl Inputs<KnobResponse<KnobAddr>> for Blender {
         // tell the world that there's a new knob available
         // level addresses start at 1
         let addr = self.levels.len() as KnobAddr;
-        Ok(Messages::one(KnobResponse::Added {
-            addr: addr,
-            desc: level_knob_desc(addr),
-        }))
+        Ok(Messages::one(KnobResponse::Added(addr, level_knob_desc(addr))))
     }
     fn try_pop_input(&mut self) -> Result<Messages<KnobResponse<KnobAddr>>, ()> {
         // No use having a mixer with no inputs (perhaps we may want to relax this restriction.)

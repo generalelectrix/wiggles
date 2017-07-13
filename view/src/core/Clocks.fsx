@@ -11,6 +11,7 @@ module Clocks
 #load "Knob.fsx"
 #load "Knobs.fsx"
 #load "Bootstrap.fsx"
+#load "EditBox.fsx"
 
 open Fable.Core
 open Fable.Import
@@ -26,12 +27,82 @@ open Bootstrap
 open DataflowTypes
 open ClockTypes
 
+
+/// Components for creating new clocks.
+module NewClock =
+
+    type Model = {
+        name: EditBox.Model<string>
+        selectedKind: string
+    }
+
+    let initModel() = {
+        name =
+            EditBox.initialModel "Name:" errorIfEmpty (InputType.Text)
+            |> EditBox.setFailed ""
+        selectedKind = ""
+    }
+
+    type Message =
+        | NameEdit of EditBox.Message<string>
+        | SelectKind of string
+
+    let update message (model: Model) =
+        match message with
+        | NameEdit(msg) -> {model with name = EditBox.update msg model.name}
+        | SelectKind(kind) -> {model with selectedKind = kind}
+
+    /// Render clock kind selector drop-down.
+    let private viewKindSelector kinds selected dispatch =
+        let options = kinds List.map (fun kind -> R.option [ Value (Case1 kind) ] [ R.str kind ])
+
+        R.div [] [
+            R.select [
+                Form.Control
+                OnChange (fun e -> !!e.target?value |> SelectKind |> dispatch)
+                Value (Case1 selected)
+            ] options
+        ]
+
+    /// View the new clock creator.
+    let view kinds model dispatchLocal dispatchServer =
+        R.div [] [
+            EditBox.view None "" model.name (NameEdit >> dispatchLocal)
+            R.label [] [
+                R.str "Kind:"
+                viewKindSelector kinds model.selectedKind dispatchLocal
+            ]
+            R.button [
+                Button.Primary
+                OnClick (fun _ ->
+                    match model.name with
+                    | EditBox.Parsed(name) ->
+                        {kind = model.selectedKind; name = name}
+                        |> Command.Create
+                        |> dispatchServer
+                    | _ -> ())
+            ] [ R.str "Create" ]
+        ]
+
 type Clocks = Map<ClockId, ClockDescription>
 
 type Model = {
-    classes: string list
+    kinds: string list
     clocks: Clocks
+    newClock: NewClock.Model
 }
+
+let initModel() = {
+    kinds = []
+    clocks = Map.empty
+    newClock = NewClock.initModel()
+}
+
+let initCommands = [Command.Classes; Command.State]
+
+type Message =
+    | Response of Response
+    | NewClock of NewClock.Message
 
 /// Update this clock collection based on a server response.
 let updateFromServer response model =
@@ -44,7 +115,7 @@ let updateFromServer response model =
         transformClock id transform
 
     match response with
-    | Response.Classes(cls) -> {model with classes = cls}
+    | Response.Classes(cls) -> {model with kinds = cls}
     | Response.State(state) -> {model with clocks = state |> Map.ofList}
     | Response.New(id, desc) -> {model with clocks = model.clocks |> Map.add id desc}
     | Response.Removed(id) -> {model with clocks = model.clocks |> Map.remove id}
@@ -64,6 +135,11 @@ let updateFromServer response model =
                 inputs
             else inputs.[..inputs.Length-1]
         )
+
+let update message model =
+    match message with
+    | Response(r) -> updateFromServer r model
+    | NewClock(msg) -> {model with newClock = NewClock.update msg model.newClock}
 
 /// Render input selector drop-down.
 /// On change, send a input swap command to the server and allow the response to update the state
@@ -88,6 +164,8 @@ let private inputSelector clockId inputId (currentValue: ClockId option) (clocks
         ] options
     ]
 
+/// Render a single clock.
+/// TODO: name edit in-place
 let viewClock
         clockId
         (clock: ClockDescription)
@@ -114,7 +192,7 @@ let viewClock
         Knobs.viewAllWith addrFilter knobs dispatchKnobLocal dispatchKnobServer
     ]
 
-
+/// Render every clock.  Primarily for test purposes.
 let viewAllClocks clocks knobs dispatchKnobLocal dispatchKnobServer dispatchClockServer =
     clocks
     |> Map.toSeq
@@ -122,3 +200,11 @@ let viewAllClocks clocks knobs dispatchKnobLocal dispatchKnobServer dispatchCloc
         viewClock clockId clock clocks knobs dispatchKnobLocal dispatchKnobServer dispatchClockServer)
     |> List.ofSeq
     |> R.div []
+
+let view knobs model dispatchClock dispatchKnob dispatchKnobServer dispatchClockServer =
+    // Draw the new clock editor first.
+    R.div [] [
+        NewClock.view model.kinds model.newClock (NewClock >> dispatchClock) dispatchClockServer
+        viewAllClocks model.clocks knobs dispatchKnob dispatchKnobServer dispatchClockServer
+    ]
+

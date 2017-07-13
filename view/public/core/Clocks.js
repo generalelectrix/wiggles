@@ -6,22 +6,23 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { Option, compareRecords, equalsRecords, makeGeneric } from "fable-core/Util";
-import { slice, ofArray, append, mapIndexed } from "fable-core/List";
+import { compareUnions, equalsUnions, Option, compareRecords, equalsRecords, makeGeneric } from "fable-core/Util";
+import { map as map_2, slice, ofArray, append, mapIndexed } from "fable-core/List";
 import List from "fable-core/List";
 import { remove, add, create } from "fable-core/Map";
 import _Map from "fable-core/Map";
 import { ClockId } from "./DataflowTypes";
 import { Command, SetInput, ClockDescription } from "./ClockTypes";
-import { logError, transformMapItem } from "./Util";
+import { errorIfEmpty, logError, transformMapItem } from "./Util";
 import GenericComparer from "fable-core/GenericComparer";
 import { fsFormat } from "fable-core/String";
 import { createElement } from "react";
 import { ofJson, toJson } from "fable-core/Serialize";
 import { fold, map as map_1, toList } from "fable-core/Seq";
 import { all } from "./Types";
-import { Form } from "./Bootstrap";
+import { InputType, Form } from "./Bootstrap";
 import { viewAllWith } from "./Knobs";
+import { view as view_1, update as update_1, Message as Message_1, initialModel, setFailed, Model as Model_2 } from "./EditBox";
 export var Model = function () {
   function Model(classes, clocks) {
     _classCallCheck(this, Model);
@@ -189,3 +190,117 @@ export function viewClock(clockId, clock, clocks, knobs, dispatchKnobLocal, disp
     return x;
   })(clock.name)(clock.kind), inputSelectors, viewAllWith(addrFilter, knobs, dispatchKnobLocal, dispatchKnobServer));
 }
+export function viewAllClocks(clocks, knobs, dispatchKnobLocal, dispatchKnobServer, dispatchClockServer) {
+  return createElement.apply(undefined, ["div", {}].concat(_toConsumableArray(toList(map_1(function (tupledArg) {
+    return viewClock(tupledArg[0], tupledArg[1], clocks, knobs, dispatchKnobLocal, dispatchKnobServer, dispatchClockServer);
+  }, clocks)))));
+}
+export var NewClock = function (__exports) {
+  var Model_1 = __exports.Model = function () {
+    function Model(name, selectedKind) {
+      _classCallCheck(this, Model);
+
+      this.name = name;
+      this.selectedKind = selectedKind;
+    }
+
+    _createClass(Model, [{
+      key: _Symbol.reflection,
+      value: function () {
+        return {
+          type: "Clocks.NewClock.Model",
+          interfaces: ["FSharpRecord"],
+          properties: {
+            name: makeGeneric(Model_2, {
+              T: "string"
+            }),
+            selectedKind: "string"
+          }
+        };
+      }
+    }]);
+
+    return Model;
+  }();
+
+  setType("Clocks.NewClock.Model", Model);
+
+  var initModel = __exports.initModel = function () {
+    return new Model(setFailed("", initialModel("name", errorIfEmpty, InputType.Text)), "");
+  };
+
+  var Message = __exports.Message = function () {
+    function Message(caseName, fields) {
+      _classCallCheck(this, Message);
+
+      this.Case = caseName;
+      this.Fields = fields;
+    }
+
+    _createClass(Message, [{
+      key: _Symbol.reflection,
+      value: function () {
+        return {
+          type: "Clocks.NewClock.Message",
+          interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
+          cases: {
+            NameEdit: [makeGeneric(Message_1, {
+              T: "string"
+            })],
+            SelectKind: ["string"]
+          }
+        };
+      }
+    }, {
+      key: "Equals",
+      value: function (other) {
+        return equalsUnions(this, other);
+      }
+    }, {
+      key: "CompareTo",
+      value: function (other) {
+        return compareUnions(this, other);
+      }
+    }]);
+
+    return Message;
+  }();
+
+  setType("Clocks.NewClock.Message", Message);
+
+  var update = __exports.update = function (message, model) {
+    if (message.Case === "SelectKind") {
+      return new Model(model.name, message.Fields[0]);
+    } else {
+      return new Model(update_1(message.Fields[0], model.name), model.selectedKind);
+    }
+  };
+
+  var viewKindSelector = function viewKindSelector(kinds, selected, dispatch) {
+    var options = kinds(function (mapping) {
+      return function (list) {
+        return map_2(mapping, list);
+      };
+    })(function (kind) {
+      return createElement("option", {
+        value: kind
+      }, kind);
+    });
+    return createElement("div", {}, createElement.apply(undefined, ["select", fold(function (o, kv) {
+      o[kv[0]] = kv[1];
+      return o;
+    }, {}, [["value", selected], ["onChange", function (e_1) {
+      dispatch(new Message("SelectKind", [e_1.target.value]));
+    }], Form.Control])].concat(_toConsumableArray(options))));
+  };
+
+  var view = __exports.view = function (kinds, model, dispatchLocal, dispatchServer) {
+    return createElement("div", {}, view_1(null, "", model.name, function ($var222) {
+      return dispatchLocal(function (arg0) {
+        return new Message("NameEdit", [arg0]);
+      }($var222));
+    }), createElement("label", {}, "kind", viewKindSelector(kinds, model.selectedKind, dispatchLocal)));
+  };
+
+  return __exports;
+}({});

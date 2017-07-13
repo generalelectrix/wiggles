@@ -69,11 +69,11 @@ export var parseUniverseId = function parseUniverseId(v) {
 };
 export function globalAddressFromOptionals(univOpt, addrOpt) {
   var matchValue = [univOpt, addrOpt];
-  var $var238 = matchValue[0].Case === "Absent" ? matchValue[1].Case === "Absent" ? [1] : [2] : matchValue[1].Case === "Present" ? [0, matchValue[1].Fields[0], matchValue[0].Fields[0]] : [2];
+  var $var251 = matchValue[0].Case === "Absent" ? matchValue[1].Case === "Absent" ? [1] : [2] : matchValue[1].Case === "Present" ? [0, matchValue[1].Fields[0], matchValue[0].Fields[0]] : [2];
 
-  switch ($var238[0]) {
+  switch ($var251[0]) {
     case 0:
-      return new Result("Ok", [[$var238[2], $var238[1]]]);
+      return new Result("Ok", [[$var251[2], $var251[1]]]);
 
     case 1:
       return new Result("Ok", [null]);

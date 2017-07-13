@@ -127,10 +127,7 @@ pub fn handle_message(
             for (addr, desc) in wiggle.knobs() {
                 // Lift the knob addr up into the network domain.
                 let addr = (id, addr);
-                let msg = ResponseWithKnobs::Knob(KnobResponse::Added{
-                    addr: addr,
-                    desc: desc,
-                });
+                let msg = ResponseWithKnobs::Knob(KnobResponse::Added(addr, desc));
                 messages.push(msg);
             }
 
