@@ -35,7 +35,7 @@ impl TestWiggle {
     }
 }
 
-pub const CLASS: &'static str = "test";
+pub const KIND: &'static str = "test";
 
 // TestWiggle has no inputs.
 impl<M> Inputs<M> for TestWiggle {
@@ -94,8 +94,8 @@ impl Knobs<KnobAddr> for TestWiggle {
 }
 
 impl Wiggle for TestWiggle {
-    fn class(&self) -> &'static str {
-        CLASS
+    fn kind(&self) -> &'static str {
+        KIND
     }
 
     fn name(&self) -> &str {

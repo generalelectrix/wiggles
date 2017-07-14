@@ -23,21 +23,21 @@ pub use self::wiggle::{
 // Gather every wiggle declaration up here.
 // We could potentially make this mutable and provide a registration function if we want to be able
 // to load wiggle defintions after compile time.  For now, we'll just keep it static.
-// This collection serves as both a registry to every class of wiggle and how it is created, and
+// This collection serves as both a registry to every kind of wiggle and how it is created, and
 // enables serialization and deserialization of those wiggles once they are hidden behind trait
 // objects.
 
 lazy_static! {
     pub static ref WIGGLES: Vec<&'static str> = vec!(
-        trial::CLASS,
+        trial::KIND,
     );
 }
 
-/// Return an initialized wiggle with the provieded name, if the class matches a registered one.
-/// Return None if the class is unknown.
-pub fn new_wiggle<N: Into<String>>(class: &str, name: N) -> Option<Box<CompleteWiggle>> {
-    match class {
-        trial::CLASS => {
+/// Return an initialized wiggle with the provided name, if the kind matches a registered one.
+/// Return None if the kind is unknown.
+pub fn new_wiggle<N: Into<String>>(kind: &str, name: N) -> Option<Box<CompleteWiggle>> {
+    match kind {
+        trial::KIND => {
             Some(Box::new(trial::TestWiggle::new(name)))
         }
         _ => None,
@@ -47,12 +47,12 @@ pub fn new_wiggle<N: Into<String>>(class: &str, name: N) -> Option<Box<CompleteW
 /// Deserialize a wiggle that has been serialized using our janky mechanism.
 pub fn deserialize(wiggle: SerializableWiggle) -> Result<Box<CompleteWiggle>, SerdeJsonError>
 {
-    match wiggle.class.as_str() {
-        trial::CLASS => {
+    match wiggle.kind.as_str() {
+        trial::KIND => {
             let result: Result<trial::TestWiggle, _> = serde_json::from_str(&wiggle.serialized); 
             handle_deserialize_result(result)
         }
-        _ => Err(SerdeJsonError::custom(format!("Unknown wiggle class: '{}'.", wiggle.class))),
+        _ => Err(SerdeJsonError::custom(format!("Unknown wiggle kind: '{}'.", wiggle.kind))),
     }
 }
 

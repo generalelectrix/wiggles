@@ -101,7 +101,7 @@ let initModel() = {
     newClock = NewClock.initModel()
 }
 
-let initCommands = [Command.Classes; Command.State]
+let initCommands = [Command.Kinds; Command.State]
 
 type Message =
     | Response of Response
@@ -118,7 +118,7 @@ let updateFromServer response model =
         transformClock id transform
 
     match response with
-    | Response.Classes(cls) ->
+    | Response.Kinds(cls) ->
         {model with
             kinds = cls
             newClock = {model.newClock with selectedKind = List.head cls}}

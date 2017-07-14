@@ -27,7 +27,7 @@ pub struct SetInput {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Command {
     /// Get a listing of every available type of clock.
-    Classes,
+    Kinds,
     /// Get a summary of the state of every clock.  Used to initialize new clients.
     State,
     /// Create a new clock.
@@ -57,7 +57,7 @@ impl ClockDescription {
         let clock = node.inner();
         ClockDescription {
             name: Arc::new(clock.name().to_string()),
-            kind: Arc::new(clock.class().to_string()),
+            kind: Arc::new(clock.kind().to_string()),
             inputs: inputs,
         }
     }
@@ -67,7 +67,7 @@ impl ClockDescription {
 /// Response messages related to clock actions.
 pub enum Response {
     /// A listing of every available type of clock.
-    Classes(Arc<Vec<String>>),
+    Kinds(Arc<Vec<String>>),
     /// A summary of the state of every clock.
     State(Vec<(ClockId, ClockDescription)>),
     /// A new clock has been added.
@@ -95,7 +95,7 @@ pub enum ResponseWithKnobs {
 }
 
 lazy_static! {
-    static ref CLASSES: Arc<Vec<String>> = Arc::new(CLOCKS.iter().map(|s| s.to_string()).collect());
+    static ref KINDS: Arc<Vec<String>> = Arc::new(CLOCKS.iter().map(|s| s.to_string()).collect());
 }
 
 const o0: OutputId = OutputId(0);
@@ -114,11 +114,11 @@ pub fn handle_message(
                 .collect();
             Ok((Messages::one(ResponseWithKnobs::Clock(Response::State(state))), None))
         }
-        Classes => Ok((
-            Messages::one(ResponseWithKnobs::Clock(Response::Classes(CLASSES.clone()))),
+        Kinds => Ok((
+            Messages::one(ResponseWithKnobs::Clock(Response::Kinds(KINDS.clone()))),
             None)),
         Create{kind, name} => {
-            let node = new_clock(&kind, name).ok_or(Error::UnknownClass(kind.clone()))?;
+            let node = new_clock(&kind, name).ok_or(Error::UnknownKind(kind.clone()))?;
             let (id, node) = network.add(node);
             let clock = node.inner();
             // emit messages for all of the new knobs
@@ -177,7 +177,7 @@ pub fn handle_message(
 
 #[derive(Debug)]
 pub enum Error {
-    UnknownClass(String),
+    UnknownKind(String),
     Network(NetworkError<ClockId>),
 }
 
@@ -185,7 +185,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::Error::*;
         match *self {
-            UnknownClass(ref class) => write!(f, "Unknown clock class: '{}'.", class),
+            UnknownKind(ref kind) => write!(f, "Unknown clock kind: '{}'.", kind),
             Network(ref e) => e.fmt(f),
         }
     }
@@ -195,7 +195,7 @@ impl error::Error for Error {
     fn description(&self) -> &str {
         use self::Error::*;
         match *self {
-            UnknownClass(_) => "Unknown clock class.",
+            UnknownKind(_) => "Unknown clock kind.",
             Network(ref e) => e.description(),
         }
     }
@@ -203,7 +203,7 @@ impl error::Error for Error {
     fn cause(&self) -> Option<&error::Error> {
         use self::Error::*;
         match *self {
-            UnknownClass(_) => None,
+            UnknownKind(_) => None,
             Network(ref e) => Some(e),
         }
     }

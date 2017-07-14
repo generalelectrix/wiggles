@@ -38,7 +38,7 @@ impl SimpleClock {
     }
 }
 
-pub const CLASS: &'static str = "simple";
+pub const KIND: &'static str = "simple";
 
 impl<M> Inputs<M> for SimpleClock {
     /// Simple clock always has no inputs.
@@ -120,11 +120,11 @@ impl Knobs<KnobAddr> for SimpleClock {
 }
 
 impl Clock for SimpleClock {
-    /// A string name for this class of clock.
+    /// A string name for this kind of clock.
     /// This string will be used during serialization and deserialization to uniquely identify
     /// how to reconstruct this clock from a serialized form.
-    fn class(&self) -> &'static str {
-        CLASS
+    fn kind(&self) -> &'static str {
+        KIND
     }
 
     /// Return the name that has been assigned to this clock.

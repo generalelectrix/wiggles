@@ -103,10 +103,10 @@ pub trait ClockProvider {
 }
 
 pub trait Clock {
-    /// A string name for this class of clock.
+    /// A string name for this kind of clock.
     /// This string will be used during serialization and deserialization to uniquely identify
     /// how to reconstruct this clock from a serialized form.
-    fn class(&self) -> &'static str;
+    fn kind(&self) -> &'static str;
 
     /// Return the name that has been assigned to this clock.
     fn name(&self) -> &str;
@@ -129,7 +129,7 @@ pub trait Clock {
 
     fn serializable(&self) -> Result<SerializableClock, SerdeJsonError> {
         Ok(SerializableClock {
-            class: self.class().to_string(),
+            kind: self.kind().to_string(),
             serialized: self.as_json()?,
         })
     }

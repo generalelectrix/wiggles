@@ -26,9 +26,9 @@ pub struct SetInput {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Command {
-    Classes,
+    Kinds,
     State,
-    Create{class: String, name: String},
+    Create{kind: String, name: String},
     Remove{id: WiggleId, force: bool},
     Rename(WiggleId, String),
     SetInput(SetInput),
@@ -48,7 +48,7 @@ pub enum UsesClock {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WiggleDescription {
     name: Arc<String>,
-    class: Arc<String>,
+    kind: Arc<String>,
     inputs: Vec<Option<(WiggleId, OutputId)>>,
     outputs: usize,
     clock: UsesClock,
@@ -63,7 +63,7 @@ impl WiggleDescription {
         };
         WiggleDescription {
             name: Arc::new(wiggle.name().to_string()),
-            class: Arc::new(wiggle.class().to_string()),
+            kind: Arc::new(wiggle.kind().to_string()),
             inputs: node.inputs().to_vec(),
             outputs: node.output_count(),
             clock: clock_spec,
@@ -74,7 +74,7 @@ impl WiggleDescription {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// Response messages related to wiggle actions.
 pub enum Response {
-    Classes(Arc<Vec<String>>),
+    Kinds(Arc<Vec<String>>),
     State(Vec<(WiggleId, WiggleDescription)>),
     New{id: WiggleId, desc: WiggleDescription},
     Removed(WiggleId),
@@ -98,7 +98,7 @@ pub enum ResponseWithKnobs {
 }
 
 lazy_static! {
-    static ref CLASSES: Arc<Vec<String>> = Arc::new(WIGGLES.iter().map(|s| s.to_string()).collect());
+    static ref KINDS: Arc<Vec<String>> = Arc::new(WIGGLES.iter().map(|s| s.to_string()).collect());
 }
 
 /// Apply the action dictated by a wiggle command to this wiggle network.
@@ -109,8 +109,8 @@ pub fn handle_message(
 {
     use self::Command::*;
     match command {
-        Classes => Ok((
-            Messages::one(ResponseWithKnobs::Wiggle(Response::Classes(CLASSES.clone()))),
+        Kinds => Ok((
+            Messages::one(ResponseWithKnobs::Wiggle(Response::Kinds(KINDS.clone()))),
             None)),
         State => {
             let state = network.nodes()
@@ -118,8 +118,8 @@ pub fn handle_message(
                 .collect();
             Ok((Messages::one(ResponseWithKnobs::Wiggle(Response::State(state))), None))
         }
-        Create{class, name} => {
-            let node = new_wiggle(&class, name).ok_or(Error::UnknownClass(class.clone()))?;
+        Create{kind, name} => {
+            let node = new_wiggle(&kind, name).ok_or(Error::UnknownKind(kind.clone()))?;
             let (id, node) = network.add(node);
             let wiggle = node.inner();
             // emit messages for all of the new knobs
@@ -204,7 +204,7 @@ fn handle_io_change<F>(
 
 #[derive(Debug)]
 pub enum Error {
-    UnknownClass(String),
+    UnknownKind(String),
     NoClock(WiggleId),
     Network(NetworkError<WiggleId>),
 }
@@ -213,7 +213,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::Error::*;
         match *self {
-            UnknownClass(ref class) => write!(f, "Unknown wiggle class: '{}'.", class),
+            UnknownKind(ref kind) => write!(f, "Unknown wiggle kind: '{}'.", kind),
             NoClock(ref id) => write!(f, "Wiggle {} does not use a clock input.", id),
             Network(ref e) => e.fmt(f),
         }
@@ -224,7 +224,7 @@ impl error::Error for Error {
     fn description(&self) -> &str {
         use self::Error::*;
         match *self {
-            UnknownClass(_) => "Unknown wiggle class.",
+            UnknownKind(_) => "Unknown wiggle kind.",
             NoClock(_) => "This wiggle does not use a clock input.",
             Network(ref e) => e.description(),
         }
@@ -233,7 +233,7 @@ impl error::Error for Error {
     fn cause(&self) -> Option<&error::Error> {
         use self::Error::*;
         match *self {
-            UnknownClass(_) => None,
+            UnknownKind(_) => None,
             NoClock(_) => None,
             Network(ref e) => Some(e),
         }

@@ -27,7 +27,7 @@ type RemoveClock = {
 [<RequireQualifiedAccess>]
 type Command =
     /// Get a listing of every available type of clock.
-    | Classes
+    | Kinds
     /// Get a summary of the state of every clock.  Used to initialize new clients.
     | State
     /// Create a new clock.
@@ -52,7 +52,7 @@ type ClockDescription = {
 [<RequireQualifiedAccess>]
 type Response =
     /// A listing of every available type of clock.
-    | Classes of string list
+    | Kinds of string list
     /// A summary of the state of every clock.
     | State of (ClockId * ClockDescription) list
     /// A new clock has been added.

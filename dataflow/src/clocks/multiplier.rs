@@ -68,7 +68,7 @@ impl PartialEq for ClockMultiplier {
     }
 }
 
-pub const CLASS: &'static str = "multiplier";
+pub const KIND: &'static str = "multiplier";
 
 impl<M> Inputs<M> for ClockMultiplier {
     /// Multiplier always multiplies a single input.
@@ -147,11 +147,11 @@ impl Knobs<KnobAddr> for ClockMultiplier {
 }
 
 impl Clock for ClockMultiplier {
-    /// A string name for this class of clock.
+    /// A string name for this kind of clock.
     /// This string will be used during serialization and deserialization to uniquely identify
     /// how to reconstruct this clock from a serialized form.
-    fn class(&self) -> &'static str {
-        CLASS
+    fn kind(&self) -> &'static str {
+        KIND
     }
 
     /// Return the name that has been assigned to this clock.

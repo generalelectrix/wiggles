@@ -42,7 +42,7 @@ impl Fanner {
     }
 }
 
-pub const CLASS: &'static str = "fanner";
+pub const KIND: &'static str = "fanner";
 
 lazy_static! {
     static ref SPREAD_KNOB_DESC: KnobDescription = KnobDescription {
@@ -110,8 +110,8 @@ impl Knobs<KnobAddr> for Fanner {
 }
 
 impl Wiggle for Fanner {
-    fn class(&self) -> &'static str {
-        CLASS
+    fn kind(&self) -> &'static str {
+        KIND
     }
 
     fn name(&self) -> &str {

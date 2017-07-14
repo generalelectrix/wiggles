@@ -9,7 +9,7 @@ use serde::de::{Error as DeError};
 #[derive(Debug, Serialize, Deserialize)]
 /// A wiggle in JSON-serialized form.
 pub struct SerializableWiggle {
-    pub class: String,
+    pub kind: String,
     pub serialized: String,
 }
 

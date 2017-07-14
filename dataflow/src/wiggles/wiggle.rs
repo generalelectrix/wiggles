@@ -31,10 +31,10 @@ pub trait WiggleProvider {
 }
 
 pub trait Wiggle {
-    /// A string name for this class of wiggle.
+    /// A string name for this kind of wiggle.
     /// This string will be used during serialization and deserialization to uniquely identify
     /// how to reconstruct this wiggle from a serialized form.
-    fn class(&self) -> &'static str;
+    fn kind(&self) -> &'static str;
 
     /// Return the name that has been assigned to this wiggle.
     fn name(&self) -> &str;
@@ -75,7 +75,7 @@ pub trait Wiggle {
 
     fn serializable(&self) -> Result<SerializableWiggle, SerdeJsonError> {
         Ok(SerializableWiggle {
-            class: self.class().to_string(),
+            kind: self.kind().to_string(),
             serialized: self.as_json()?,
         })
     }

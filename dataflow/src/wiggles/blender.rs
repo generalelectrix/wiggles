@@ -78,7 +78,7 @@ impl Blender {
     }
 }
 
-pub const CLASS: &'static str = "blender";
+pub const KIND: &'static str = "blender";
 
 fn level_knob_desc(chan: KnobAddr) -> KnobDescription {
     KnobDescription {
@@ -179,8 +179,8 @@ impl Knobs<KnobAddr> for Blender {
 }
 
 impl Wiggle for Blender {
-    fn class(&self) -> &'static str {
-        CLASS
+    fn kind(&self) -> &'static str {
+        KIND
     }
 
     fn name(&self) -> &str {

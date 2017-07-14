@@ -27,6 +27,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "core", "core", "{9908BA9D-B
 		src\core\ClockTypes.fsx = src\core\ClockTypes.fsx
 		src\core\DataflowTypes.fsx = src\core\DataflowTypes.fsx
 		src\core\Clocks.fsx = src\core\Clocks.fsx
+		src\core\Wiggles.fsx = src\core\Wiggles.fsx
+		src\core\WiggleTypes.fsx = src\core\WiggleTypes.fsx
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "patcher", "patcher", "{A551274F-F429-4609-8632-493AB759C119}"
@@ -36,6 +38,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "patcher", "patcher", "{A551
 		src\patcher\Patcher.fsx = src\patcher\Patcher.fsx
 		src\patcher\PatchTypes.fsx = src\patcher\PatchTypes.fsx
 		src\patcher\Universes.fsx = src\patcher\Universes.fsx
+		src\patcher\Controls.fsx = src\patcher\Controls.fsx
 	EndProjectSection
 EndProject
 Global

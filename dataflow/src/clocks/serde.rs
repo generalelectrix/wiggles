@@ -13,7 +13,7 @@ use serde::de::{Error as DeError};
 #[derive(Debug, Serialize, Deserialize)]
 /// A clock in JSON-serialized form.
 pub struct SerializableClock {
-    pub class: String,
+    pub kind: String,
     pub serialized: String,
 }
 
