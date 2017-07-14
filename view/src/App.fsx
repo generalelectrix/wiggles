@@ -7,6 +7,7 @@
 #load "core/Base.fsx"
 #load "core/Knobs.fsx"
 #load "core/Clocks.fsx"
+#load "core/Wiggles.fsx"
 #load "patcher/Patcher.fsx"
 
 open Fable.Core
@@ -28,6 +29,7 @@ type Page =
     | Patcher
     | KnobTest
     | ClockTest
+    | WiggleTest
 
 type KnobAddress = DataflowTypes.KnobAddress
 
@@ -38,6 +40,7 @@ type ShowModel = {
     patcher: Patcher.Model<WiggleId>
     knobs: Knobs.Model<KnobAddress>
     clocks: Clocks.Model
+    wiggles: Wiggles.Model
 }
 
 [<RequireQualifiedAccess>]
@@ -45,7 +48,7 @@ type ShowServerCommand =
     | Patcher of PatchTypes.PatchServerRequest<WiggleId>
     | Knob of Knobs.ServerCommand<KnobAddress>
     | Clock of ClockTypes.Command
-    //| Wiggle of WiggleTypes.Command
+    | Wiggle of WiggleTypes.Command
   
 [<RequireQualifiedAccess>]
 type ShowServerResponse =
@@ -53,7 +56,7 @@ type ShowServerResponse =
     | Patcher of PatchTypes.PatchServerResponse<WiggleId>
     | Knob of Knobs.ServerResponse<KnobAddress>
     | Clock of ClockTypes.Response
-    //|Wiggle of WiggleTypes.Response
+    |Wiggle of WiggleTypes.Response
 
 [<RequireQualifiedAccess>]
 type ShowMessage =
@@ -62,33 +65,34 @@ type ShowMessage =
     | Patcher of Patcher.Message<WiggleId>
     | Knob of Knobs.Message<KnobAddress>
     | Clock of Clocks.Message
+    | Wiggle of Wiggles.Message
 
 /// Type alias to ensure that generic inference gets the right types all the way down.
 type ConcreteMessage = Base.Message<ShowServerCommand, ShowServerResponse, ShowMessage>
 
 type ConcreteModel = Base.Model<ShowModel, ConcreteMessage>
 
-let patcherNavItem: Navbar.Item<ConcreteMessage> = {
-    text = "Patch"
-    onClick = (fun dispatch -> ShowMessage.SetPage Patcher |> Base.Message.Inner |> dispatch)
+let pageNavItem name page : Navbar.Item<ConcreteMessage> = {
+    text = name
+    onClick = (fun dispatch -> ShowMessage.SetPage page |> Base.Message.Inner |> dispatch)
 }
 
-let knobTestNavItem: Navbar.Item<ConcreteMessage> = {
-    text = "Knobs"
-    onClick = (fun dispatch -> ShowMessage.SetPage KnobTest |> Base.Message.Inner |> dispatch)
-}
+let patcherNavItem = 
 
-let clockTestNavItem: Navbar.Item<ConcreteMessage> = {
-    text = "Clocks"
-    onClick = (fun dispatch -> ShowMessage.SetPage ClockTest |> Base.Message.Inner |> dispatch)
-}
+let knobTestNavItem = 
+
+let clockTestNavItem = 
+
+let wiggleTestNavItem = 
+
 
 let navbar: Navbar.Model<ConcreteMessage> = {
     leftItems =
        [Navbar.Dropdown (Base.utilDropdown())
-        Navbar.Single knobTestNavItem
-        Navbar.Single clockTestNavItem]
-    rightItems = [Navbar.Single patcherNavItem]
+        Navbar.Single (pageNavItem "Knobs" KnobTest)
+        Navbar.Single (pageNavItem "Clocks" ClockTest)
+        Navbar.Single (pageNavItem "Wiggles" WiggleTest)]
+    rightItems = [Navbar.Single (pageNavItem "Patch" KnobTest)]
     activeItem = Navbar.Right(0)
 }
 
@@ -97,6 +101,7 @@ let initShowModel () = {
     patcher = Patcher.initialModel()
     knobs = Knobs.initModel()
     clocks = Clocks.initModel()
+    wiggles = Wiggles.initModel()
 }
 
 /// Master function to initialize the whole interface.
@@ -113,6 +118,7 @@ let initCommands =
         Patcher.initCommands |> List.map (ShowServerCommand.Patcher >> ServerCommand.Console)
         Knobs.initCommands |> List.map (ShowServerCommand.Knob >> ServerCommand.Console)
         Clocks.initCommands |> List.map (ShowServerCommand.Clock >> ServerCommand.Console)
+        Wiggles.initCommands |> List.map (ShowServerCommand.Wiggle >> ServerCommand.Console)
     ]
     |> List.concat
     |> List.map exclusive
@@ -128,6 +134,7 @@ let wrapShowResponse (message: ShowServerResponse) =
     | ShowServerResponse.Patcher(m) -> m |> Patcher.Message.Response |> ShowMessage.Patcher
     | ShowServerResponse.Knob(k) -> k |> Knobs.Message.Response |> ShowMessage.Knob
     | ShowServerResponse.Clock(c) -> c |> Clocks.Message.Response |> ShowMessage.Clock
+    | ShowServerResponse.Wiggle(c) -> c |> Clocks.Message.Response |> ShowMessage.Wiggle
 
 let updateShow message model : ShowModel * Cmd<ConcreteMessage> =
     match message with
@@ -143,6 +150,9 @@ let updateShow message model : ShowModel * Cmd<ConcreteMessage> =
     | ShowMessage.Clock(msg) ->
         let updatedClocks = Clocks.update msg model.clocks
         {model with clocks = updatedClocks}, Cmd.none
+    | ShowMessage.Wiggle(msg) ->
+        let updatedWiggles = Wiggle.update msg model.wiggles
+        {model with wiggles = updatedWiggles}, Cmd.none
 
 let viewShow openModal model dispatch dispatchServer =
     match model.page with
@@ -172,6 +182,15 @@ let viewShow openModal model dispatch dispatchServer =
             (ShowMessage.Clock >> dispatch)
             ((Base.liftResponseAndFilter ShowServerCommand.Knob) >> dispatchServer)
             ((Base.liftResponseAndFilter ShowServerCommand.Clock) >> dispatchServer)
+    | WiggleTest ->
+        Wiggles.view
+            model.knobs
+            model.clocks
+            model.wiggles
+            (ShowMessage.Knob >> dispatch)
+            (ShowMessage.Wiggle >> dispatch)
+            ((Base.liftResponseAndFilter ShowServerCommand.Knob) >> dispatchServer)
+            ((Base.liftResponseAndFilter ShowServerCommand.Wiggle) >> dispatchServer)
 
 // Launch the websocket we'll use to talk to the server.
 let (subscription, send) =

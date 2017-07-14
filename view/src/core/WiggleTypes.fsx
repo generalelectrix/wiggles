@@ -1,5 +1,5 @@
 /// Command and response types for the wiggle network.
-module ClockTypes
+module WiggleTypes
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #load "Util.fsx"
 #load "DataflowTypes.fsx"
