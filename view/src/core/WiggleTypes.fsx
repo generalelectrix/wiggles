@@ -1,0 +1,79 @@
+/// Command and response types for the wiggle network.
+module ClockTypes
+#r "../node_modules/fable-elmish/Fable.Elmish.dll"
+#load "Util.fsx"
+#load "DataflowTypes.fsx"
+
+open Elmish
+open Util
+open DataflowTypes
+
+type SetInput = {
+    wiggle: WiggleId
+    input: InputId
+    target: (WiggleId * OutputId) option
+}
+
+type CreateWiggle = {
+    kind: string
+    name: string
+}
+
+type RemoveWiggle = {
+    id: WiggleId
+    force: bool
+}
+
+[<RequireQualifiedAccess>]
+type Command =
+    /// Get a listing of every available type of wiggle.
+    | Kinds
+    /// Get a summary of the state of every wiggle.  Used to initialize new clients.
+    | State
+    /// Create a new wiggle.
+    | Create of CreateWiggle
+    /// Delete an existing wiggle.
+    | Remove of RemoveWiggle
+    /// Rename a wiggle.
+    | Rename of WiggleId * string
+    /// Assign the input of a wiggle.
+    | SetInput of SetInput
+    /// Add a new input to a wiggle.
+    | PushInput of WiggleId
+    /// Remove an input from a wiggle.
+    | PopInput of WiggleId
+    /// Add a new output to a wiggle.
+    | PushOutput of WiggleId
+    /// Remove an output from a wiggle.
+    | PopOutput of WiggleId
+    /// Set the clock source for a wiggle.
+    | SetClock of WiggleId * ClockId option
+
+type UsesClock =
+    | Yes of ClockId option
+
+type ClockDescription = {
+    name: string
+    kind: string
+    inputs: ClockId option list
+}
+
+[<RequireQualifiedAccess>]
+type Response =
+    /// A listing of every available type of clock.
+    | Classes of string list
+    /// A summary of the state of every clock.
+    | State of (ClockId * ClockDescription) list
+    /// A new clock has been added.
+    | New of ClockId * ClockDescription
+    /// A clock has been deleted.
+    | Removed of ClockId
+    /// A clock has been renamed.
+    | Renamed of ClockId * string
+    /// A clock's input has been reassigned.
+    | SetInput of SetInput
+    /// A clock has had a new input added.
+    | PushInput of ClockId
+    /// A clock has had an input removed.
+    | PopInput of ClockId
+
