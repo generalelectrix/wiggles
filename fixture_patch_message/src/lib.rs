@@ -1,5 +1,5 @@
 //! Message passing based API for the fixture patch.
-
+extern crate wiggles_value;
 extern crate fixture_patch;
 extern crate console_server;
 #[macro_use] extern crate serde_derive;
@@ -11,6 +11,7 @@ use fixture_patch::*;
 use console_server::reactor::Messages;
 use console_server::clients::ResponseFilter;
 use rust_dmx::{open_port, available_ports, Error as DmxPortError};
+use wiggles_value::Datatype;
 
 type GlobalAddress = (UniverseId, DmxAddress);
 
@@ -23,24 +24,43 @@ pub struct PatchRequest {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct ControlSourceDescription<S> {
+    name: String,
+    data_type: Datatype,
+    source: Option<S>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct PatchItemDescription<S> {
     id: FixtureId,
     name: String,
     kind: String,
     address: Option<GlobalAddress>,
     channel_count: DmxChannelCount,
-    control_sources: Vec<Option<S>>,
+    control_sources: Vec<ControlSourceDescription<S>>,
 }
 
 impl<'a, S: Clone> From<&'a PatchItem<S>> for PatchItemDescription<S> {
     fn from(item: &'a PatchItem<S>) -> Self {
+        let control_sources =
+            item.controls().zip(item.control_sources().iter())
+                .map(|(control, source)| {
+                    ControlSourceDescription {
+                        name: control.name().to_string(),
+                        data_type: control.data_type(),
+                        source: source.clone(),
+                    }
+                })
+                .collect();
+
         PatchItemDescription {
             id: item.id(),
             name: item.name.clone(),
             kind: item.kind().to_string(),
             address: item.global_address(),
             channel_count: item.channel_count(),
-            control_sources: item.control_sources().to_vec(),
+            control_sources: control_sources,
         }
     }
 }

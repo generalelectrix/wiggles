@@ -2,6 +2,7 @@ module PatchTypes
 #r "../node_modules/fable-elmish/Fable.Elmish.dll"
 #load "../core/Util.fsx"
 #load "../core/Knob.fsx"
+#load "../core/WiggleTypes.fsx"
 
 open Elmish
 open Util
@@ -41,13 +42,19 @@ type PatchRequest = {
     address: GlobalAddress option;
 }
 
+type ControlSourceDescription<'s> = {
+    name: string
+    dataType: WiggleTypes.Datatype
+    source: 's option
+}
+
 type PatchItem<'s> = {
     id: FixtureId;
     name: string;
     kind: string;
     address: GlobalAddress option;
     channelCount: int;
-    controlSources: 's option list}
+    controlSources: ControlSourceDescription<'s> list}
     with
     member this.universe = this.address |> Option.map fst
     member this.dmxAddress = this.address |> Option.map snd
@@ -59,7 +66,8 @@ type UnivWithPort = {
 }
 
 type Port = string * string
-    
+   
+type ControlId = int
 
 /// All possible requests we can make to the patch server.
 [<RequireQualifiedAccess>]
@@ -85,7 +93,7 @@ type PatchServerRequest<'s> =
     /// List the available DMX ports.
     | AvailablePorts
     /// Set the control input of a particular fixture to a particular source.
-    | SetControlSource of FixtureId * int * 's option
+    | SetControlSource of FixtureId * ControlId * 's option
 
 /// All possible responses we can receive from the patch server.
 [<RequireQualifiedAccess>]

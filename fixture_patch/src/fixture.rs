@@ -5,7 +5,7 @@ use std::str::FromStr;
 use std::fmt;
 use std::marker::PhantomData;
 use std::error::Error;
-use std::slice::IterMut;
+use std::slice::{Iter, IterMut};
 use serde::{Serializer, Deserializer};
 use serde::de::{self, Visitor};
 use wiggles_value::{Datatype, Data};
@@ -41,6 +41,11 @@ impl FixtureControl {
             value: initial_value.as_type(data_type).coerce(),
         }
     }
+    /// The name of this control.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     /// Set this fixture control using value.  The data will be reinterpreted as the native
     /// data type specified by this control, and it will be coerced to be in range.
     pub fn set_value(&mut self, value: Data) {
@@ -176,6 +181,11 @@ impl DmxFixture {
 
     pub fn control_count(&self) -> usize {
         self.controls.len()
+    }
+
+    /// A immutable iterator over this fixture's controls.
+    pub fn controls(&self) -> Iter<FixtureControl> {
+        self.controls.iter()
     }
 
     /// A mutable iterator over this fixture's control values, allowing them all to be set.

@@ -18,6 +18,7 @@ pub use self::wiggle::{
     WiggleNetwork,
     KnobAddr,
     WiggleCollection,
+    WiggleProvider,
 };
 
 // Gather every wiggle declaration up here.
@@ -30,6 +31,8 @@ pub use self::wiggle::{
 lazy_static! {
     pub static ref WIGGLES: Vec<&'static str> = vec!(
         trial::KIND,
+        blender::KIND,
+        fanner::KIND,
     );
 }
 
@@ -39,6 +42,12 @@ pub fn new_wiggle<N: Into<String>>(kind: &str, name: N) -> Option<Box<CompleteWi
     match kind {
         trial::KIND => {
             Some(Box::new(trial::TestWiggle::new(name)))
+        }
+        blender::KIND => {
+            Some(Box::new(blender::Blender::new(name)))
+        }
+        fanner::KIND => {
+            Some(Box::new(fanner::Fanner::new(name)))
         }
         _ => None,
     }
@@ -50,6 +59,14 @@ pub fn deserialize(wiggle: SerializableWiggle) -> Result<Box<CompleteWiggle>, Se
     match wiggle.kind.as_str() {
         trial::KIND => {
             let result: Result<trial::TestWiggle, _> = serde_json::from_str(&wiggle.serialized); 
+            handle_deserialize_result(result)
+        }
+        blender::KIND => {
+            let result: Result<blender::Blender, _> = serde_json::from_str(&wiggle.serialized); 
+            handle_deserialize_result(result)
+        }
+        fanner::KIND => {
+            let result: Result<fanner::Fanner, _> = serde_json::from_str(&wiggle.serialized); 
             handle_deserialize_result(result)
         }
         _ => Err(SerdeJsonError::custom(format!("Unknown wiggle kind: '{}'.", wiggle.kind))),

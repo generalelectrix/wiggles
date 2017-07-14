@@ -8,6 +8,7 @@ module Knob
 #load "Bootstrap.fsx"
 #load "Types.fsx"
 #load "Slider.fsx"
+#load "WiggleTypes.fsx"
 
 open Fable.Core
 open Fable.Import
@@ -19,25 +20,6 @@ open Fable.Helpers.React.Props
 open Util
 open Bootstrap
 open Types
-
-/// For now, just declare the basic Wiggles datatypes inside the Knob module, as we likely won't
-/// encounter them too many other places.
-module Wiggle =
-    /// The basic abstraction for Wiggles data.
-    type Data =
-        | Unipolar of float
-        | Bipolar of float
-
-    /// Datatype markers for Wiggles
-    [<RequireQualifiedAccess>]
-    type Datatype =
-        | Unipolar
-        | Bipolar
-
-    let datatype data =
-        function
-        | Unipolar(_) -> Datatype.Unipolar
-        | Bipolar(_) -> Datatype.Bipolar
 
 type Rate =
     | Hz of float
@@ -58,14 +40,14 @@ type Rate =
 
 [<RequireQualifiedAccess>]
 type Datatype =
-    | Wiggle of Wiggle.Datatype
+    | Wiggle of WiggleTypes.Datatype
     | Rate
     | Button
     | UFloat
     | Picker of string list
 
 type Data =
-    | Wiggle of Wiggle.Data
+    | Wiggle of WiggleTypes.Data
     | Rate of Rate
     | Button of bool
     | UFloat of float
@@ -93,12 +75,12 @@ let viewSlider dataWrapper name model dispatchLocal dispatchChange =
 module Unipolar =
     let initModel() = Slider.initModel 0.0 0.0 1.0 0.0001 [0.0; 1.0]
     let view name model dispatchLocal dispatchChange =
-        viewSlider (Wiggle.Data.Unipolar >> Wiggle) name model dispatchLocal dispatchChange
+        viewSlider (WiggleTypes.Data.Unipolar >> Wiggle) name model dispatchLocal dispatchChange
 
 module Bipolar =
     let initModel() = Slider.initModel 0.0 -1.0 1.0 0.0001 [-1.0; 0.0; 1.0]
     let view name model dispatchLocal dispatchChange =
-        viewSlider (Wiggle.Data.Bipolar >> Wiggle) name model dispatchLocal dispatchChange
+        viewSlider (WiggleTypes.Data.Bipolar >> Wiggle) name model dispatchLocal dispatchChange
 
 module Rate =
     // Use BPM for rate for the time being.
@@ -189,8 +171,8 @@ type Model = {
 let fromDesc (d: KnobDescription) : Model =
     let initData =
         match d.datatype with
-        | Datatype.Wiggle(Wiggle.Datatype.Unipolar) -> Unipolar.initModel() |> ViewModel.Unipolar
-        | Datatype.Wiggle(Wiggle.Datatype.Bipolar) -> Bipolar.initModel() |> ViewModel.Bipolar
+        | Datatype.Wiggle(WiggleTypes.Datatype.Unipolar) -> Unipolar.initModel() |> ViewModel.Unipolar
+        | Datatype.Wiggle(WiggleTypes.Datatype.Bipolar) -> Bipolar.initModel() |> ViewModel.Bipolar
         | Datatype.Rate -> Rate.initModel() |> ViewModel.Rate
         | Datatype.Button -> Button.initModel() |> ViewModel.Button
         | Datatype.UFloat -> UFloat.initModel() |> ViewModel.UFloat
@@ -214,10 +196,10 @@ let updateFromValueChange data model =
     // Ensure that this value change matches the type of knob we have.  If this is a mismatch,
     // ignore it and log an error.
     match (data, model.data) with
-    | Wiggle(Wiggle.Unipolar(u)), ViewModel.Unipolar(vm) ->
+    | Wiggle(WiggleTypes.Unipolar(u)), ViewModel.Unipolar(vm) ->
         let newDat = {vm with value = u}
         {model with data = ViewModel.Unipolar(newDat)}
-    | Wiggle(Wiggle.Bipolar(b)), ViewModel.Bipolar(vm) ->
+    | Wiggle(WiggleTypes.Bipolar(b)), ViewModel.Bipolar(vm) ->
         let newDat = {vm with value = b}
         {model with data = ViewModel.Bipolar(newDat)}
     | Rate(r), ViewModel.Rate(vm) ->

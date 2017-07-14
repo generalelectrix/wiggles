@@ -4,9 +4,10 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { compareUnions, equalsUnions, Array as _Array, defaultArg, GenericParam, makeGeneric, Tuple, Option, compareRecords, equalsRecords } from "fable-core/Util";
+import { compareUnions, equalsUnions, Array as _Array, defaultArg, makeGeneric, GenericParam, Tuple, Option, compareRecords, equalsRecords } from "fable-core/Util";
 import { Result } from "fable-elmish/result";
 import { parseOptionalNumber } from "../core/Util";
+import { Datatype } from "../core/WiggleTypes";
 import List from "fable-core/List";
 export var FixtureKind = function () {
   function FixtureKind(name, channelCount) {
@@ -69,11 +70,11 @@ export var parseUniverseId = function parseUniverseId(v) {
 };
 export function globalAddressFromOptionals(univOpt, addrOpt) {
   var matchValue = [univOpt, addrOpt];
-  var $var261 = matchValue[0].Case === "Absent" ? matchValue[1].Case === "Absent" ? [1] : [2] : matchValue[1].Case === "Present" ? [0, matchValue[1].Fields[0], matchValue[0].Fields[0]] : [2];
+  var $var310 = matchValue[0].Case === "Absent" ? matchValue[1].Case === "Absent" ? [1] : [2] : matchValue[1].Case === "Present" ? [0, matchValue[1].Fields[0], matchValue[0].Fields[0]] : [2];
 
-  switch ($var261[0]) {
+  switch ($var310[0]) {
     case 0:
-      return new Result("Ok", [[$var261[2], $var261[1]]]);
+      return new Result("Ok", [[$var310[2], $var310[1]]]);
 
     case 1:
       return new Result("Ok", [null]);
@@ -119,6 +120,43 @@ export var PatchRequest = function () {
   return PatchRequest;
 }();
 setType("PatchTypes.PatchRequest", PatchRequest);
+export var ControlSourceDescription = function () {
+  function ControlSourceDescription(name, dataType, source) {
+    _classCallCheck(this, ControlSourceDescription);
+
+    this.name = name;
+    this.dataType = dataType;
+    this.source = source;
+  }
+
+  _createClass(ControlSourceDescription, [{
+    key: _Symbol.reflection,
+    value: function () {
+      return {
+        type: "PatchTypes.ControlSourceDescription",
+        interfaces: ["FSharpRecord", "System.IEquatable", "System.IComparable"],
+        properties: {
+          name: "string",
+          dataType: Datatype,
+          source: Option(GenericParam("s"))
+        }
+      };
+    }
+  }, {
+    key: "Equals",
+    value: function (other) {
+      return equalsRecords(this, other);
+    }
+  }, {
+    key: "CompareTo",
+    value: function (other) {
+      return compareRecords(this, other);
+    }
+  }]);
+
+  return ControlSourceDescription;
+}();
+setType("PatchTypes.ControlSourceDescription", ControlSourceDescription);
 export var PatchItem = function () {
   function PatchItem(id, name, kind, address, channelCount, controlSources) {
     _classCallCheck(this, PatchItem);
@@ -144,7 +182,9 @@ export var PatchItem = function () {
           address: Option(Tuple(["number", "number"])),
           channelCount: "number",
           controlSources: makeGeneric(List, {
-            T: Option(GenericParam("s"))
+            T: makeGeneric(ControlSourceDescription, {
+              s: GenericParam("s")
+            })
           })
         }
       };

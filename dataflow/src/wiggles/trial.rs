@@ -38,7 +38,7 @@ impl TestWiggle {
 pub const KIND: &'static str = "test";
 
 // TestWiggle has no inputs.
-impl<M> Inputs<M> for TestWiggle {
+impl<M, I> Inputs<M, I> for TestWiggle {
     fn default_input_count(&self) -> u32 {
         0
     }

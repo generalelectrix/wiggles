@@ -178,7 +178,7 @@ impl ClockProvider for ClockNetwork {
 
 pub trait CompleteClock:
     Clock
-    + Inputs<KnobResponse<ClockKnobAddr>>
+    + Inputs<KnobResponse<ClockKnobAddr>, ClockId>
     + Knobs<KnobAddr>
     + fmt::Debug
 {
@@ -188,7 +188,7 @@ pub trait CompleteClock:
 
 impl<T> CompleteClock for T
     where T: 'static + Clock
-        + Inputs<KnobResponse<ClockKnobAddr>>
+        + Inputs<KnobResponse<ClockKnobAddr>, ClockId>
         + Knobs<KnobAddr>
         + fmt::Debug
         + PartialEq

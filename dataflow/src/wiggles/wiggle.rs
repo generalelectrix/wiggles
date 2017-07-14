@@ -130,7 +130,7 @@ impl WiggleProvider for WiggleNetwork {
 
 pub trait CompleteWiggle:
     Wiggle
-    + Inputs<KnobResponse<WiggleKnobAddr>>
+    + Inputs<KnobResponse<WiggleKnobAddr>, WiggleId>
     + Outputs<KnobResponse<WiggleKnobAddr>>
     + Knobs<KnobAddr>
     + fmt::Debug
@@ -142,7 +142,7 @@ pub trait CompleteWiggle:
 impl<T> CompleteWiggle for T
     where T: 'static
         + Wiggle
-        + Inputs<KnobResponse<WiggleKnobAddr>>
+        + Inputs<KnobResponse<WiggleKnobAddr>, WiggleId>
         + Outputs<KnobResponse<WiggleKnobAddr>>
         + Knobs<KnobAddr>
         + fmt::Debug

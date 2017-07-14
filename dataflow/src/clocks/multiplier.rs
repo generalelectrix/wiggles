@@ -70,21 +70,8 @@ impl PartialEq for ClockMultiplier {
 
 pub const KIND: &'static str = "multiplier";
 
-impl<M> Inputs<M> for ClockMultiplier {
-    /// Multiplier always multiplies a single input.
-    fn default_input_count(&self) -> u32 {
-        1
-    }
-    /// Simple clock always has 1 input.
-    fn try_push_input(&mut self) -> Result<Messages<M>, ()> {
-        Err(())
-    }
-
-    /// Simple clock always has 1 input.
-    fn try_pop_input(&mut self) -> Result<Messages<M>, ()> {
-        Err(())
-    }
-}
+// Multiplier always has a single input.
+impl<M, I> Inputs<M, I> for ClockMultiplier {}
 
 // Since ClockMultiplier always has the same number of knobs, use a static for its knob descriptions.
 lazy_static! {

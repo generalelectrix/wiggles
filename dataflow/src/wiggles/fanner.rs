@@ -24,7 +24,7 @@ use wiggles_value::{Unipolar, Bipolar, Datatype, Data};
 use wiggles_value::blend::Blend;
 use waveforms::sine;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Fanner {
     name: String,
     /// The total phase shift to spread across the outputs.
@@ -52,7 +52,7 @@ lazy_static! {
 }
 
 // Fanner has exactly one input.
-impl Inputs<KnobResponse<KnobAddr>> for Fanner { }
+impl<M, I> Inputs<M, I> for Fanner { }
 
 // Fanner has at least one and up to an unlimited number of outputs.
 impl<M> Outputs<M> for Fanner {

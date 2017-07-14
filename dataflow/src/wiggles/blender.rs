@@ -19,7 +19,7 @@ use wiggles_value::knob::{
 };
 use serde_json::{Error as SerdeJsonError, self};
 use clocks::clock::{ClockId, ClockProvider, ClockValue};
-use super::wiggle::{Wiggle, CompleteWiggle, WiggleId, KnobAddr, WiggleProvider};
+use super::wiggle::{Wiggle, CompleteWiggle, WiggleId, KnobAddr, WiggleKnobAddr, WiggleProvider};
 use wiggles_value::{Unipolar, Bipolar, Datatype, Data};
 use wiggles_value::blend::Blend;
 use waveforms::sine;
@@ -55,7 +55,7 @@ impl BlendMode {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Blender {
     name: String,
     /// Channel fader levels, each controlled by a knob.
@@ -88,25 +88,27 @@ fn level_knob_desc(chan: KnobAddr) -> KnobDescription {
 }
 
 // Blender has at least one input, and up to an unlimited number of them.
-impl Inputs<KnobResponse<KnobAddr>> for Blender {
+impl Inputs<KnobResponse<WiggleKnobAddr>, WiggleId> for Blender {
     fn default_input_count(&self) -> u32 {
         1
     }
-    fn try_push_input(&mut self) -> Result<Messages<KnobResponse<KnobAddr>>, ()> {
+    fn try_push_input(
+            &mut self, node_id: WiggleId) -> Result<Messages<KnobResponse<WiggleKnobAddr>>, ()> {
         // add a fresh input, set to 1
         self.levels.push(Unipolar(1.0));
         // tell the world that there's a new knob available
         // level addresses start at 1
         let addr = self.levels.len() as KnobAddr;
-        Ok(Messages::one(KnobResponse::Added(addr, level_knob_desc(addr))))
+        Ok(Messages::one(KnobResponse::Added((node_id, addr), level_knob_desc(addr))))
     }
-    fn try_pop_input(&mut self) -> Result<Messages<KnobResponse<KnobAddr>>, ()> {
+    fn try_pop_input(
+            &mut self, node_id: WiggleId) -> Result<Messages<KnobResponse<WiggleKnobAddr>>, ()> {
         // No use having a mixer with no inputs (perhaps we may want to relax this restriction.)
         if self.levels.len() == 1 {
             return Err(());
         }
         self.levels.pop();
-        Ok(Messages::one(KnobResponse::Removed((self.levels.len() + 1) as KnobAddr)))
+        Ok(Messages::one(KnobResponse::Removed((node_id, (self.levels.len() + 1) as KnobAddr))))
     }
 }
 

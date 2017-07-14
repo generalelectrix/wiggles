@@ -13,8 +13,8 @@ import { Button, Form, InputType } from "./Bootstrap";
 import { slice, append, mapIndexed, ofArray, map as map_1 } from "fable-core/List";
 import List from "fable-core/List";
 import { createElement } from "react";
-import { map as map_2, singleton, append as append_1, delay, toList, fold } from "fable-core/Seq";
-import { SetInput, Response, ClockDescription, Command, CreateClock } from "./ClockTypes";
+import { collect, singleton, append as append_1, toList, range, map as map_2, delay, fold } from "fable-core/Seq";
+import { SetInput, UsesClock, Response, WiggleDescription, Command, CreateWiggle } from "./WiggleTypes";
 import { all } from "./Types";
 import { remove, add, create as create_2 } from "fable-core/Map";
 import _Map from "fable-core/Map";
@@ -22,7 +22,7 @@ import GenericComparer from "fable-core/GenericComparer";
 import { fsFormat } from "fable-core/String";
 import { ofJson, toJson } from "fable-core/Serialize";
 import { viewAllWith } from "./Knobs";
-export var NewClock = function (__exports) {
+export var NewWiggle = function (__exports) {
   var Model = __exports.Model = function () {
     function Model(name, selectedKind) {
       _classCallCheck(this, Model);
@@ -35,7 +35,7 @@ export var NewClock = function (__exports) {
       key: _Symbol.reflection,
       value: function () {
         return {
-          type: "Clocks.NewClock.Model",
+          type: "Wiggles.NewWiggle.Model",
           interfaces: ["FSharpRecord"],
           properties: {
             name: makeGeneric(Model_1, {
@@ -50,7 +50,7 @@ export var NewClock = function (__exports) {
     return Model;
   }();
 
-  setType("Clocks.NewClock.Model", Model);
+  setType("Wiggles.NewWiggle.Model", Model);
 
   var initModel = __exports.initModel = function () {
     return new Model(setFailed("", initialModel("Name:", errorIfEmpty, InputType.Text)), "");
@@ -68,7 +68,7 @@ export var NewClock = function (__exports) {
       key: _Symbol.reflection,
       value: function () {
         return {
-          type: "Clocks.NewClock.Message",
+          type: "Wiggles.NewWiggle.Message",
           interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
           cases: {
             NameEdit: [makeGeneric(Message_1, {
@@ -93,7 +93,7 @@ export var NewClock = function (__exports) {
     return Message;
   }();
 
-  setType("Clocks.NewClock.Message", Message);
+  setType("Wiggles.NewWiggle.Message", Message);
 
   var update = __exports.update = function (message, model) {
     if (message.Case === "SelectKind") {
@@ -118,18 +118,18 @@ export var NewClock = function (__exports) {
   };
 
   var view = __exports.view = function (kinds, model, dispatchLocal, dispatchServer) {
-    return createElement("div", {}, createElement("h4", {}, "Create new clock"), view_1(null, "", model.name, function ($var220) {
+    return createElement("div", {}, createElement("h4", {}, "Create new wiggle"), view_1(null, "", model.name, function ($var261) {
       return dispatchLocal(function (arg0) {
         return new Message("NameEdit", [arg0]);
-      }($var220));
+      }($var261));
     }), createElement("label", {}, "Kind:", viewKindSelector(kinds, model.selectedKind, dispatchLocal)), createElement("button", fold(function (o, kv) {
       o[kv[0]] = kv[1];
       return o;
     }, {}, [["onClick", function (_arg1_1) {
-      var activePatternResult1390_1 = _Parsed___(model.name);
+      var activePatternResult1488_1 = _Parsed___(model.name);
 
-      if (activePatternResult1390_1 != null) {
-        var create_1 = new CreateClock(model.selectedKind, activePatternResult1390_1);
+      if (activePatternResult1488_1 != null) {
+        var create_1 = new CreateWiggle(model.selectedKind, activePatternResult1488_1);
         dispatchServer(all(new Command("Create", [create_1])));
       }
     }], Button.Primary]), "Create"));
@@ -138,29 +138,29 @@ export var NewClock = function (__exports) {
   return __exports;
 }({});
 export var Model = function () {
-  function Model(kinds, clocks, newClock) {
+  function Model(kinds, wiggles, newWiggle) {
     _classCallCheck(this, Model);
 
     this.kinds = kinds;
-    this.clocks = clocks;
-    this.newClock = newClock;
+    this.wiggles = wiggles;
+    this.newWiggle = newWiggle;
   }
 
   _createClass(Model, [{
     key: _Symbol.reflection,
     value: function () {
       return {
-        type: "Clocks.Model",
+        type: "Wiggles.Model",
         interfaces: ["FSharpRecord"],
         properties: {
           kinds: makeGeneric(List, {
             T: "string"
           }),
-          clocks: makeGeneric(_Map, {
+          wiggles: makeGeneric(_Map, {
             Key: Tuple(["number", "number"]),
-            Value: ClockDescription
+            Value: WiggleDescription
           }),
-          newClock: NewClock.Model
+          newWiggle: NewWiggle.Model
         }
       };
     }
@@ -168,9 +168,9 @@ export var Model = function () {
 
   return Model;
 }();
-setType("Clocks.Model", Model);
+setType("Wiggles.Model", Model);
 export function initModel() {
-  return new Model(new List(), create_2(null, new GenericComparer(compare)), NewClock.initModel());
+  return new Model(new List(), create_2(null, new GenericComparer(compare)), NewWiggle.initModel());
 }
 export var initCommands = ofArray([new Command("Kinds", []), new Command("State", [])]);
 export var Message = function () {
@@ -185,10 +185,10 @@ export var Message = function () {
     key: _Symbol.reflection,
     value: function () {
       return {
-        type: "Clocks.Message",
+        type: "Wiggles.Message",
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
-          NewClock: [NewClock.Message],
+          NewWiggle: [NewWiggle.Message],
           Response: [Response]
         }
       };
@@ -207,50 +207,50 @@ export var Message = function () {
 
   return Message;
 }();
-setType("Clocks.Message", Message);
+setType("Wiggles.Message", Message);
 export function updateFromServer(response, model) {
-  var transformClock = function transformClock(id) {
+  var transformWiggle = function transformWiggle(id) {
     return function (f) {
-      var clocks = function (map) {
+      var wiggles = function (map) {
         return transformMapItem(id, f, map);
-      }(model.clocks);
+      }(model.wiggles);
 
-      return new Model(model.kinds, clocks, model.newClock);
+      return new Model(model.kinds, wiggles, model.newWiggle);
     };
   };
 
   var transformInputs = function transformInputs(id_1) {
     return function (f_1) {
-      var transform = function transform(clock) {
-        var inputs = f_1(clock.inputs);
-        return new ClockDescription(clock.name, clock.kind, inputs);
+      var transform = function transform(wiggle) {
+        var inputs = f_1(wiggle.inputs);
+        return new WiggleDescription(wiggle.name, wiggle.kind, inputs, wiggle.outputs, wiggle.clock);
       };
 
-      return transformClock(id_1)(transform);
+      return transformWiggle(id_1)(transform);
     };
   };
 
   if (response.Case === "State") {
-    var clocks_1 = create_2(response.Fields[0], new GenericComparer(compare));
-    return new Model(model.kinds, clocks_1, model.newClock);
+    var wiggles_1 = create_2(response.Fields[0], new GenericComparer(compare));
+    return new Model(model.kinds, wiggles_1, model.newWiggle);
   } else if (response.Case === "New") {
-    var clocks_2 = function (table) {
+    var wiggles_2 = function (table) {
       return add(response.Fields[0], response.Fields[1], table);
-    }(model.clocks);
+    }(model.wiggles);
 
-    return new Model(model.kinds, clocks_2, model.newClock);
+    return new Model(model.kinds, wiggles_2, model.newWiggle);
   } else if (response.Case === "Removed") {
-    var clocks_3 = function (table_1) {
+    var wiggles_3 = function (table_1) {
       return remove(response.Fields[0], table_1);
-    }(model.clocks);
+    }(model.wiggles);
 
-    return new Model(model.kinds, clocks_3, model.newClock);
+    return new Model(model.kinds, wiggles_3, model.newWiggle);
   } else if (response.Case === "Renamed") {
-    return transformClock(response.Fields[0])(function (clock_1) {
-      return new ClockDescription(response.Fields[1], clock_1.kind, clock_1.inputs);
+    return transformWiggle(response.Fields[0])(function (wiggle_1) {
+      return new WiggleDescription(response.Fields[1], wiggle_1.kind, wiggle_1.inputs, wiggle_1.outputs, wiggle_1.clock);
     });
   } else if (response.Case === "SetInput") {
-    return transformInputs(response.Fields[0].clock)(function () {
+    return transformInputs(response.Fields[0].wiggle)(function () {
       var mapping = function mapping(inputId) {
         return function (input) {
           if (response.Fields[0].input === inputId) {
@@ -262,8 +262,8 @@ export function updateFromServer(response, model) {
       };
 
       return function (list) {
-        return mapIndexed(function ($var221, $var222) {
-          return mapping($var221)($var222);
+        return mapIndexed(function ($var262, $var263) {
+          return mapping($var262)($var263);
         }, list);
       };
     }());
@@ -274,7 +274,7 @@ export function updateFromServer(response, model) {
   } else if (response.Case === "PopInput") {
     return transformInputs(response.Fields[0])(function (inputs_2) {
       if (inputs_2.tail == null) {
-        logError(fsFormat("Got a command to pop an input from clock %+A but it already has no inputs.")(function (x) {
+        logError(fsFormat("Got a command to pop an input from wiggle %+A but it already has no inputs.")(function (x) {
           return x;
         })(response.Fields[0]));
         return inputs_2;
@@ -282,24 +282,82 @@ export function updateFromServer(response, model) {
         return slice(null, inputs_2.length - 1, inputs_2);
       }
     });
+  } else if (response.Case === "PushOutput") {
+    return transformWiggle(response.Fields[0])(function (wiggle_2) {
+      var outputs = wiggle_2.outputs + 1;
+      return new WiggleDescription(wiggle_2.name, wiggle_2.kind, wiggle_2.inputs, outputs, wiggle_2.clock);
+    });
+  } else if (response.Case === "PopOutput") {
+    return transformWiggle(response.Fields[0])(function (wiggle_3) {
+      if (wiggle_3.outputs === 0) {
+        logError(fsFormat("Got a command to pop an output from wiggle %+A but it already has no outputs.")(function (x) {
+          return x;
+        })(response.Fields[0]));
+        return wiggle_3;
+      } else {
+        var outputs_1 = wiggle_3.outputs - 1;
+        return new WiggleDescription(wiggle_3.name, wiggle_3.kind, wiggle_3.inputs, outputs_1, wiggle_3.clock);
+      }
+    });
+  } else if (response.Case === "SetClock") {
+    return transformWiggle(response.Fields[0])(function (wiggle_4) {
+      var clock = new UsesClock("Yes", [response.Fields[1]]);
+      return new WiggleDescription(wiggle_4.name, wiggle_4.kind, wiggle_4.inputs, wiggle_4.outputs, clock);
+    });
   } else {
-    var newClock = void 0;
+    var newWiggle = void 0;
     var selectedKind = response.Fields[0].head;
-    newClock = new NewClock.Model(model.newClock.name, selectedKind);
-    return new Model(response.Fields[0], model.clocks, newClock);
+    newWiggle = new NewWiggle.Model(model.newWiggle.name, selectedKind);
+    return new Model(response.Fields[0], model.wiggles, newWiggle);
   }
 }
 export function update(message, model) {
-  if (message.Case === "NewClock") {
-    var newClock = NewClock.update(message.Fields[0], model.newClock);
-    return new Model(model.kinds, model.clocks, newClock);
+  if (message.Case === "NewWiggle") {
+    var newWiggle = NewWiggle.update(message.Fields[0], model.newWiggle);
+    return new Model(model.kinds, model.wiggles, newWiggle);
   } else {
     return updateFromServer(message.Fields[0], model);
   }
 }
 
-function inputSelector(clockId_0, clockId_1, inputId, currentValue, clocks, dispatchServer) {
-  var clockId = [clockId_0, clockId_1];
+function inputSelector(wiggleId_0, wiggleId_1, inputId, currentValue, wiggles, dispatchServer) {
+  var wiggleId = [wiggleId_0, wiggleId_1];
+
+  var options = function options(tupledArg) {
+    return delay(function () {
+      return map_2(function (outputId) {
+        return createElement("option", {
+          value: toJson([tupledArg[0], outputId])
+        }, fsFormat("%s (output %d)")(function (x) {
+          return x;
+        })(tupledArg[1].name)(outputId));
+      }, range(0, tupledArg[1].outputs - 1));
+    });
+  };
+
+  var options_1 = toList(delay(function () {
+    return append_1(singleton(createElement("option", {
+      value: toJson(null)
+    }, "{disconnected}")), delay(function () {
+      return collect(function (wiggle) {
+        return options(wiggle);
+      }, wiggles);
+    }));
+  }));
+  return createElement("div", {}, createElement.apply(undefined, ["select", fold(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [["value", toJson(currentValue)], ["onChange", function (e_1) {
+    var selected_1 = ofJson(e_1.target.value, {
+      T: Option(Tuple([Tuple(["number", "number"]), "number"]))
+    });
+    var cmd_1 = new SetInput(wiggleId, inputId, selected_1);
+    dispatchServer(all(new Command("SetInput", [cmd_1])));
+  }], Form.Control])].concat(_toConsumableArray(options_1))));
+}
+
+function clockSelector(wiggleId_0, wiggleId_1, currentValue, clocks, dispatchServer) {
+  var wiggleId = [wiggleId_0, wiggleId_1];
 
   var option = function option(tupledArg) {
     return createElement("option", {
@@ -323,24 +381,33 @@ function inputSelector(clockId_0, clockId_1, inputId, currentValue, clocks, disp
     var selected_1 = ofJson(e_1.target.value, {
       T: Option(Tuple(["number", "number"]))
     });
-    var cmd_1 = new SetInput(clockId, inputId, selected_1);
-    dispatchServer(all(new Command("SetInput", [cmd_1])));
+    dispatchServer(all(function (tupledArg_2) {
+      return new Command("SetClock", [tupledArg_2[0], tupledArg_2[1]]);
+    }([wiggleId, selected_1])));
   }], Form.Control])].concat(_toConsumableArray(options))));
 }
 
-export function viewClock(clockId_0, clockId_1, clock, clocks, knobs, dispatchKnobLocal, dispatchKnobServer, dispatchClockServer) {
-  var clockId = [clockId_0, clockId_1];
+export function viewWiggle(wiggleId_0, wiggleId_1, wiggle, wiggles, knobs, clocks, dispatchKnobLocal, dispatchKnobServer, dispatchWiggleServer) {
+  var wiggleId = [wiggleId_0, wiggleId_1];
   var inputSelectors = createElement.apply(undefined, ["div", {}].concat(_toConsumableArray(mapIndexed(function (inputId, source) {
-    return inputSelector(clockId[0], clockId[1], inputId, source, clocks, dispatchClockServer);
-  }, clock.inputs))));
+    return inputSelector(wiggleId[0], wiggleId[1], inputId, source, wiggles, dispatchWiggleServer);
+  }, wiggle.inputs))));
+  var clockSelector_1 = void 0;
+
+  if (wiggle.clock.Case === "No") {
+    clockSelector_1 = createElement("div", {});
+  } else {
+    var selector = clockSelector(wiggleId[0], wiggleId[1], wiggle.clock.Fields[0], clocks, dispatchWiggleServer);
+    clockSelector_1 = createElement("div", {}, "Clock Source:", selector);
+  }
 
   var addrFilter = function addrFilter(addr) {
-    var $var223 = addr.Case === "Clock" ? function () {
+    var $var264 = addr.Case === "Wiggle" ? function () {
       var id = addr.Fields[0][0];
-      return equals(clockId, id);
+      return equals(wiggleId, id);
     }() ? [0, addr.Fields[0][0]] : [1] : [1];
 
-    switch ($var223[0]) {
+    switch ($var264[0]) {
       case 0:
         return true;
 
@@ -355,17 +422,17 @@ export function viewClock(clockId_0, clockId_1, clock, clocks, knobs, dispatchKn
     }
   }, fsFormat("%s (%s)")(function (x) {
     return x;
-  })(clock.name)(clock.kind), inputSelectors, viewAllWith(addrFilter, knobs, dispatchKnobLocal, dispatchKnobServer));
+  })(wiggle.name)(wiggle.kind), clockSelector_1, createElement("div", {}, "Inputs:", inputSelectors), viewAllWith(addrFilter, knobs, dispatchKnobLocal, dispatchKnobServer));
 }
-export function viewAllClocks(clocks, knobs, dispatchKnobLocal, dispatchKnobServer, dispatchClockServer) {
+export function viewAllWiggles(wiggles, knobs, clocks, dispatchKnobLocal, dispatchKnobServer, dispatchWiggleServer) {
   return createElement.apply(undefined, ["div", {}].concat(_toConsumableArray(toList(map_2(function (tupledArg) {
-    return viewClock(tupledArg[0][0], tupledArg[0][1], tupledArg[1], clocks, knobs, dispatchKnobLocal, dispatchKnobServer, dispatchClockServer);
-  }, clocks)))));
+    return viewWiggle(tupledArg[0][0], tupledArg[0][1], tupledArg[1], wiggles, knobs, clocks, dispatchKnobLocal, dispatchKnobServer, dispatchWiggleServer);
+  }, wiggles)))));
 }
-export function view(knobs, model, dispatchKnob, dispatchClock, dispatchKnobServer, dispatchClockServer) {
-  return createElement("div", {}, NewClock.view(model.kinds, model.newClock, function ($var224) {
-    return dispatchClock(function (arg0) {
-      return new Message("NewClock", [arg0]);
-    }($var224));
-  }, dispatchClockServer), viewAllClocks(model.clocks, knobs, dispatchKnob, dispatchKnobServer, dispatchClockServer));
+export function view(knobs, clocks, model, dispatchKnob, dispatchWiggle, dispatchKnobServer, dispatchWiggleServer) {
+  return createElement("div", {}, NewWiggle.view(model.kinds, model.newWiggle, function ($var265) {
+    return dispatchWiggle(function (arg0) {
+      return new Message("NewWiggle", [arg0]);
+    }($var265));
+  }, dispatchWiggleServer), viewAllWiggles(model.wiggles, knobs, clocks, dispatchKnob, dispatchKnobServer, dispatchWiggleServer));
 }

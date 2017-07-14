@@ -4,13 +4,99 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 import { setType } from "fable-core/Symbol";
 import _Symbol from "fable-core/Symbol";
-import { makeGeneric, compareUnions, equalsUnions, compareRecords, equalsRecords, Option, Tuple } from "fable-core/Util";
+import { makeGeneric, compareRecords, equalsRecords, Option, Tuple, compareUnions, equalsUnions } from "fable-core/Util";
 import List from "fable-core/List";
+export var Data = function () {
+  function Data(caseName, fields) {
+    _classCallCheck(this, Data);
+
+    this.Case = caseName;
+    this.Fields = fields;
+  }
+
+  _createClass(Data, [{
+    key: _Symbol.reflection,
+    value: function () {
+      return {
+        type: "WiggleTypes.Data",
+        interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
+        cases: {
+          Bipolar: ["number"],
+          Unipolar: ["number"]
+        }
+      };
+    }
+  }, {
+    key: "Equals",
+    value: function (other) {
+      return equalsUnions(this, other);
+    }
+  }, {
+    key: "CompareTo",
+    value: function (other) {
+      return compareUnions(this, other);
+    }
+  }]);
+
+  return Data;
+}();
+setType("WiggleTypes.Data", Data);
+export var Datatype = function () {
+  function Datatype(caseName, fields) {
+    _classCallCheck(this, Datatype);
+
+    this.Case = caseName;
+    this.Fields = fields;
+  }
+
+  _createClass(Datatype, [{
+    key: _Symbol.reflection,
+    value: function () {
+      return {
+        type: "WiggleTypes.Datatype",
+        interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
+        cases: {
+          Bipolar: [],
+          Unipolar: []
+        }
+      };
+    }
+  }, {
+    key: "Equals",
+    value: function (other) {
+      return equalsUnions(this, other);
+    }
+  }, {
+    key: "CompareTo",
+    value: function (other) {
+      return compareUnions(this, other);
+    }
+  }, {
+    key: "ToString",
+    value: function () {
+      if (this.Case === "Bipolar") {
+        return "bipolar";
+      } else {
+        return "unipolar";
+      }
+    }
+  }]);
+
+  return Datatype;
+}();
+setType("WiggleTypes.Datatype", Datatype);
+export function datatype(data, _arg1) {
+  if (_arg1.Case === "Bipolar") {
+    return new Datatype("Bipolar", []);
+  } else {
+    return new Datatype("Unipolar", []);
+  }
+}
 export var SetInput = function () {
-  function SetInput(clock, input, target) {
+  function SetInput(wiggle, input, target) {
     _classCallCheck(this, SetInput);
 
-    this.clock = clock;
+    this.wiggle = wiggle;
     this.input = input;
     this.target = target;
   }
@@ -19,12 +105,12 @@ export var SetInput = function () {
     key: _Symbol.reflection,
     value: function () {
       return {
-        type: "ClockTypes.SetInput",
+        type: "WiggleTypes.SetInput",
         interfaces: ["FSharpRecord", "System.IEquatable", "System.IComparable"],
         properties: {
-          clock: Tuple(["number", "number"]),
+          wiggle: Tuple(["number", "number"]),
           input: "number",
-          target: Option(Tuple(["number", "number"]))
+          target: Option(Tuple([Tuple(["number", "number"]), "number"]))
         }
       };
     }
@@ -42,20 +128,20 @@ export var SetInput = function () {
 
   return SetInput;
 }();
-setType("ClockTypes.SetInput", SetInput);
-export var CreateClock = function () {
-  function CreateClock(kind, name) {
-    _classCallCheck(this, CreateClock);
+setType("WiggleTypes.SetInput", SetInput);
+export var CreateWiggle = function () {
+  function CreateWiggle(kind, name) {
+    _classCallCheck(this, CreateWiggle);
 
     this.kind = kind;
     this.name = name;
   }
 
-  _createClass(CreateClock, [{
+  _createClass(CreateWiggle, [{
     key: _Symbol.reflection,
     value: function () {
       return {
-        type: "ClockTypes.CreateClock",
+        type: "WiggleTypes.CreateWiggle",
         interfaces: ["FSharpRecord", "System.IEquatable", "System.IComparable"],
         properties: {
           kind: "string",
@@ -75,22 +161,22 @@ export var CreateClock = function () {
     }
   }]);
 
-  return CreateClock;
+  return CreateWiggle;
 }();
-setType("ClockTypes.CreateClock", CreateClock);
-export var RemoveClock = function () {
-  function RemoveClock(id, force) {
-    _classCallCheck(this, RemoveClock);
+setType("WiggleTypes.CreateWiggle", CreateWiggle);
+export var RemoveWiggle = function () {
+  function RemoveWiggle(id, force) {
+    _classCallCheck(this, RemoveWiggle);
 
     this.id = id;
     this.force = force;
   }
 
-  _createClass(RemoveClock, [{
+  _createClass(RemoveWiggle, [{
     key: _Symbol.reflection,
     value: function () {
       return {
-        type: "ClockTypes.RemoveClock",
+        type: "WiggleTypes.RemoveWiggle",
         interfaces: ["FSharpRecord", "System.IEquatable", "System.IComparable"],
         properties: {
           id: Tuple(["number", "number"]),
@@ -110,9 +196,9 @@ export var RemoveClock = function () {
     }
   }]);
 
-  return RemoveClock;
+  return RemoveWiggle;
 }();
-setType("ClockTypes.RemoveClock", RemoveClock);
+setType("WiggleTypes.RemoveWiggle", RemoveWiggle);
 export var Command = function () {
   function Command(caseName, fields) {
     _classCallCheck(this, Command);
@@ -125,15 +211,18 @@ export var Command = function () {
     key: _Symbol.reflection,
     value: function () {
       return {
-        type: "ClockTypes.Command",
+        type: "WiggleTypes.Command",
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
-          Create: [CreateClock],
+          Create: [CreateWiggle],
           Kinds: [],
           PopInput: [Tuple(["number", "number"])],
+          PopOutput: [Tuple(["number", "number"])],
           PushInput: [Tuple(["number", "number"])],
-          Remove: [RemoveClock],
+          PushOutput: [Tuple(["number", "number"])],
+          Remove: [RemoveWiggle],
           Rename: [Tuple(["number", "number"]), "string"],
+          SetClock: [Tuple(["number", "number"]), Option(Tuple(["number", "number"]))],
           SetInput: [SetInput],
           State: []
         }
@@ -153,28 +242,67 @@ export var Command = function () {
 
   return Command;
 }();
-setType("ClockTypes.Command", Command);
-export var ClockDescription = function () {
-  function ClockDescription(name, kind, inputs) {
-    _classCallCheck(this, ClockDescription);
+setType("WiggleTypes.Command", Command);
+export var UsesClock = function () {
+  function UsesClock(caseName, fields) {
+    _classCallCheck(this, UsesClock);
+
+    this.Case = caseName;
+    this.Fields = fields;
+  }
+
+  _createClass(UsesClock, [{
+    key: _Symbol.reflection,
+    value: function () {
+      return {
+        type: "WiggleTypes.UsesClock",
+        interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
+        cases: {
+          No: [],
+          Yes: [Option(Tuple(["number", "number"]))]
+        }
+      };
+    }
+  }, {
+    key: "Equals",
+    value: function (other) {
+      return equalsUnions(this, other);
+    }
+  }, {
+    key: "CompareTo",
+    value: function (other) {
+      return compareUnions(this, other);
+    }
+  }]);
+
+  return UsesClock;
+}();
+setType("WiggleTypes.UsesClock", UsesClock);
+export var WiggleDescription = function () {
+  function WiggleDescription(name, kind, inputs, outputs, clock) {
+    _classCallCheck(this, WiggleDescription);
 
     this.name = name;
     this.kind = kind;
     this.inputs = inputs;
+    this.outputs = outputs;
+    this.clock = clock;
   }
 
-  _createClass(ClockDescription, [{
+  _createClass(WiggleDescription, [{
     key: _Symbol.reflection,
     value: function () {
       return {
-        type: "ClockTypes.ClockDescription",
+        type: "WiggleTypes.WiggleDescription",
         interfaces: ["FSharpRecord", "System.IEquatable", "System.IComparable"],
         properties: {
           name: "string",
           kind: "string",
           inputs: makeGeneric(List, {
-            T: Option(Tuple(["number", "number"]))
-          })
+            T: Option(Tuple([Tuple(["number", "number"]), "number"]))
+          }),
+          outputs: "number",
+          clock: UsesClock
         }
       };
     }
@@ -190,9 +318,9 @@ export var ClockDescription = function () {
     }
   }]);
 
-  return ClockDescription;
+  return WiggleDescription;
 }();
-setType("ClockTypes.ClockDescription", ClockDescription);
+setType("WiggleTypes.WiggleDescription", WiggleDescription);
 export var Response = function () {
   function Response(caseName, fields) {
     _classCallCheck(this, Response);
@@ -205,20 +333,23 @@ export var Response = function () {
     key: _Symbol.reflection,
     value: function () {
       return {
-        type: "ClockTypes.Response",
+        type: "WiggleTypes.Response",
         interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
         cases: {
           Kinds: [makeGeneric(List, {
             T: "string"
           })],
-          New: [Tuple(["number", "number"]), ClockDescription],
+          New: [Tuple(["number", "number"]), WiggleDescription],
           PopInput: [Tuple(["number", "number"])],
+          PopOutput: [Tuple(["number", "number"])],
           PushInput: [Tuple(["number", "number"])],
+          PushOutput: [Tuple(["number", "number"])],
           Removed: [Tuple(["number", "number"])],
           Renamed: [Tuple(["number", "number"]), "string"],
+          SetClock: [Tuple(["number", "number"]), Option(Tuple(["number", "number"]))],
           SetInput: [SetInput],
           State: [makeGeneric(List, {
-            T: Tuple([Tuple(["number", "number"]), ClockDescription])
+            T: Tuple([Tuple(["number", "number"]), WiggleDescription])
           })]
         }
       };
@@ -237,4 +368,4 @@ export var Response = function () {
 
   return Response;
 }();
-setType("ClockTypes.Response", Response);
+setType("WiggleTypes.Response", Response);

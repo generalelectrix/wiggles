@@ -9,97 +9,13 @@ import _Symbol from "fable-core/Symbol";
 import { defaultArg, equals, compareRecords, equalsRecords, makeGeneric, compareUnions, equalsUnions } from "fable-core/Util";
 import { map, ofArray } from "fable-core/List";
 import List from "fable-core/List";
+import { Data as Data_1, Datatype as Datatype_1 } from "./WiggleTypes";
 import { createElement } from "react";
 import { update as update_1, Message as Message_1, Model as Model_1, initModel as initModel_1, view as view_1 } from "./Slider";
 import { exists, fold } from "fable-core/Seq";
 import { Form, Button as Button_1 } from "./Bootstrap";
 import { logError } from "./Util";
 import { fsFormat } from "fable-core/String";
-export var Wiggle = function (__exports) {
-  var Data = __exports.Data = function () {
-    function Data(caseName, fields) {
-      _classCallCheck(this, Data);
-
-      this.Case = caseName;
-      this.Fields = fields;
-    }
-
-    _createClass(Data, [{
-      key: _Symbol.reflection,
-      value: function () {
-        return {
-          type: "Knob.Wiggle.Data",
-          interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
-          cases: {
-            Bipolar: ["number"],
-            Unipolar: ["number"]
-          }
-        };
-      }
-    }, {
-      key: "Equals",
-      value: function (other) {
-        return equalsUnions(this, other);
-      }
-    }, {
-      key: "CompareTo",
-      value: function (other) {
-        return compareUnions(this, other);
-      }
-    }]);
-
-    return Data;
-  }();
-
-  setType("Knob.Wiggle.Data", Data);
-
-  var Datatype = __exports.Datatype = function () {
-    function Datatype(caseName, fields) {
-      _classCallCheck(this, Datatype);
-
-      this.Case = caseName;
-      this.Fields = fields;
-    }
-
-    _createClass(Datatype, [{
-      key: _Symbol.reflection,
-      value: function () {
-        return {
-          type: "Knob.Wiggle.Datatype",
-          interfaces: ["FSharpUnion", "System.IEquatable", "System.IComparable"],
-          cases: {
-            Bipolar: [],
-            Unipolar: []
-          }
-        };
-      }
-    }, {
-      key: "Equals",
-      value: function (other) {
-        return equalsUnions(this, other);
-      }
-    }, {
-      key: "CompareTo",
-      value: function (other) {
-        return compareUnions(this, other);
-      }
-    }]);
-
-    return Datatype;
-  }();
-
-  setType("Knob.Wiggle.Datatype", Datatype);
-
-  var datatype = __exports.datatype = function (data, _arg1) {
-    if (_arg1.Case === "Bipolar") {
-      return new Datatype("Bipolar", []);
-    } else {
-      return new Datatype("Unipolar", []);
-    }
-  };
-
-  return __exports;
-}({});
 export var Rate = function () {
   function Rate(caseName, fields) {
     _classCallCheck(this, Rate);
@@ -179,7 +95,7 @@ export var Datatype = function () {
           })],
           Rate: [],
           UFloat: [],
-          Wiggle: [Wiggle.Datatype]
+          Wiggle: [Datatype_1]
         }
       };
     }
@@ -217,7 +133,7 @@ export var Data = function () {
           Picker: ["string"],
           Rate: [Rate],
           UFloat: ["number"],
-          Wiggle: [Wiggle.Data]
+          Wiggle: [Data_1]
         }
       };
     }
@@ -285,7 +201,7 @@ export var Unipolar = function (__exports) {
 
   var view = __exports.view = function (name, model, dispatchLocal, dispatchChange) {
     return viewSlider(function ($var163) {
-      return new Data("Wiggle", [new Wiggle.Data("Unipolar", [$var163])]);
+      return new Data("Wiggle", [new Data_1("Unipolar", [$var163])]);
     }, name, model, dispatchLocal, dispatchChange);
   };
 
@@ -298,7 +214,7 @@ export var Bipolar = function (__exports) {
 
   var view = __exports.view = function (name, model, dispatchLocal, dispatchChange) {
     return viewSlider(function ($var164) {
-      return new Data("Wiggle", [new Wiggle.Data("Bipolar", [$var164])]);
+      return new Data("Wiggle", [new Data_1("Bipolar", [$var164])]);
     }, name, model, dispatchLocal, dispatchChange);
   };
 

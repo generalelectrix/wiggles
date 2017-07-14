@@ -81,14 +81,14 @@ impl fmt::Display for OutputId {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 /// Generation ID and a slot to hold onto a node in the network.
 struct NodeSlot<N, I, M>
-    where N: fmt::Debug + Inputs<M> + Outputs<M> + Sized, I: NodeId
+    where N: fmt::Debug + Inputs<M, I> + Outputs<M> + Sized, I: NodeId
 {
     gen_id: GenerationId,
     node: Option<Node<N, I, M>>,
 }
 
 impl<N, I, M> NodeSlot<N, I, M>
-    where N: fmt::Debug + Inputs<M> + Outputs<M> + Sized, I: NodeId
+    where N: fmt::Debug + Inputs<M, I> + Outputs<M> + Sized, I: NodeId
 {
     fn new(gen_id: GenerationId, node: Option<Node<N, I, M>>) -> Self {
         NodeSlot {
@@ -100,7 +100,7 @@ impl<N, I, M> NodeSlot<N, I, M>
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Network<N, I, M>
-    where N: fmt::Debug + Inputs<M> + Outputs<M> + Sized, I: NodeId
+    where N: fmt::Debug + Inputs<M, I> + Outputs<M> + Sized, I: NodeId
 {
     /// Collection of node slots, indexed by their ID.
     /// Tagged internally with a generation ID.
@@ -110,7 +110,7 @@ pub struct Network<N, I, M>
 }
 
 impl<N, I, M> Default for Network<N, I, M>
-    where N: fmt::Debug + Inputs<M> + Outputs<M> + Sized, I: NodeId, M: fmt::Debug
+    where N: fmt::Debug + Inputs<M, I> + Outputs<M> + Sized, I: NodeId, M: fmt::Debug
 {
     fn default() -> Self {
         Network::new()
@@ -118,7 +118,7 @@ impl<N, I, M> Default for Network<N, I, M>
 }
 
 impl<N, I, M> Network<N, I, M>
-    where N: fmt::Debug + Inputs<M> + Outputs<M> + Sized, I: NodeId, M: fmt::Debug
+    where N: fmt::Debug + Inputs<M, I> + Outputs<M> + Sized, I: NodeId, M: fmt::Debug
 {
     /// Create a new, empty network.
     pub fn new() -> Self {
@@ -353,7 +353,7 @@ impl<N, I, M> Network<N, I, M>
     /// Return the new input ID and a potential message type returned by the node.
     pub fn push_input(&mut self, node_id: I) -> Result<(InputId, Messages<M>), NetworkError<I>> {
         self.node_mut(node_id)?
-            .push_input()
+            .push_input(node_id)
             .map_err(|_| NetworkError::CantAddInput(node_id))
     }
 
@@ -372,7 +372,7 @@ impl<N, I, M> Network<N, I, M>
             node_id: I)
             -> Result<Messages<M>, NetworkError<I>>
     {
-        match self.node_mut(node_id)?.pop_input() {
+        match self.node_mut(node_id)?.pop_input(node_id) {
             Ok((target, msg)) => {
                 // if this input had a target, remove this node as a listener.
                 if let Some((target_node_id, output_id)) = target {
@@ -502,7 +502,7 @@ impl<N, I, M> Network<N, I, M>
 /// Blanket impl for a network whose nodes are knob-controlled.
 /// Wrapper the inner knob address with the address of the node in the network.
 impl<N, I, M, A> Knobs<(I, A)> for Network<N, I, M>
-    where N: Knobs<A> + fmt::Debug + Inputs<M> + Outputs<M>, I: NodeId, M: fmt::Debug, A: Copy
+    where N: Knobs<A> + fmt::Debug + Inputs<M, I> + Outputs<M>, I: NodeId, M: fmt::Debug, A: Copy
 {
     fn knobs(&self) -> Vec<((I, A), KnobDescription)> {
         let mut descriptions = Vec::new();
@@ -557,7 +557,7 @@ impl<N, I, M, A> Knobs<(I, A)> for Network<N, I, M>
 /// These defaults can be overridden by nodes with more complex routing.
 /// By selectively override just default_input_count, a different number of fixed inputs can be
 /// set.
-pub trait Inputs<M> {
+pub trait Inputs<M, I> {
     /// How many inputs this node should default to when initialized.
     fn default_input_count(&self) -> u32 {
         1
@@ -566,27 +566,29 @@ pub trait Inputs<M> {
     /// It should return Ok if this is allowed and must have done any work it needs to do to
     /// accomodate the new input.  The node is free to return an arbitrary data structure to the
     /// caller, which should probably hand it off to someone else for processing.
-    fn try_push_input(&mut self) -> Result<Messages<M>, ()> {
+    /// We pass the node's current ID so it can identify itself in its emitted messages.
+    fn try_push_input(&mut self, node_id: I) -> Result<Messages<M>, ()> {
         Err(())
     }
 
     /// Tell this node we want to pop the last input.
     /// It should return Ok if this is allowed and must have done any work to ready itself for the
     /// change.
-    fn try_pop_input(&mut self) -> Result<Messages<M>, ()> {
+    /// We pass the node's current ID so it can identify itself in its emitted messages.
+    fn try_pop_input(&mut self, node_id: I) -> Result<Messages<M>, ()> {
         Err(())
     }
 }
 
-impl<T, M> Inputs<M> for Box<T> where T: Inputs<M> + ?Sized {
+impl<T, M, I> Inputs<M, I> for Box<T> where T: Inputs<M, I> + ?Sized {
     fn default_input_count(&self) -> u32 {
         (**self).default_input_count()
     }
-    fn try_push_input(&mut self) -> Result<Messages<M>, ()> {
-        (**self).try_push_input()
+    fn try_push_input(&mut self, node_id: I) -> Result<Messages<M>, ()> {
+        (**self).try_push_input(node_id)
     }
-    fn try_pop_input(&mut self) -> Result<Messages<M>, ()> {
-        (**self).try_pop_input()
+    fn try_pop_input(&mut self, node_id: I) -> Result<Messages<M>, ()> {
+        (**self).try_pop_input(node_id)
     }
 }
 
@@ -619,7 +621,7 @@ pub trait Outputs<M> {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Node<N, I, M>
-    where N: fmt::Debug + Inputs<M> + Outputs<M> + Sized, I: NodeId
+    where N: fmt::Debug + Inputs<M, I> + Outputs<M> + Sized, I: NodeId
 {
     /// How many inputs does this node have, and what are they connected to (if anything).
     inputs: Vec<Option<(I, OutputId)>>,
@@ -635,7 +637,7 @@ pub struct Node<N, I, M>
 }
 
 impl<N, I, M> Node<N, I, M>
-    where N: fmt::Debug + Inputs<M> + Outputs<M> + Sized, I: NodeId, M: fmt::Debug
+    where N: fmt::Debug + Inputs<M, I> + Outputs<M> + Sized, I: NodeId, M: fmt::Debug
 {
     pub fn new(node: N) -> Self {
         let inputs = vec![None; node.default_input_count() as usize];
@@ -683,10 +685,11 @@ impl<N, I, M> Node<N, I, M>
     /// Push another input onto this node, if it can support it.
     /// Return the data structure returned by the node, probably a message type to be passed
     /// upstack.
-    fn push_input(&mut self) -> Result<(InputId, Messages<M>), ()> {
+    /// Provide the current ID of this node to pass into the inner dependency for message creation.
+    fn push_input(&mut self, id: I) -> Result<(InputId, Messages<M>), ()> {
         // if we can't push another input, return an error
         // allow the caller to wrap it up into a real error value
-        match self.inner.try_push_input() {
+        match self.inner.try_push_input(id) {
             Ok(msg) => {
                 // go ahead and add it, with no upstream connection
                 self.inputs.push(None);
@@ -716,11 +719,12 @@ impl<N, I, M> Node<N, I, M>
     /// Return the target that was assigned to this input.
     /// The caller must ensure that this node has been removed as a listener of the node that was
     /// assigned to this input, if any.
-    fn pop_input(&mut self) -> Result<(Option<(I, OutputId)>, Messages<M>), ()> {
+    /// Provide the current ID of this node to pass into the inner dependency for message creation.
+    fn pop_input(&mut self, id: I) -> Result<(Option<(I, OutputId)>, Messages<M>), ()> {
         if self.inputs.is_empty() {
             return Err(());
         }
-        match self.inner.try_pop_input() {
+        match self.inner.try_pop_input(id) {
             Ok(msg) => {
                 // go ahead and remove
                 let target = self.inputs.pop().expect("Pop on a list we know to not be empty failed.");

@@ -8,6 +8,29 @@ open Elmish
 open Util
 open DataflowTypes
 
+/// The basic abstraction for Wiggles data.
+type Data =
+    | Unipolar of float
+    | Bipolar of float
+
+/// Datatype markers for Wiggles
+[<RequireQualifiedAccess>]
+type Datatype =
+    | Unipolar
+    | Bipolar
+    with 
+    override this.ToString() =
+        match this with
+        | Unipolar -> "unipolar"
+        | Bipolar -> "bipolar"
+
+let datatype data =
+    function
+    | Unipolar(_) -> Datatype.Unipolar
+    | Bipolar(_) -> Datatype.Bipolar
+
+// Server commands and responses.
+
 type SetInput = {
     wiggle: WiggleId
     input: InputId
@@ -57,14 +80,14 @@ type WiggleDescription = {
     name: string
     kind: string
     inputs: (WiggleId * OutputId) option list
-    outputs: int,
+    outputs: int
     clock: UsesClock
 }
 
 [<RequireQualifiedAccess>]
 type Response =
     /// A listing of every available type of wiggle.
-    | Classes of string list
+    | Kinds of string list
     /// A summary of the state of every wiggle.
     | State of (WiggleId * WiggleDescription) list
     /// A new wiggle has been added.

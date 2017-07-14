@@ -22,8 +22,9 @@ use fixture_patch_message::{
     handle_message as handle_patch_message,
     UnivWithPort};
 use rust_dmx::{DmxPort, OfflineDmxPort, Error as DmxError};
+use dataflow::network::OutputId;
 use dataflow::clocks::{ClockKnobAddr, ClockNetwork, ClockCollection};
-use dataflow::wiggles::{WiggleId, WiggleKnobAddr, WiggleNetwork, WiggleCollection};
+use dataflow::wiggles::{WiggleId, WiggleKnobAddr, WiggleNetwork, WiggleCollection, WiggleProvider};
 use dataflow_message::clock::{
     Command as ClockCommand,
     Response as ClockResponse,
@@ -44,9 +45,11 @@ use wiggles_value::knob::{
     KnobDescription,
 };
 
+type ControlSource = (WiggleId, OutputId);
+
 #[derive(Serialize, Deserialize, Default)]
 struct TestConsole {
-    patch: Patch<WiggleId>,
+    patch: Patch<ControlSource>,
     clocks: ClockNetwork,
     wiggles: WiggleNetwork,
 }
@@ -54,7 +57,7 @@ struct TestConsole {
 impl TestConsole {
     fn handle_patch_message(
         &mut self,
-        message: PatchServerRequest<WiggleId>,
+        message: PatchServerRequest<ControlSource>,
         client_data: ClientData)
         -> Messages<ResponseWrapper<Response>>
     {
@@ -240,7 +243,7 @@ fn handle_error<M, E, F>(
 
 #[derive(Debug, Serialize, Deserialize)]
 enum Command {
-    Patcher(PatchServerRequest<WiggleId>),
+    Patcher(PatchServerRequest<ControlSource>),
     Clock(ClockCommand),
     Wiggle(WiggleCommand),
     Knob(KnobCommand<KnobAddress>),
@@ -249,7 +252,7 @@ enum Command {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 enum Response {
     Error(String),
-    Patcher(PatchServerResponse<WiggleId>),
+    Patcher(PatchServerResponse<ControlSource>),
     Clock(ClockResponse),
     Wiggle(WiggleResponse),
     Knob(KnobResponse<KnobAddress>),
@@ -262,6 +265,15 @@ impl Console for TestConsole {
     type Response = Response;
 
     fn render(&mut self) -> Messages<ResponseWrapper<Response>> {
+        // Retrieve values for every control in the patch.
+        {
+            let wiggles = &mut self.wiggles;
+            let patch = &mut self.patch;
+            let clocks = &self.clocks;
+            patch.set_controls(|&(wiggle_id, output_id), data_type| {
+                wiggles.get_value(wiggle_id, output_id, 0.0, Some(data_type), clocks)
+            });
+        }
         let render_errors = self.patch.render();
         let mut messages = Messages::none();
         for (uid, err) in render_errors {

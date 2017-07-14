@@ -7,5 +7,6 @@ authors = ["general electrix <general.electrix@gmail.com>"]
 rust_dmx = { git = "https://github.com/generalelectrix/rust-dmx" }
 fixture_patch = { path = "../fixture_patch" }
 console_server = { path = "../console_server" }
+wiggles_value = { path = "../wiggles_value" }
 serde = "*"
 serde_derive = "*"

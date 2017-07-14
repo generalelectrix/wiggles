@@ -12,6 +12,7 @@ module Wiggles
 #load "Knobs.fsx"
 #load "Bootstrap.fsx"
 #load "EditBox.fsx"
+#load "Clocks.fsx"
 
 open Fable.Core
 open Fable.Import
@@ -133,7 +134,7 @@ let updateFromServer response model =
     | Response.PushInput(id) ->
         transformInputs id (fun inputs -> List.append inputs [None])
     | Response.PopInput(id) ->
-        transformInputs id (fun (inputs: WiggleId option list) ->
+        transformInputs id (fun (inputs: (WiggleId * OutputId) option list) ->
             if inputs.IsEmpty then
                 logError (sprintf
                     "Got a command to pop an input from wiggle %+A but it already has no inputs."
@@ -153,7 +154,7 @@ let updateFromServer response model =
             else
                 {wiggle with outputs = wiggle.outputs - 1})
     | Response.SetClock(id, source) ->
-        transformWiggle id (fun wiggle -> {wiggle with clock = source})
+        transformWiggle id (fun wiggle -> {wiggle with clock = Yes source})
 
 let update message model =
     match message with
@@ -163,22 +164,26 @@ let update message model =
 /// Render input selector drop-down.
 /// On change, send a input swap command to the server and allow the response to update the state
 /// of this control.
-let private inputSelector wiggleId inputId (currentValue: WiggleId option) (wiggles: Wiggles) dispatchServer =
-    let option (id: WiggleId, cd: WiggleDescription) =
-        R.option
-            [ Value (Case1 (toJson (Some id))) ]
-            [ R.str cd.name ]
+let private inputSelector wiggleId inputId (currentValue: (WiggleId * OutputId) option) (wiggles: Wiggles) dispatchServer =
+    /// Yield one option for each output that this wiggle has.
+    let options (id: WiggleId, cd: WiggleDescription) = seq {
+        for outputId in 0..cd.outputs-1 do
+            yield
+                R.option
+                    [ Value (Case1 (toJson (Some (id, outputId)))) ]
+                    [ R.str (sprintf "%s (output %d)" cd.name outputId) ]
+    }
 
     let options = [
         yield R.option [ Value (Case1 (toJson None)) ] [ R.str "{disconnected}" ]
-        for wiggle in wiggles |> Map.toSeq do yield option wiggle
+        for wiggle in wiggles |> Map.toSeq do yield! options wiggle
     ]
 
     R.div [] [
         R.select [
             Form.Control
             OnChange (fun e -> 
-                let selected: WiggleId option = !!e.target?value |> ofJson
+                let selected: (WiggleId * OutputId) option = !!e.target?value |> ofJson
                 let cmd: SetInput = {wiggle = wiggleId; input = inputId; target = selected}
                 cmd |> WiggleTypes.Command.SetInput |> all |> dispatchServer
             )
@@ -187,15 +192,15 @@ let private inputSelector wiggleId inputId (currentValue: WiggleId option) (wigg
     ]
 
 /// Render a clock selector drop-down.
-let private clockSelector wiggleId (currentValue: ClockId option) (clocks: Clocks) dispatchServer =
-    let option (id: ClockId, cd: ClockDescription) =
+let private clockSelector wiggleId (currentValue: ClockId option) (clocks: Clocks.Clocks) dispatchServer =
+    let option (id: ClockId, cd: ClockTypes.ClockDescription) =
         R.option
             [ Value (Case1 (toJson (Some id))) ]
             [ R.str cd.name ]
 
     let options = [
         yield R.option [ Value (Case1 (toJson None)) ] [ R.str "{disconnected}" ]
-        for wiggle in wiggles |> Map.toSeq do yield option wiggle
+        for clock in clocks |> Map.toSeq do yield option clock
     ]
 
     R.div [] [

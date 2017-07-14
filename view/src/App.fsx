@@ -9,6 +9,7 @@
 #load "core/Clocks.fsx"
 #load "core/Wiggles.fsx"
 #load "patcher/Patcher.fsx"
+#load "patcher/Controls.fsx"
 
 open Fable.Core
 open Fable.Import
@@ -27,17 +28,17 @@ let logSocketTraffic = false
 
 type Page =
     | Patcher
+    | Controls
     | KnobTest
     | ClockTest
     | WiggleTest
 
 type KnobAddress = DataflowTypes.KnobAddress
-
-type WiggleId = DataflowTypes.WiggleId
+type ControlSource = DataflowTypes.WiggleId * DataflowTypes.OutputId
 
 type ShowModel = {
     page: Page
-    patcher: Patcher.Model<WiggleId>
+    patcher: Patcher.Model<ControlSource>
     knobs: Knobs.Model<KnobAddress>
     clocks: Clocks.Model
     wiggles: Wiggles.Model
@@ -45,7 +46,7 @@ type ShowModel = {
 
 [<RequireQualifiedAccess>]
 type ShowServerCommand =
-    | Patcher of PatchTypes.PatchServerRequest<WiggleId>
+    | Patcher of PatchTypes.PatchServerRequest<ControlSource>
     | Knob of Knobs.ServerCommand<KnobAddress>
     | Clock of ClockTypes.Command
     | Wiggle of WiggleTypes.Command
@@ -53,7 +54,7 @@ type ShowServerCommand =
 [<RequireQualifiedAccess>]
 type ShowServerResponse =
     | Error of string
-    | Patcher of PatchTypes.PatchServerResponse<WiggleId>
+    | Patcher of PatchTypes.PatchServerResponse<ControlSource>
     | Knob of Knobs.ServerResponse<KnobAddress>
     | Clock of ClockTypes.Response
     |Wiggle of WiggleTypes.Response
@@ -62,7 +63,7 @@ type ShowServerResponse =
 type ShowMessage =
     | Error of string
     | SetPage of Page
-    | Patcher of Patcher.Message<WiggleId>
+    | Patcher of Patcher.Message<ControlSource>
     | Knob of Knobs.Message<KnobAddress>
     | Clock of Clocks.Message
     | Wiggle of Wiggles.Message
@@ -77,23 +78,16 @@ let pageNavItem name page : Navbar.Item<ConcreteMessage> = {
     onClick = (fun dispatch -> ShowMessage.SetPage page |> Base.Message.Inner |> dispatch)
 }
 
-let patcherNavItem = 
-
-let knobTestNavItem = 
-
-let clockTestNavItem = 
-
-let wiggleTestNavItem = 
-
-
 let navbar: Navbar.Model<ConcreteMessage> = {
     leftItems =
        [Navbar.Dropdown (Base.utilDropdown())
         Navbar.Single (pageNavItem "Knobs" KnobTest)
         Navbar.Single (pageNavItem "Clocks" ClockTest)
         Navbar.Single (pageNavItem "Wiggles" WiggleTest)]
-    rightItems = [Navbar.Single (pageNavItem "Patch" KnobTest)]
-    activeItem = Navbar.Right(0)
+    rightItems =
+       [Navbar.Single (pageNavItem "Controls" Controls)
+        Navbar.Single (pageNavItem "Patch" Patcher)]
+    activeItem = Navbar.Right(1)
 }
 
 let initShowModel () = {
@@ -134,7 +128,7 @@ let wrapShowResponse (message: ShowServerResponse) =
     | ShowServerResponse.Patcher(m) -> m |> Patcher.Message.Response |> ShowMessage.Patcher
     | ShowServerResponse.Knob(k) -> k |> Knobs.Message.Response |> ShowMessage.Knob
     | ShowServerResponse.Clock(c) -> c |> Clocks.Message.Response |> ShowMessage.Clock
-    | ShowServerResponse.Wiggle(c) -> c |> Clocks.Message.Response |> ShowMessage.Wiggle
+    | ShowServerResponse.Wiggle(c) -> c |> Wiggles.Message.Response |> ShowMessage.Wiggle
 
 let updateShow message model : ShowModel * Cmd<ConcreteMessage> =
     match message with
@@ -151,7 +145,7 @@ let updateShow message model : ShowModel * Cmd<ConcreteMessage> =
         let updatedClocks = Clocks.update msg model.clocks
         {model with clocks = updatedClocks}, Cmd.none
     | ShowMessage.Wiggle(msg) ->
-        let updatedWiggles = Wiggle.update msg model.wiggles
+        let updatedWiggles = Wiggles.update msg model.wiggles
         {model with wiggles = updatedWiggles}, Cmd.none
 
 let viewShow openModal model dispatch dispatchServer =
@@ -161,6 +155,11 @@ let viewShow openModal model dispatch dispatchServer =
             openModal
             model.patcher
             (ShowMessage.Patcher >> dispatch)
+            ((Base.liftResponseAndFilter ShowServerCommand.Patcher) >> dispatchServer)
+    | Controls ->
+        Controls.view
+            model.patcher.patches
+            model.wiggles.wiggles
             ((Base.liftResponseAndFilter ShowServerCommand.Patcher) >> dispatchServer)
     | KnobTest ->
         let knobs =
@@ -185,7 +184,7 @@ let viewShow openModal model dispatch dispatchServer =
     | WiggleTest ->
         Wiggles.view
             model.knobs
-            model.clocks
+            model.clocks.clocks
             model.wiggles
             (ShowMessage.Knob >> dispatch)
             (ShowMessage.Wiggle >> dispatch)

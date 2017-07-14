@@ -40,19 +40,10 @@ impl SimpleClock {
 
 pub const KIND: &'static str = "simple";
 
-impl<M> Inputs<M> for SimpleClock {
+impl<M, I> Inputs<M, I> for SimpleClock {
     /// Simple clock always has no inputs.
     fn default_input_count(&self) -> u32 {
         0
-    }
-    /// Simple clock always has no inputs.
-    fn try_push_input(&mut self) -> Result<Messages<M>, ()> {
-        Err(())
-    }
-
-    /// Simple clock always has no inputs.
-    fn try_pop_input(&mut self) -> Result<Messages<M>, ()> {
-        Err(())
     }
 }
 

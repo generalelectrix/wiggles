@@ -17,11 +17,11 @@ extern crate wiggles_value;
 #[cfg(test)] extern crate bincode;
 
 use std::fmt;
-
+use std::slice::Iter;
 use wiggles_value::{Data, Datatype};
 use rust_dmx::{DmxPort, Error as DmxPortError, OfflineDmxPort};
 pub use profiles::{Profile, PROFILES};
-pub use fixture::{DmxFixture, DmxValue, DmxChannelCount};
+pub use fixture::{DmxFixture, DmxValue, DmxChannelCount, FixtureControl};
 
 mod fixture;
 mod profiles;
@@ -155,6 +155,11 @@ impl<S> PatchItem<S> {
     /// Get an immutable slice of this patch item's control sources.
     pub fn control_sources(&self) -> &[Option<S>] {
         &self.control_sources
+    }
+
+    /// Get an iterator over this patch item's controls.
+    pub fn controls(&self) -> Iter<FixtureControl> {
+        self.fixture.controls()
     }
 
     /// Set all of the control values of this fixture by providing a data source to retrieve its
@@ -445,6 +450,15 @@ impl<S> Patch<S> {
                 control_id: control_id,
                 control_count: item.fixture.control_count(),
             }),
+        }
+    }
+
+    /// Set all of the control values of every fixture.
+    pub fn set_controls<F>(&mut self, data_source: F)
+        where F: Fn(&S, Datatype) -> Data
+    {
+        for ref mut item in &mut self.items {
+            item.set_controls(&data_source);
         }
     }
 
