@@ -113,7 +113,7 @@ impl Inputs<KnobResponse<WiggleKnobAddr>, WiggleId> for Blender {
 }
 
 // Blender has a single, fixed output.
-impl<M> Outputs<M> for Blender {}
+impl<M, I> Outputs<M, I> for Blender {}
 
 const BLEND_MODE_KNOB_ADDR: KnobAddr = 0;
 

@@ -328,6 +328,24 @@ function inputSelector(clockId_0, clockId_1, inputId, currentValue, clocks, disp
   }], Form.Control])].concat(_toConsumableArray(options))));
 }
 
+export function addInput(clockId_0, clockId_1, dispatchServer) {
+  var clockId = [clockId_0, clockId_1];
+  return createElement("button", fold(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [["onClick", function (_arg1_1) {
+    dispatchServer(all(new Command("PushInput", [clockId])));
+  }], Button.Primary]), "Add Input");
+}
+export function dropInput(clockId_0, clockId_1, dispatchServer) {
+  var clockId = [clockId_0, clockId_1];
+  return createElement("button", fold(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [["onClick", function (_arg1_1) {
+    dispatchServer(all(new Command("PopInput", [clockId])));
+  }], Button.Default]), "Drop Input");
+}
 export function viewClock(clockId_0, clockId_1, clock, clocks, knobs, dispatchKnobLocal, dispatchKnobServer, dispatchClockServer) {
   var clockId = [clockId_0, clockId_1];
   var inputSelectors = createElement.apply(undefined, ["div", {}].concat(_toConsumableArray(mapIndexed(function (inputId, source) {
@@ -355,7 +373,7 @@ export function viewClock(clockId_0, clockId_1, clock, clocks, knobs, dispatchKn
     }
   }, fsFormat("%s (%s)")(function (x) {
     return x;
-  })(clock.name)(clock.kind), inputSelectors, viewAllWith(addrFilter, knobs, dispatchKnobLocal, dispatchKnobServer));
+  })(clock.name)(clock.kind), addInput(clockId[0], clockId[1], dispatchClockServer), dropInput(clockId[0], clockId[1], dispatchClockServer), inputSelectors, viewAllWith(addrFilter, knobs, dispatchKnobLocal, dispatchKnobServer));
 }
 export function viewAllClocks(clocks, knobs, dispatchKnobLocal, dispatchKnobServer, dispatchClockServer) {
   return createElement.apply(undefined, ["div", {}].concat(_toConsumableArray(toList(map_2(function (tupledArg) {

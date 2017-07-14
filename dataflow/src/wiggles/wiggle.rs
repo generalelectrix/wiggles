@@ -131,7 +131,7 @@ impl WiggleProvider for WiggleNetwork {
 pub trait CompleteWiggle:
     Wiggle
     + Inputs<KnobResponse<WiggleKnobAddr>, WiggleId>
-    + Outputs<KnobResponse<WiggleKnobAddr>>
+    + Outputs<KnobResponse<WiggleKnobAddr>, WiggleId>
     + Knobs<KnobAddr>
     + fmt::Debug
 {
@@ -143,7 +143,7 @@ impl<T> CompleteWiggle for T
     where T: 'static
         + Wiggle
         + Inputs<KnobResponse<WiggleKnobAddr>, WiggleId>
-        + Outputs<KnobResponse<WiggleKnobAddr>>
+        + Outputs<KnobResponse<WiggleKnobAddr>, WiggleId>
         + Knobs<KnobAddr>
         + fmt::Debug
         + PartialEq
@@ -164,15 +164,17 @@ impl<'a, 'b> PartialEq<CompleteWiggle+'b> for CompleteWiggle + 'a {
     }
 }
 
-impl Outputs<KnobResponse<WiggleKnobAddr>> for Box<CompleteWiggle> {
+impl Outputs<KnobResponse<WiggleKnobAddr>, WiggleId> for Box<CompleteWiggle> {
     fn default_output_count(&self) -> u32 {
         (**self).default_output_count()
     }
-    fn try_push_output(&mut self) -> Result<Messages<KnobResponse<WiggleKnobAddr>>, ()> {
-        (**self).try_push_output()
+    fn try_push_output(
+            &mut self, node_id: WiggleId) -> Result<Messages<KnobResponse<WiggleKnobAddr>>, ()> {
+        (**self).try_push_output(node_id)
     }
-    fn try_pop_output(&mut self) -> Result<Messages<KnobResponse<WiggleKnobAddr>>, ()> {
-        (**self).try_pop_output()
+    fn try_pop_output(
+            &mut self, node_id: WiggleId) -> Result<Messages<KnobResponse<WiggleKnobAddr>>, ()> {
+        (**self).try_pop_output(node_id)
     }
 }
 

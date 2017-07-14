@@ -6062,11 +6062,11 @@ var parseUniverseId = function parseUniverseId(v) {
 };
 function globalAddressFromOptionals(univOpt, addrOpt) {
   var matchValue = [univOpt, addrOpt];
-  var $var310 = matchValue[0].Case === "Absent" ? matchValue[1].Case === "Absent" ? [1] : [2] : matchValue[1].Case === "Present" ? [0, matchValue[1].Fields[0], matchValue[0].Fields[0]] : [2];
+  var $var328 = matchValue[0].Case === "Absent" ? matchValue[1].Case === "Absent" ? [1] : [2] : matchValue[1].Case === "Present" ? [0, matchValue[1].Fields[0], matchValue[0].Fields[0]] : [2];
 
-  switch ($var310[0]) {
+  switch ($var328[0]) {
     case 0:
-      return new __WEBPACK_IMPORTED_MODULE_2_fable_elmish_result__["a" /* Result */]("Ok", [[$var310[2], $var310[1]]]);
+      return new __WEBPACK_IMPORTED_MODULE_2_fable_elmish_result__["a" /* Result */]("Ok", [[$var328[2], $var328[1]]]);
 
     case 1:
       return new __WEBPACK_IMPORTED_MODULE_2_fable_elmish_result__["a" /* Result */]("Ok", [null]);
@@ -19600,6 +19600,8 @@ function view(viewShow, model, dispatch) {
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return Message; });
 /* unused harmony export updateFromServer */
 /* harmony export (immutable) */ __webpack_exports__["e"] = update;
+/* unused harmony export addInput */
+/* unused harmony export dropInput */
 /* unused harmony export viewClock */
 /* unused harmony export viewAllClocks */
 /* harmony export (immutable) */ __webpack_exports__["f"] = view;
@@ -19949,6 +19951,24 @@ function inputSelector(clockId_0, clockId_1, inputId, currentValue, clocks, disp
   }], __WEBPACK_IMPORTED_MODULE_4__Bootstrap__["c" /* Form */].Control])].concat(_toConsumableArray(options))));
 }
 
+function addInput(clockId_0, clockId_1, dispatchServer) {
+  var clockId = [clockId_0, clockId_1];
+  return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_react__["createElement"])("button", __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_7_fable_core_Seq__["d" /* fold */])(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [["onClick", function (_arg1_1) {
+    dispatchServer(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9__Types__["g" /* all */])(new __WEBPACK_IMPORTED_MODULE_8__ClockTypes__["a" /* Command */]("PushInput", [clockId])));
+  }], __WEBPACK_IMPORTED_MODULE_4__Bootstrap__["b" /* Button */].Primary]), "Add Input");
+}
+function dropInput(clockId_0, clockId_1, dispatchServer) {
+  var clockId = [clockId_0, clockId_1];
+  return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_react__["createElement"])("button", __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_7_fable_core_Seq__["d" /* fold */])(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [["onClick", function (_arg1_1) {
+    dispatchServer(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9__Types__["g" /* all */])(new __WEBPACK_IMPORTED_MODULE_8__ClockTypes__["a" /* Command */]("PopInput", [clockId])));
+  }], __WEBPACK_IMPORTED_MODULE_4__Bootstrap__["b" /* Button */].Default]), "Drop Input");
+}
 function viewClock(clockId_0, clockId_1, clock, clocks, knobs, dispatchKnobLocal, dispatchKnobServer, dispatchClockServer) {
   var clockId = [clockId_0, clockId_1];
   var inputSelectors = __WEBPACK_IMPORTED_MODULE_6_react__["createElement"].apply(undefined, ["div", {}].concat(_toConsumableArray(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["g" /* mapIndexed */])(function (inputId, source) {
@@ -19976,7 +19996,7 @@ function viewClock(clockId_0, clockId_1, clock, clocks, knobs, dispatchKnobLocal
     }
   }, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_12_fable_core_String__["a" /* fsFormat */])("%s (%s)")(function (x) {
     return x;
-  })(clock.name)(clock.kind), inputSelectors, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_14__Knobs__["h" /* viewAllWith */])(addrFilter, knobs, dispatchKnobLocal, dispatchKnobServer));
+  })(clock.name)(clock.kind), addInput(clockId[0], clockId[1], dispatchClockServer), dropInput(clockId[0], clockId[1], dispatchClockServer), inputSelectors, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_14__Knobs__["h" /* viewAllWith */])(addrFilter, knobs, dispatchKnobLocal, dispatchKnobServer));
 }
 function viewAllClocks(clocks, knobs, dispatchKnobLocal, dispatchKnobServer, dispatchClockServer) {
   return __WEBPACK_IMPORTED_MODULE_6_react__["createElement"].apply(undefined, ["div", {}].concat(_toConsumableArray(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_7_fable_core_Seq__["a" /* toList */])(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_7_fable_core_Seq__["b" /* map */])(function (tupledArg) {
@@ -20054,6 +20074,10 @@ __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0_fable_core_Symbol__["b" /* set
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return Message; });
 /* unused harmony export updateFromServer */
 /* harmony export (immutable) */ __webpack_exports__["e"] = update;
+/* unused harmony export addInput */
+/* unused harmony export dropInput */
+/* unused harmony export addOutput */
+/* unused harmony export dropOutput */
 /* unused harmony export viewWiggle */
 /* unused harmony export viewAllWiggles */
 /* harmony export (immutable) */ __webpack_exports__["f"] = view;
@@ -20193,18 +20217,18 @@ var NewWiggle = function (__exports) {
   };
 
   var view = __exports.view = function (kinds, model, dispatchLocal, dispatchServer) {
-    return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_react__["createElement"])("div", {}, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_react__["createElement"])("h4", {}, "Create new wiggle"), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1__EditBox__["e" /* view */])(null, "", model.name, function ($var261) {
+    return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_react__["createElement"])("div", {}, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_react__["createElement"])("h4", {}, "Create new wiggle"), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1__EditBox__["e" /* view */])(null, "", model.name, function ($var267) {
       return dispatchLocal(function (arg0) {
         return new Message("NameEdit", [arg0]);
-      }($var261));
+      }($var267));
     }), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_react__["createElement"])("label", {}, "Kind:", viewKindSelector(kinds, model.selectedKind, dispatchLocal)), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_react__["createElement"])("button", __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_7_fable_core_Seq__["d" /* fold */])(function (o, kv) {
       o[kv[0]] = kv[1];
       return o;
     }, {}, [["onClick", function (_arg1_1) {
-      var activePatternResult1488_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1__EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(model.name);
+      var activePatternResult1496_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1__EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(model.name);
 
-      if (activePatternResult1488_1 != null) {
-        var create_1 = new __WEBPACK_IMPORTED_MODULE_8__WiggleTypes__["d" /* CreateWiggle */](model.selectedKind, activePatternResult1488_1);
+      if (activePatternResult1496_1 != null) {
+        var create_1 = new __WEBPACK_IMPORTED_MODULE_8__WiggleTypes__["d" /* CreateWiggle */](model.selectedKind, activePatternResult1496_1);
         dispatchServer(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9__Types__["g" /* all */])(new __WEBPACK_IMPORTED_MODULE_8__WiggleTypes__["a" /* Command */]("Create", [create_1])));
       }
     }], __WEBPACK_IMPORTED_MODULE_4__Bootstrap__["b" /* Button */].Primary]), "Create"));
@@ -20337,8 +20361,8 @@ function updateFromServer(response, model) {
       };
 
       return function (list) {
-        return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["g" /* mapIndexed */])(function ($var262, $var263) {
-          return mapping($var262)($var263);
+        return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["g" /* mapIndexed */])(function ($var268, $var269) {
+          return mapping($var268)($var269);
         }, list);
       };
     }());
@@ -20431,6 +20455,43 @@ function inputSelector(wiggleId_0, wiggleId_1, inputId, currentValue, wiggles, d
   }], __WEBPACK_IMPORTED_MODULE_4__Bootstrap__["c" /* Form */].Control])].concat(_toConsumableArray(options_1))));
 }
 
+function addInput(wiggleId_0, wiggleId_1, dispatchServer) {
+  var wiggleId = [wiggleId_0, wiggleId_1];
+  return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_react__["createElement"])("button", __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_7_fable_core_Seq__["d" /* fold */])(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [["onClick", function (_arg1_1) {
+    dispatchServer(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9__Types__["g" /* all */])(new __WEBPACK_IMPORTED_MODULE_8__WiggleTypes__["a" /* Command */]("PushInput", [wiggleId])));
+  }], __WEBPACK_IMPORTED_MODULE_4__Bootstrap__["b" /* Button */].Primary]), "Add Input");
+}
+function dropInput(wiggleId_0, wiggleId_1, dispatchServer) {
+  var wiggleId = [wiggleId_0, wiggleId_1];
+  return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_react__["createElement"])("button", __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_7_fable_core_Seq__["d" /* fold */])(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [["onClick", function (_arg1_1) {
+    dispatchServer(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9__Types__["g" /* all */])(new __WEBPACK_IMPORTED_MODULE_8__WiggleTypes__["a" /* Command */]("PopInput", [wiggleId])));
+  }], __WEBPACK_IMPORTED_MODULE_4__Bootstrap__["b" /* Button */].Default]), "Drop Input");
+}
+function addOutput(wiggleId_0, wiggleId_1, dispatchServer) {
+  var wiggleId = [wiggleId_0, wiggleId_1];
+  return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_react__["createElement"])("button", __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_7_fable_core_Seq__["d" /* fold */])(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [["onClick", function (_arg1_1) {
+    dispatchServer(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9__Types__["g" /* all */])(new __WEBPACK_IMPORTED_MODULE_8__WiggleTypes__["a" /* Command */]("PushOutput", [wiggleId])));
+  }], __WEBPACK_IMPORTED_MODULE_4__Bootstrap__["b" /* Button */].Primary]), "Add Output");
+}
+function dropOutput(wiggleId_0, wiggleId_1, dispatchServer) {
+  var wiggleId = [wiggleId_0, wiggleId_1];
+  return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_react__["createElement"])("button", __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_7_fable_core_Seq__["d" /* fold */])(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [["onClick", function (_arg1_1) {
+    dispatchServer(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9__Types__["g" /* all */])(new __WEBPACK_IMPORTED_MODULE_8__WiggleTypes__["a" /* Command */]("PopOutput", [wiggleId])));
+  }], __WEBPACK_IMPORTED_MODULE_4__Bootstrap__["b" /* Button */].Default]), "Drop Output");
+}
+
 function clockSelector(wiggleId_0, wiggleId_1, currentValue, clocks, dispatchServer) {
   var wiggleId = [wiggleId_0, wiggleId_1];
 
@@ -20477,12 +20538,12 @@ function viewWiggle(wiggleId_0, wiggleId_1, wiggle, wiggles, knobs, clocks, disp
   }
 
   var addrFilter = function addrFilter(addr) {
-    var $var264 = addr.Case === "Wiggle" ? function () {
+    var $var270 = addr.Case === "Wiggle" ? function () {
       var id = addr.Fields[0][0];
       return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2_fable_core_Util__["g" /* equals */])(wiggleId, id);
     }() ? [0, addr.Fields[0][0]] : [1] : [1];
 
-    switch ($var264[0]) {
+    switch ($var270[0]) {
       case 0:
         return true;
 
@@ -20497,7 +20558,9 @@ function viewWiggle(wiggleId_0, wiggleId_1, wiggle, wiggles, knobs, clocks, disp
     }
   }, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_12_fable_core_String__["a" /* fsFormat */])("%s (%s)")(function (x) {
     return x;
-  })(wiggle.name)(wiggle.kind), clockSelector_1, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_react__["createElement"])("div", {}, "Inputs:", inputSelectors), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_14__Knobs__["h" /* viewAllWith */])(addrFilter, knobs, dispatchKnobLocal, dispatchKnobServer));
+  })(wiggle.name)(wiggle.kind), clockSelector_1, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_react__["createElement"])("div", {}, "Inputs:", inputSelectors, addInput(wiggleId[0], wiggleId[1], dispatchWiggleServer), dropInput(wiggleId[0], wiggleId[1], dispatchWiggleServer)), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_react__["createElement"])("div", {}, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_12_fable_core_String__["a" /* fsFormat */])("Outputs: %d")(function (x) {
+    return x;
+  })(wiggle.outputs), addOutput(wiggleId[0], wiggleId[1], dispatchWiggleServer), dropOutput(wiggleId[0], wiggleId[1], dispatchWiggleServer)), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_14__Knobs__["h" /* viewAllWith */])(addrFilter, knobs, dispatchKnobLocal, dispatchKnobServer));
 }
 function viewAllWiggles(wiggles, knobs, clocks, dispatchKnobLocal, dispatchKnobServer, dispatchWiggleServer) {
   return __WEBPACK_IMPORTED_MODULE_6_react__["createElement"].apply(undefined, ["div", {}].concat(_toConsumableArray(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_7_fable_core_Seq__["a" /* toList */])(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_7_fable_core_Seq__["b" /* map */])(function (tupledArg) {
@@ -20505,10 +20568,10 @@ function viewAllWiggles(wiggles, knobs, clocks, dispatchKnobLocal, dispatchKnobS
   }, wiggles)))));
 }
 function view(knobs, clocks, model, dispatchKnob, dispatchWiggle, dispatchKnobServer, dispatchWiggleServer) {
-  return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_react__["createElement"])("div", {}, NewWiggle.view(model.kinds, model.newWiggle, function ($var265) {
+  return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6_react__["createElement"])("div", {}, NewWiggle.view(model.kinds, model.newWiggle, function ($var271) {
     return dispatchWiggle(function (arg0) {
       return new Message("NewWiggle", [arg0]);
-    }($var265));
+    }($var271));
   }, dispatchWiggleServer), viewAllWiggles(model.wiggles, knobs, clocks, dispatchKnob, dispatchKnobServer, dispatchWiggleServer));
 }
 
@@ -20856,14 +20919,14 @@ function viewPatchTable(dispatch, patches, selectedId) {
   })))))));
 }
 function view(openModal, model, dispatch, dispatchServer) {
-  return __WEBPACK_IMPORTED_MODULE_10__core_Bootstrap__["e" /* Grid */].layout(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([[8, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([viewPatchTable(dispatch, model.patches, model.selected), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_11__Universes__["a" /* view */])(model.universes, model.availablePorts, openModal, dispatchServer)])], [4, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([__WEBPACK_IMPORTED_MODULE_10__core_Bootstrap__["e" /* Grid */].fullRow(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__PatchEdit__["e" /* view */])(model.editorModel, function ($var374) {
+  return __WEBPACK_IMPORTED_MODULE_10__core_Bootstrap__["e" /* Grid */].layout(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([[8, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([viewPatchTable(dispatch, model.patches, model.selected), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_11__Universes__["a" /* view */])(model.universes, model.availablePorts, openModal, dispatchServer)])], [4, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([__WEBPACK_IMPORTED_MODULE_10__core_Bootstrap__["e" /* Grid */].fullRow(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__PatchEdit__["e" /* view */])(model.editorModel, function ($var392) {
     return dispatch(function (arg0) {
       return new Message("Edit", [arg0]);
-    }($var374));
-  }, dispatchServer, openModal)])), __WEBPACK_IMPORTED_MODULE_10__core_Bootstrap__["e" /* Grid */].fullRow(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_4__NewPatch__["e" /* view */])(model.newPatchModel, function ($var375) {
+    }($var392));
+  }, dispatchServer, openModal)])), __WEBPACK_IMPORTED_MODULE_10__core_Bootstrap__["e" /* Grid */].fullRow(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_List__["a" /* ofArray */])([__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_4__NewPatch__["e" /* view */])(model.newPatchModel, function ($var393) {
     return dispatch(function (arg0_1) {
       return new Message("Create", [arg0_1]);
-    }($var375));
+    }($var393));
   }, dispatchServer)]))])]]));
 }
 
@@ -35222,14 +35285,14 @@ var initCommands = __WEBPACK_IMPORTED_MODULE_15_fable_elmish_elmish__["a" /* Cmd
   return __WEBPACK_IMPORTED_MODULE_15_fable_elmish_elmish__["a" /* CmdModule */].ofMsg(msg);
 }, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_14_fable_core_List__["b" /* map */])(function (message) {
   return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_16__core_Types__["a" /* exclusive */])(message);
-}, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_14_fable_core_List__["c" /* concat */])(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_14_fable_core_List__["a" /* ofArray */])([__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_13__core_Base__["d" /* initCommands */])(), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_14_fable_core_List__["b" /* map */])(function ($var400) {
-  return new __WEBPACK_IMPORTED_MODULE_16__core_Types__["b" /* ServerCommand */]("Console", [new ShowServerCommand("Patcher", [$var400])]);
-}, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__patcher_Patcher__["d" /* initCommands */])()), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_14_fable_core_List__["b" /* map */])(function ($var401) {
-  return new __WEBPACK_IMPORTED_MODULE_16__core_Types__["b" /* ServerCommand */]("Console", [new ShowServerCommand("Knob", [$var401])]);
-}, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9__core_Knobs__["e" /* initCommands */])()), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_14_fable_core_List__["b" /* map */])(function ($var402) {
-  return new __WEBPACK_IMPORTED_MODULE_16__core_Types__["b" /* ServerCommand */]("Console", [new ShowServerCommand("Clock", [$var402])]);
-}, __WEBPACK_IMPORTED_MODULE_6__core_Clocks__["d" /* initCommands */]), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_14_fable_core_List__["b" /* map */])(function ($var403) {
-  return new __WEBPACK_IMPORTED_MODULE_16__core_Types__["b" /* ServerCommand */]("Console", [new ShowServerCommand("Wiggle", [$var403])]);
+}, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_14_fable_core_List__["c" /* concat */])(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_14_fable_core_List__["a" /* ofArray */])([__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_13__core_Base__["d" /* initCommands */])(), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_14_fable_core_List__["b" /* map */])(function ($var418) {
+  return new __WEBPACK_IMPORTED_MODULE_16__core_Types__["b" /* ServerCommand */]("Console", [new ShowServerCommand("Patcher", [$var418])]);
+}, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__patcher_Patcher__["d" /* initCommands */])()), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_14_fable_core_List__["b" /* map */])(function ($var419) {
+  return new __WEBPACK_IMPORTED_MODULE_16__core_Types__["b" /* ServerCommand */]("Console", [new ShowServerCommand("Knob", [$var419])]);
+}, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9__core_Knobs__["e" /* initCommands */])()), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_14_fable_core_List__["b" /* map */])(function ($var420) {
+  return new __WEBPACK_IMPORTED_MODULE_16__core_Types__["b" /* ServerCommand */]("Console", [new ShowServerCommand("Clock", [$var420])]);
+}, __WEBPACK_IMPORTED_MODULE_6__core_Clocks__["d" /* initCommands */]), __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_14_fable_core_List__["b" /* map */])(function ($var421) {
+  return new __WEBPACK_IMPORTED_MODULE_16__core_Types__["b" /* ServerCommand */]("Console", [new ShowServerCommand("Wiggle", [$var421])]);
 }, __WEBPACK_IMPORTED_MODULE_7__core_Wiggles__["d" /* initCommands */])])))));
 function wrapShowResponse(message) {
   if (message.Case === "Patcher") {
@@ -35249,8 +35312,8 @@ function updateShow(message, model) {
     return [new ShowModel(message.Fields[0], model.patcher, model.knobs, model.clocks, model.wiggles), __WEBPACK_IMPORTED_MODULE_15_fable_elmish_elmish__["a" /* CmdModule */].none()];
   } else if (message.Case === "Patcher") {
     var patternInput = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__patcher_Patcher__["e" /* update */])(message.Fields[0], model.patcher);
-    return [new ShowModel(model.page, patternInput[0], model.knobs, model.clocks, model.wiggles), __WEBPACK_IMPORTED_MODULE_15_fable_elmish_elmish__["a" /* CmdModule */].map(function ($var404) {
-      return new __WEBPACK_IMPORTED_MODULE_13__core_Base__["a" /* Message */]("Inner", [new ShowMessage("Patcher", [$var404])]);
+    return [new ShowModel(model.page, patternInput[0], model.knobs, model.clocks, model.wiggles), __WEBPACK_IMPORTED_MODULE_15_fable_elmish_elmish__["a" /* CmdModule */].map(function ($var422) {
+      return new __WEBPACK_IMPORTED_MODULE_13__core_Base__["a" /* Message */]("Inner", [new ShowMessage("Patcher", [$var422])]);
     }, patternInput[1])];
   } else if (message.Case === "Knob") {
     var updatedKnobs = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9__core_Knobs__["f" /* update */])(message.Fields[0], model.knobs);
@@ -35267,7 +35330,7 @@ function updateShow(message, model) {
 }
 function viewShow(openModal, model, dispatch, dispatchServer) {
   if (model.page.Case === "Controls") {
-    return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_18__patcher_Controls__["a" /* view */])(model.patcher.patches, model.wiggles.wiggles, function ($var405) {
+    return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_18__patcher_Controls__["a" /* view */])(model.patcher.patches, model.wiggles.wiggles, function ($var423) {
       return dispatchServer(function () {
         var f = function f(arg0) {
           return new ShowServerCommand("Patcher", [arg0]);
@@ -35276,15 +35339,15 @@ function viewShow(openModal, model, dispatch, dispatchServer) {
         return function (tupledArg) {
           return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_13__core_Base__["e" /* liftResponseAndFilter */])(f, tupledArg[0], tupledArg[1]);
         };
-      }()($var405));
+      }()($var423));
     });
   } else if (model.page.Case === "KnobTest") {
     var knobs = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_19_fable_core_Seq__["a" /* toList */])(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_19_fable_core_Seq__["b" /* map */])(function (tupledArg_1) {
-      return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9__core_Knobs__["g" /* viewOne */])(tupledArg_1[0], tupledArg_1[1], function ($var406) {
+      return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9__core_Knobs__["g" /* viewOne */])(tupledArg_1[0], tupledArg_1[1], function ($var424) {
         return dispatch(function (arg0_1) {
           return new ShowMessage("Knob", [arg0_1]);
-        }($var406));
-      }, function ($var407) {
+        }($var424));
+      }, function ($var425) {
         return dispatchServer(function () {
           var f_1 = function f_1(arg0_2) {
             return new ShowServerCommand("Knob", [arg0_2]);
@@ -35293,20 +35356,20 @@ function viewShow(openModal, model, dispatch, dispatchServer) {
           return function (tupledArg_2) {
             return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_13__core_Base__["e" /* liftResponseAndFilter */])(f_1, tupledArg_2[0], tupledArg_2[1]);
           };
-        }()($var407));
+        }()($var425));
       });
     }, model.knobs));
     return __WEBPACK_IMPORTED_MODULE_20_react__["createElement"].apply(undefined, ["div", {}].concat(_toConsumableArray(knobs)));
   } else if (model.page.Case === "ClockTest") {
-    return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6__core_Clocks__["f" /* view */])(model.knobs, model.clocks, function ($var408) {
+    return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_6__core_Clocks__["f" /* view */])(model.knobs, model.clocks, function ($var426) {
       return dispatch(function (arg0_3) {
         return new ShowMessage("Knob", [arg0_3]);
-      }($var408));
-    }, function ($var409) {
+      }($var426));
+    }, function ($var427) {
       return dispatch(function (arg0_4) {
         return new ShowMessage("Clock", [arg0_4]);
-      }($var409));
-    }, function ($var410) {
+      }($var427));
+    }, function ($var428) {
       return dispatchServer(function () {
         var f_2 = function f_2(arg0_5) {
           return new ShowServerCommand("Knob", [arg0_5]);
@@ -35315,8 +35378,8 @@ function viewShow(openModal, model, dispatch, dispatchServer) {
         return function (tupledArg_3) {
           return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_13__core_Base__["e" /* liftResponseAndFilter */])(f_2, tupledArg_3[0], tupledArg_3[1]);
         };
-      }()($var410));
-    }, function ($var411) {
+      }()($var428));
+    }, function ($var429) {
       return dispatchServer(function () {
         var f_3 = function f_3(arg0_6) {
           return new ShowServerCommand("Clock", [arg0_6]);
@@ -35325,18 +35388,18 @@ function viewShow(openModal, model, dispatch, dispatchServer) {
         return function (tupledArg_4) {
           return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_13__core_Base__["e" /* liftResponseAndFilter */])(f_3, tupledArg_4[0], tupledArg_4[1]);
         };
-      }()($var411));
+      }()($var429));
     });
   } else if (model.page.Case === "WiggleTest") {
-    return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_7__core_Wiggles__["f" /* view */])(model.knobs, model.clocks.clocks, model.wiggles, function ($var412) {
+    return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_7__core_Wiggles__["f" /* view */])(model.knobs, model.clocks.clocks, model.wiggles, function ($var430) {
       return dispatch(function (arg0_7) {
         return new ShowMessage("Knob", [arg0_7]);
-      }($var412));
-    }, function ($var413) {
+      }($var430));
+    }, function ($var431) {
       return dispatch(function (arg0_8) {
         return new ShowMessage("Wiggle", [arg0_8]);
-      }($var413));
-    }, function ($var414) {
+      }($var431));
+    }, function ($var432) {
       return dispatchServer(function () {
         var f_4 = function f_4(arg0_9) {
           return new ShowServerCommand("Knob", [arg0_9]);
@@ -35345,8 +35408,8 @@ function viewShow(openModal, model, dispatch, dispatchServer) {
         return function (tupledArg_5) {
           return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_13__core_Base__["e" /* liftResponseAndFilter */])(f_4, tupledArg_5[0], tupledArg_5[1]);
         };
-      }()($var414));
-    }, function ($var415) {
+      }()($var432));
+    }, function ($var433) {
       return dispatchServer(function () {
         var f_5 = function f_5(arg0_10) {
           return new ShowServerCommand("Wiggle", [arg0_10]);
@@ -35355,14 +35418,14 @@ function viewShow(openModal, model, dispatch, dispatchServer) {
         return function (tupledArg_6) {
           return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_13__core_Base__["e" /* liftResponseAndFilter */])(f_5, tupledArg_6[0], tupledArg_6[1]);
         };
-      }()($var415));
+      }()($var433));
     });
   } else {
-    return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__patcher_Patcher__["f" /* view */])(openModal, model.patcher, function ($var416) {
+    return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__patcher_Patcher__["f" /* view */])(openModal, model.patcher, function ($var434) {
       return dispatch(function (arg0_11) {
         return new ShowMessage("Patcher", [arg0_11]);
-      }($var416));
-    }, function ($var417) {
+      }($var434));
+    }, function ($var435) {
       return dispatchServer(function () {
         var f_6 = function f_6(arg0_12) {
           return new ShowServerCommand("Patcher", [arg0_12]);
@@ -35371,7 +35434,7 @@ function viewShow(openModal, model, dispatch, dispatchServer) {
         return function (tupledArg_7) {
           return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_13__core_Base__["e" /* liftResponseAndFilter */])(f_6, tupledArg_7[0], tupledArg_7[1]);
         };
-      }()($var417));
+      }()($var435));
     });
   }
 }
@@ -36232,7 +36295,7 @@ var Message = function () {
 }();
 __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0_fable_core_Symbol__["b" /* setType */])("NewPatch.Message", Message);
 
-var parsePositiveInt = function parsePositiveInt($var335) {
+var parsePositiveInt = function parsePositiveInt($var353) {
   return function () {
     var f = function f(number) {
       if (number < 1) {
@@ -36245,9 +36308,9 @@ var parsePositiveInt = function parsePositiveInt($var335) {
     return function (r) {
       return __WEBPACK_IMPORTED_MODULE_6_fable_elmish_result__["b" /* ResultModule */].bind(f, r);
     };
-  }()(function ($var334) {
-    return __WEBPACK_IMPORTED_MODULE_4__core_Util__["f" /* Result */].ofOption(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_4__core_Util__["g" /* parseInt */])($var334));
-  }($var335));
+  }()(function ($var352) {
+    return __WEBPACK_IMPORTED_MODULE_4__core_Util__["f" /* Result */].ofOption(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_4__core_Util__["g" /* parseInt */])($var352));
+  }($var353));
 };
 
 function initialModel() {
@@ -36279,33 +36342,33 @@ function update(message, model) {
     return new Model(model.kinds, model.selectedKind, model.name, model.universe, model.address, quantity);
   }() : message.Case === "AdvanceAddress" ? function () {
     var matchValue_1 = [model.address, model.quantity, model.selectedKind];
-    var $var336 = void 0;
+    var $var354 = void 0;
 
-    var activePatternResult1826 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_1[0]);
+    var activePatternResult1850 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_1[0]);
 
-    if (activePatternResult1826 != null) {
-      if (activePatternResult1826.Case === "Present") {
-        var activePatternResult1827 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_1[1]);
+    if (activePatternResult1850 != null) {
+      if (activePatternResult1850.Case === "Present") {
+        var activePatternResult1851 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_1[1]);
 
-        if (activePatternResult1827 != null) {
+        if (activePatternResult1851 != null) {
           if (matchValue_1[2] != null) {
-            $var336 = [0, activePatternResult1826.Fields[0], matchValue_1[2], activePatternResult1827];
+            $var354 = [0, activePatternResult1850.Fields[0], matchValue_1[2], activePatternResult1851];
           } else {
-            $var336 = [1];
+            $var354 = [1];
           }
         } else {
-          $var336 = [1];
+          $var354 = [1];
         }
       } else {
-        $var336 = [1];
+        $var354 = [1];
       }
     } else {
-      $var336 = [1];
+      $var354 = [1];
     }
 
-    switch ($var336[0]) {
+    switch ($var354[0]) {
       case 0:
-        var newStartAddress = 512 < $var336[1] + $var336[3] * $var336[2].channelCount ? 512 : $var336[1] + $var336[3] * $var336[2].channelCount;
+        var newStartAddress = 512 < $var354[1] + $var354[3] * $var354[2].channelCount ? 512 : $var354[1] + $var354[3] * $var354[2].channelCount;
         var address_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["g" /* setParsed */])(new __WEBPACK_IMPORTED_MODULE_4__core_Util__["e" /* Optional */]("Present", [newStartAddress]), model.address);
         return new Model(model.kinds, model.selectedKind, model.name, model.universe, address_1, model.quantity);
 
@@ -36380,47 +36443,47 @@ function patchButton(model, dispatchLocal, dispatchServer) {
       console.log(x);
     })(model);
     var matchValue_2 = [model.selectedKind, model.name, model.universe, model.address, model.quantity];
-    var $var338 = void 0;
+    var $var356 = void 0;
 
     if (matchValue_2[0] != null) {
-      var activePatternResult1845_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[1]);
+      var activePatternResult1869_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[1]);
 
-      if (activePatternResult1845_1 != null) {
-        var activePatternResult1846_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[2]);
+      if (activePatternResult1869_1 != null) {
+        var activePatternResult1870_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[2]);
 
-        if (activePatternResult1846_1 != null) {
-          var activePatternResult1847_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[3]);
+        if (activePatternResult1870_1 != null) {
+          var activePatternResult1871_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[3]);
 
-          if (activePatternResult1847_1 != null) {
-            var activePatternResult1848_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[4]);
+          if (activePatternResult1871_1 != null) {
+            var activePatternResult1872_1 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["h" /* $7C$Parsed$7C$_$7C$ */])(matchValue_2[4]);
 
-            if (activePatternResult1848_1 != null) {
-              $var338 = [0, activePatternResult1847_1, matchValue_2[0], activePatternResult1845_1, activePatternResult1848_1, activePatternResult1846_1];
+            if (activePatternResult1872_1 != null) {
+              $var356 = [0, activePatternResult1871_1, matchValue_2[0], activePatternResult1869_1, activePatternResult1872_1, activePatternResult1870_1];
             } else {
-              $var338 = [1];
+              $var356 = [1];
             }
           } else {
-            $var338 = [1];
+            $var356 = [1];
           }
         } else {
-          $var338 = [1];
+          $var356 = [1];
         }
       } else {
-        $var338 = [1];
+        $var356 = [1];
       }
     } else {
-      $var338 = [1];
+      $var356 = [1];
     }
 
-    switch ($var338[0]) {
+    switch ($var356[0]) {
       case 0:
-        var matchValue_3 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__PatchTypes__["i" /* globalAddressFromOptionals */])($var338[5], $var338[1]);
+        var matchValue_3 = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__PatchTypes__["i" /* globalAddressFromOptionals */])($var356[5], $var356[1]);
 
         if (matchValue_3.Case === "Ok") {
           __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_10_fable_core_String__["a" /* fsFormat */])("Addr: %+A")(function (x) {
             console.log(x);
           })(matchValue_3.Fields[0]);
-          var newPatchResult_1 = newPatchesSequential($var338[3], $var338[2], $var338[4], matchValue_3.Fields[0]);
+          var newPatchResult_1 = newPatchesSequential($var356[3], $var356[2], $var356[4], matchValue_3.Fields[0]);
 
           if (newPatchResult_1.Case === "Ok") {
             dispatchServer(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_12__core_Types__["g" /* all */])(new __WEBPACK_IMPORTED_MODULE_2__PatchTypes__["a" /* PatchServerRequest */]("NewPatches", [newPatchResult_1.Fields[0]])));
@@ -36443,25 +36506,25 @@ function view(model, dispatchLocal, dispatchServer) {
   if (model.kinds.length === 0) {
     return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9_react__["createElement"])("div", {}, "No patch types available.");
   } else {
-    var nameEntry = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, "", model.name, function ($var339) {
+    var nameEntry = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, "", model.name, function ($var357) {
       return dispatchLocal(function (arg0) {
         return new Message("NameEdit", [arg0]);
-      }($var339));
+      }($var357));
     });
-    var universeEntry = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, "", model.universe, function ($var340) {
+    var universeEntry = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, "", model.universe, function ($var358) {
       return dispatchLocal(function (arg0_1) {
         return new Message("UnivEdit", [arg0_1]);
-      }($var340));
+      }($var358));
     });
-    var addressEntry = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, "", model.address, function ($var341) {
+    var addressEntry = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, "", model.address, function ($var359) {
       return dispatchLocal(function (arg0_2) {
         return new Message("AddrEdit", [arg0_2]);
-      }($var341));
+      }($var359));
     });
-    var quantityEntry = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, "", model.quantity, function ($var342) {
+    var quantityEntry = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, "", model.quantity, function ($var360) {
       return dispatchLocal(function (arg0_3) {
         return new Message("QuantEdit", [arg0_3]);
-      }($var342));
+      }($var360));
     });
     return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9_react__["createElement"])("div", __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_fable_core_Seq__["d" /* fold */])(function (o, kv) {
       o[kv[0]] = kv[1];
@@ -36628,11 +36691,11 @@ function update(message, model) {
   }() : function () {
     var clearBuffers = void 0;
     var matchValue = [model.selected, message.Fields[0]];
-    var $var311 = matchValue[0] != null ? matchValue[1] != null ? [0, matchValue[0], matchValue[1]] : [1] : [1];
+    var $var329 = matchValue[0] != null ? matchValue[1] != null ? [0, matchValue[0], matchValue[1]] : [1] : [1];
 
-    switch ($var311[0]) {
+    switch ($var329[0]) {
       case 0:
-        if ($var311[1].id !== $var311[2].id) {
+        if ($var329[1].id !== $var329[2].id) {
           clearBuffers = true;
         } else {
           clearBuffers = false;
@@ -36668,12 +36731,12 @@ function nameEditOnKeyDown(fixtureId, dispatchLocal, dispatchServer, nameEditMod
 
     switch (matchValue) {
       case 13:
-        var $var312 = nameEditModel.value != null ? nameEditModel.value.Case === "Ok" ? [0, nameEditModel.value.Fields[0]] : [1] : [1];
+        var $var330 = nameEditModel.value != null ? nameEditModel.value.Case === "Ok" ? [0, nameEditModel.value.Fields[0]] : [1] : [1];
 
-        switch ($var312[0]) {
+        switch ($var330[0]) {
           case 0:
             clear(null);
-            dispatchServer(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_8__core_Types__["g" /* all */])(new __WEBPACK_IMPORTED_MODULE_2__PatchTypes__["a" /* PatchServerRequest */]("Rename", [fixtureId, $var312[1]])));
+            dispatchServer(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_8__core_Types__["g" /* all */])(new __WEBPACK_IMPORTED_MODULE_2__PatchTypes__["a" /* PatchServerRequest */]("Rename", [fixtureId, $var330[1]])));
             break;
 
           case 1:
@@ -36695,23 +36758,23 @@ function nameEditBox(selected, model, dispatchLocal, dispatchServer) {
     return nameEditOnKeyDown(selected.id, dispatchLocal, dispatchServer, nameEditModel);
   };
 
-  return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(onKeyDown, selected.name, model.nameEdit, function ($var313) {
+  return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(onKeyDown, selected.name, model.nameEdit, function ($var331) {
     return dispatchLocal(function (arg0) {
       return new Message("NameEdit", [arg0]);
-    }($var313));
+    }($var331));
   });
 }
 
 function addressEditor(selected, model, dispatchLocal, dispatchServer, openModal) {
-  var universeBox = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_4__core_Util__["i" /* emptyIfNone */])(selected.universe), model.universeEdit, function ($var314) {
+  var universeBox = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_4__core_Util__["i" /* emptyIfNone */])(selected.universe), model.universeEdit, function ($var332) {
     return dispatchLocal(function (arg0) {
       return new Message("UniverseEdit", [arg0]);
-    }($var314));
+    }($var332));
   });
-  var addressBox = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_4__core_Util__["i" /* emptyIfNone */])(selected.dmxAddress), model.addressEdit, function ($var315) {
+  var addressBox = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__core_EditBox__["e" /* view */])(null, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_4__core_Util__["i" /* emptyIfNone */])(selected.dmxAddress), model.addressEdit, function ($var333) {
     return dispatchLocal(function (arg0_1) {
       return new Message("AddressEdit", [arg0_1]);
-    }($var315));
+    }($var333));
   });
 
   var clear = function clear(msg) {
@@ -36889,8 +36952,8 @@ function portSelector(universe, ports, dispatchServer) {
       })(selectedValue_1));
     }
   }], __WEBPACK_IMPORTED_MODULE_4__core_Bootstrap__["c" /* Form */].Control])].concat(_toConsumableArray(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_9_fable_core_List__["a" /* ofArray */])(function (array_2) {
-    return Array.from(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Seq__["x" /* mapIndexed */])(function ($var352, $var353) {
-      return portOption($var352)($var353);
+    return Array.from(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_fable_core_Seq__["x" /* mapIndexed */])(function ($var370, $var371) {
+      return portOption($var370)($var371);
     }, array_2));
   }(ports))))));
 }

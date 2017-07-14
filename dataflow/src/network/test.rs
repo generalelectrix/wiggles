@@ -36,9 +36,9 @@ impl NodeId for TestNodeId {
 #[derive(Debug)]
 struct EmptyNode;
 
-impl<T> Inputs<T> for EmptyNode {}
+impl<T, U> Inputs<T, U> for EmptyNode {}
 
-impl<T> Outputs<T> for EmptyNode {}
+impl<T, U> Outputs<T, U> for EmptyNode {}
 
 type TestNetwork = Network<EmptyNode, TestNodeId, ()>;
 

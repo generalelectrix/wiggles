@@ -173,6 +173,18 @@ let private inputSelector clockId inputId (currentValue: ClockId option) (clocks
         ] options
     ]
 
+let addInput clockId dispatchServer =
+    R.button [
+        Button.Primary
+        OnClick (fun _ -> clockId |> ClockTypes.Command.PushInput |> all |> dispatchServer)
+    ] [R.str "Add Input"]
+
+let dropInput clockId dispatchServer =
+    R.button [
+        Button.Default
+        OnClick (fun _ -> clockId |> ClockTypes.Command.PopInput |> all |> dispatchServer)
+    ] [R.str "Drop Input"]
+
 /// Render a single clock.
 /// TODO: name edit in-place
 let viewClock
@@ -199,6 +211,8 @@ let viewClock
         Style [CSSProp.Width "200px"]
     ] [
         R.str (sprintf "%s (%s)" clock.name clock.kind)
+        addInput clockId dispatchClockServer
+        dropInput clockId dispatchClockServer
         inputSelectors
         Knobs.viewAllWith addrFilter knobs dispatchKnobLocal dispatchKnobServer
     ]

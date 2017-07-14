@@ -118,18 +118,18 @@ export var NewWiggle = function (__exports) {
   };
 
   var view = __exports.view = function (kinds, model, dispatchLocal, dispatchServer) {
-    return createElement("div", {}, createElement("h4", {}, "Create new wiggle"), view_1(null, "", model.name, function ($var261) {
+    return createElement("div", {}, createElement("h4", {}, "Create new wiggle"), view_1(null, "", model.name, function ($var267) {
       return dispatchLocal(function (arg0) {
         return new Message("NameEdit", [arg0]);
-      }($var261));
+      }($var267));
     }), createElement("label", {}, "Kind:", viewKindSelector(kinds, model.selectedKind, dispatchLocal)), createElement("button", fold(function (o, kv) {
       o[kv[0]] = kv[1];
       return o;
     }, {}, [["onClick", function (_arg1_1) {
-      var activePatternResult1488_1 = _Parsed___(model.name);
+      var activePatternResult1496_1 = _Parsed___(model.name);
 
-      if (activePatternResult1488_1 != null) {
-        var create_1 = new CreateWiggle(model.selectedKind, activePatternResult1488_1);
+      if (activePatternResult1496_1 != null) {
+        var create_1 = new CreateWiggle(model.selectedKind, activePatternResult1496_1);
         dispatchServer(all(new Command("Create", [create_1])));
       }
     }], Button.Primary]), "Create"));
@@ -262,8 +262,8 @@ export function updateFromServer(response, model) {
       };
 
       return function (list) {
-        return mapIndexed(function ($var262, $var263) {
-          return mapping($var262)($var263);
+        return mapIndexed(function ($var268, $var269) {
+          return mapping($var268)($var269);
         }, list);
       };
     }());
@@ -356,6 +356,43 @@ function inputSelector(wiggleId_0, wiggleId_1, inputId, currentValue, wiggles, d
   }], Form.Control])].concat(_toConsumableArray(options_1))));
 }
 
+export function addInput(wiggleId_0, wiggleId_1, dispatchServer) {
+  var wiggleId = [wiggleId_0, wiggleId_1];
+  return createElement("button", fold(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [["onClick", function (_arg1_1) {
+    dispatchServer(all(new Command("PushInput", [wiggleId])));
+  }], Button.Primary]), "Add Input");
+}
+export function dropInput(wiggleId_0, wiggleId_1, dispatchServer) {
+  var wiggleId = [wiggleId_0, wiggleId_1];
+  return createElement("button", fold(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [["onClick", function (_arg1_1) {
+    dispatchServer(all(new Command("PopInput", [wiggleId])));
+  }], Button.Default]), "Drop Input");
+}
+export function addOutput(wiggleId_0, wiggleId_1, dispatchServer) {
+  var wiggleId = [wiggleId_0, wiggleId_1];
+  return createElement("button", fold(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [["onClick", function (_arg1_1) {
+    dispatchServer(all(new Command("PushOutput", [wiggleId])));
+  }], Button.Primary]), "Add Output");
+}
+export function dropOutput(wiggleId_0, wiggleId_1, dispatchServer) {
+  var wiggleId = [wiggleId_0, wiggleId_1];
+  return createElement("button", fold(function (o, kv) {
+    o[kv[0]] = kv[1];
+    return o;
+  }, {}, [["onClick", function (_arg1_1) {
+    dispatchServer(all(new Command("PopOutput", [wiggleId])));
+  }], Button.Default]), "Drop Output");
+}
+
 function clockSelector(wiggleId_0, wiggleId_1, currentValue, clocks, dispatchServer) {
   var wiggleId = [wiggleId_0, wiggleId_1];
 
@@ -402,12 +439,12 @@ export function viewWiggle(wiggleId_0, wiggleId_1, wiggle, wiggles, knobs, clock
   }
 
   var addrFilter = function addrFilter(addr) {
-    var $var264 = addr.Case === "Wiggle" ? function () {
+    var $var270 = addr.Case === "Wiggle" ? function () {
       var id = addr.Fields[0][0];
       return equals(wiggleId, id);
     }() ? [0, addr.Fields[0][0]] : [1] : [1];
 
-    switch ($var264[0]) {
+    switch ($var270[0]) {
       case 0:
         return true;
 
@@ -422,7 +459,9 @@ export function viewWiggle(wiggleId_0, wiggleId_1, wiggle, wiggles, knobs, clock
     }
   }, fsFormat("%s (%s)")(function (x) {
     return x;
-  })(wiggle.name)(wiggle.kind), clockSelector_1, createElement("div", {}, "Inputs:", inputSelectors), viewAllWith(addrFilter, knobs, dispatchKnobLocal, dispatchKnobServer));
+  })(wiggle.name)(wiggle.kind), clockSelector_1, createElement("div", {}, "Inputs:", inputSelectors, addInput(wiggleId[0], wiggleId[1], dispatchWiggleServer), dropInput(wiggleId[0], wiggleId[1], dispatchWiggleServer)), createElement("div", {}, fsFormat("Outputs: %d")(function (x) {
+    return x;
+  })(wiggle.outputs), addOutput(wiggleId[0], wiggleId[1], dispatchWiggleServer), dropOutput(wiggleId[0], wiggleId[1], dispatchWiggleServer)), viewAllWith(addrFilter, knobs, dispatchKnobLocal, dispatchKnobServer));
 }
 export function viewAllWiggles(wiggles, knobs, clocks, dispatchKnobLocal, dispatchKnobServer, dispatchWiggleServer) {
   return createElement.apply(undefined, ["div", {}].concat(_toConsumableArray(toList(map_2(function (tupledArg) {
@@ -430,9 +469,9 @@ export function viewAllWiggles(wiggles, knobs, clocks, dispatchKnobLocal, dispat
   }, wiggles)))));
 }
 export function view(knobs, clocks, model, dispatchKnob, dispatchWiggle, dispatchKnobServer, dispatchWiggleServer) {
-  return createElement("div", {}, NewWiggle.view(model.kinds, model.newWiggle, function ($var265) {
+  return createElement("div", {}, NewWiggle.view(model.kinds, model.newWiggle, function ($var271) {
     return dispatchWiggle(function (arg0) {
       return new Message("NewWiggle", [arg0]);
-    }($var265));
+    }($var271));
   }, dispatchWiggleServer), viewAllWiggles(model.wiggles, knobs, clocks, dispatchKnob, dispatchKnobServer, dispatchWiggleServer));
 }

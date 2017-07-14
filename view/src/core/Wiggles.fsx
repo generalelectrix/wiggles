@@ -191,6 +191,30 @@ let private inputSelector wiggleId inputId (currentValue: (WiggleId * OutputId) 
         ] options
     ]
 
+let addInput wiggleId dispatchServer =
+    R.button [
+        Button.Primary
+        OnClick (fun _ -> wiggleId |> WiggleTypes.Command.PushInput |> all |> dispatchServer)
+    ] [R.str "Add Input"]
+
+let dropInput wiggleId dispatchServer =
+    R.button [
+        Button.Default
+        OnClick (fun _ -> wiggleId |> WiggleTypes.Command.PopInput |> all |> dispatchServer)
+    ] [R.str "Drop Input"]
+
+let addOutput wiggleId dispatchServer =
+    R.button [
+        Button.Primary
+        OnClick (fun _ -> wiggleId |> WiggleTypes.Command.PushOutput |> all |> dispatchServer)
+    ] [R.str "Add Output"]
+
+let dropOutput wiggleId dispatchServer =
+    R.button [
+        Button.Default
+        OnClick (fun _ -> wiggleId |> WiggleTypes.Command.PopOutput |> all |> dispatchServer)
+    ] [R.str "Drop Output"]
+
 /// Render a clock selector drop-down.
 let private clockSelector wiggleId (currentValue: ClockId option) (clocks: Clocks.Clocks) dispatchServer =
     let option (id: ClockId, cd: ClockTypes.ClockDescription) =
@@ -248,7 +272,17 @@ let viewWiggle
     ] [
         R.str (sprintf "%s (%s)" wiggle.name wiggle.kind)
         clockSelector
-        R.div [] [R.str "Inputs:"; inputSelectors]
+        R.div [] [
+            R.str "Inputs:"
+            inputSelectors
+            addInput wiggleId dispatchWiggleServer
+            dropInput wiggleId dispatchWiggleServer
+        ]
+        R.div [] [
+            R.str (sprintf "Outputs: %d" wiggle.outputs)
+            addOutput wiggleId dispatchWiggleServer
+            dropOutput wiggleId dispatchWiggleServer
+        ]
         Knobs.viewAllWith addrFilter knobs dispatchKnobLocal dispatchKnobServer
     ]
 

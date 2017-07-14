@@ -45,7 +45,7 @@ impl<M, I> Inputs<M, I> for TestWiggle {
 }
 
 // TestWiggle has one output.
-impl<M> Outputs<M> for TestWiggle {}
+impl<M, I> Outputs<M, I> for TestWiggle {}
 
 const DUTY_KNOB_ADDR: u32 = 0;
 
@@ -125,9 +125,7 @@ impl Wiggle for TestWiggle {
             Some(cid) => clocks.get_value(cid),
             None => ClockValue::default(),
         };
-        // TODO: pass type hint into waveform generator so it can be as clever as possible.
-        let value = sine(clock_val.phase_shift(phase_offset), Unipolar(1.0), false);
-        Data::Bipolar(value)
+        sine(clock_val.phase_shift(phase_offset), Unipolar(1.0), false, type_hint)
     }
 
     /// Return Ok if this wiggle uses a clock input, and return the current value of it.

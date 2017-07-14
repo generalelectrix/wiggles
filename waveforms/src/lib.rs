@@ -10,13 +10,24 @@ const TWOPI: f64 = 2.0 * PI;
 // Helper functions to avoid having to call math functions as methods.
 fn sin(x: f64) -> f64 { x.sin() }
 
-// TODO: decide how we want to handle generation of bipolar vs. unipolar values.
-// This is especially important in pulse mode.
-
 /// Generate a unit-amplitude sine wave on the interval [-1.0, 1.0].
 pub fn sine(
         Unipolar(angle): Unipolar,
         Unipolar(duty_cycle): Unipolar,
+        pulse: bool,
+        type_hint: Option<Datatype>)
+        -> Data
+{
+    match type_hint {
+        Some(Datatype::Unipolar) | None => Data::Unipolar(sine_unipolar(angle, duty_cycle)),
+        Some(Datatype::Bipolar) => Data::Bipolar(sine_bipolar(angle, duty_cycle, pulse))
+    }
+}
+
+/// Bipolar output specialized impl of sine function.
+fn sine_bipolar(
+        angle: f64,
+        duty_cycle: f64,
         pulse: bool)
         -> Bipolar
 {
@@ -31,6 +42,16 @@ pub fn sine(
     else {
         Bipolar(sin(TWOPI + angle))
     }
+}
+
+/// Unipolar output specialized impl of sine function.
+fn sine_unipolar(angle: f64, duty_cycle: f64) -> Unipolar {
+    if angle > duty_cycle || duty_cycle == 0.0 {
+        return Unipolar(0.0);
+    }
+
+    let angle = angle / duty_cycle;
+    Unipolar((sin(TWOPI * angle - HALF_PI) + 1.0) / 2.0)
 }
 
 // fn sawtooth(

@@ -55,13 +55,13 @@ lazy_static! {
 impl<M, I> Inputs<M, I> for Fanner { }
 
 // Fanner has at least one and up to an unlimited number of outputs.
-impl<M> Outputs<M> for Fanner {
-    fn try_push_output(&mut self) -> Result<Messages<M>, ()> {
+impl<M, I> Outputs<M, I> for Fanner {
+    fn try_push_output(&mut self, _: I) -> Result<Messages<M>, ()> {
         self.output_count += 1;
         Ok(Messages::none())
     }
 
-    fn try_pop_output(&mut self) -> Result<Messages<M>, ()> {
+    fn try_pop_output(&mut self, _: I) -> Result<Messages<M>, ()> {
         if self.output_count == 1 {
             Err(())
         }

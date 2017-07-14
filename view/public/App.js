@@ -246,14 +246,14 @@ export var initCommands = CmdModule.batch(map(function (msg) {
   return CmdModule.ofMsg(msg);
 }, map(function (message) {
   return exclusive(message);
-}, concat(ofArray([initCommands_1(), map(function ($var400) {
-  return new ServerCommand_1("Console", [new ShowServerCommand("Patcher", [$var400])]);
-}, initCommands_2()), map(function ($var401) {
-  return new ServerCommand_1("Console", [new ShowServerCommand("Knob", [$var401])]);
-}, initCommands_3()), map(function ($var402) {
-  return new ServerCommand_1("Console", [new ShowServerCommand("Clock", [$var402])]);
-}, initCommands_4), map(function ($var403) {
-  return new ServerCommand_1("Console", [new ShowServerCommand("Wiggle", [$var403])]);
+}, concat(ofArray([initCommands_1(), map(function ($var418) {
+  return new ServerCommand_1("Console", [new ShowServerCommand("Patcher", [$var418])]);
+}, initCommands_2()), map(function ($var419) {
+  return new ServerCommand_1("Console", [new ShowServerCommand("Knob", [$var419])]);
+}, initCommands_3()), map(function ($var420) {
+  return new ServerCommand_1("Console", [new ShowServerCommand("Clock", [$var420])]);
+}, initCommands_4), map(function ($var421) {
+  return new ServerCommand_1("Console", [new ShowServerCommand("Wiggle", [$var421])]);
 }, initCommands_5)])))));
 export function wrapShowResponse(message) {
   if (message.Case === "Patcher") {
@@ -273,8 +273,8 @@ export function updateShow(message, model) {
     return [new ShowModel(message.Fields[0], model.patcher, model.knobs, model.clocks, model.wiggles), CmdModule.none()];
   } else if (message.Case === "Patcher") {
     var patternInput = update_1(message.Fields[0], model.patcher);
-    return [new ShowModel(model.page, patternInput[0], model.knobs, model.clocks, model.wiggles), CmdModule.map(function ($var404) {
-      return new Message_4("Inner", [new ShowMessage("Patcher", [$var404])]);
+    return [new ShowModel(model.page, patternInput[0], model.knobs, model.clocks, model.wiggles), CmdModule.map(function ($var422) {
+      return new Message_4("Inner", [new ShowMessage("Patcher", [$var422])]);
     }, patternInput[1])];
   } else if (message.Case === "Knob") {
     var updatedKnobs = update_2(message.Fields[0], model.knobs);
@@ -291,7 +291,7 @@ export function updateShow(message, model) {
 }
 export function viewShow(openModal, model, dispatch, dispatchServer) {
   if (model.page.Case === "Controls") {
-    return view_1(model.patcher.patches, model.wiggles.wiggles, function ($var405) {
+    return view_1(model.patcher.patches, model.wiggles.wiggles, function ($var423) {
       return dispatchServer(function () {
         var f = function f(arg0) {
           return new ShowServerCommand("Patcher", [arg0]);
@@ -300,15 +300,15 @@ export function viewShow(openModal, model, dispatch, dispatchServer) {
         return function (tupledArg) {
           return liftResponseAndFilter(f, tupledArg[0], tupledArg[1]);
         };
-      }()($var405));
+      }()($var423));
     });
   } else if (model.page.Case === "KnobTest") {
     var knobs = toList(map_1(function (tupledArg_1) {
-      return viewOne(tupledArg_1[0], tupledArg_1[1], function ($var406) {
+      return viewOne(tupledArg_1[0], tupledArg_1[1], function ($var424) {
         return dispatch(function (arg0_1) {
           return new ShowMessage("Knob", [arg0_1]);
-        }($var406));
-      }, function ($var407) {
+        }($var424));
+      }, function ($var425) {
         return dispatchServer(function () {
           var f_1 = function f_1(arg0_2) {
             return new ShowServerCommand("Knob", [arg0_2]);
@@ -317,20 +317,20 @@ export function viewShow(openModal, model, dispatch, dispatchServer) {
           return function (tupledArg_2) {
             return liftResponseAndFilter(f_1, tupledArg_2[0], tupledArg_2[1]);
           };
-        }()($var407));
+        }()($var425));
       });
     }, model.knobs));
     return createElement.apply(undefined, ["div", {}].concat(_toConsumableArray(knobs)));
   } else if (model.page.Case === "ClockTest") {
-    return view_2(model.knobs, model.clocks, function ($var408) {
+    return view_2(model.knobs, model.clocks, function ($var426) {
       return dispatch(function (arg0_3) {
         return new ShowMessage("Knob", [arg0_3]);
-      }($var408));
-    }, function ($var409) {
+      }($var426));
+    }, function ($var427) {
       return dispatch(function (arg0_4) {
         return new ShowMessage("Clock", [arg0_4]);
-      }($var409));
-    }, function ($var410) {
+      }($var427));
+    }, function ($var428) {
       return dispatchServer(function () {
         var f_2 = function f_2(arg0_5) {
           return new ShowServerCommand("Knob", [arg0_5]);
@@ -339,8 +339,8 @@ export function viewShow(openModal, model, dispatch, dispatchServer) {
         return function (tupledArg_3) {
           return liftResponseAndFilter(f_2, tupledArg_3[0], tupledArg_3[1]);
         };
-      }()($var410));
-    }, function ($var411) {
+      }()($var428));
+    }, function ($var429) {
       return dispatchServer(function () {
         var f_3 = function f_3(arg0_6) {
           return new ShowServerCommand("Clock", [arg0_6]);
@@ -349,18 +349,18 @@ export function viewShow(openModal, model, dispatch, dispatchServer) {
         return function (tupledArg_4) {
           return liftResponseAndFilter(f_3, tupledArg_4[0], tupledArg_4[1]);
         };
-      }()($var411));
+      }()($var429));
     });
   } else if (model.page.Case === "WiggleTest") {
-    return view_3(model.knobs, model.clocks.clocks, model.wiggles, function ($var412) {
+    return view_3(model.knobs, model.clocks.clocks, model.wiggles, function ($var430) {
       return dispatch(function (arg0_7) {
         return new ShowMessage("Knob", [arg0_7]);
-      }($var412));
-    }, function ($var413) {
+      }($var430));
+    }, function ($var431) {
       return dispatch(function (arg0_8) {
         return new ShowMessage("Wiggle", [arg0_8]);
-      }($var413));
-    }, function ($var414) {
+      }($var431));
+    }, function ($var432) {
       return dispatchServer(function () {
         var f_4 = function f_4(arg0_9) {
           return new ShowServerCommand("Knob", [arg0_9]);
@@ -369,8 +369,8 @@ export function viewShow(openModal, model, dispatch, dispatchServer) {
         return function (tupledArg_5) {
           return liftResponseAndFilter(f_4, tupledArg_5[0], tupledArg_5[1]);
         };
-      }()($var414));
-    }, function ($var415) {
+      }()($var432));
+    }, function ($var433) {
       return dispatchServer(function () {
         var f_5 = function f_5(arg0_10) {
           return new ShowServerCommand("Wiggle", [arg0_10]);
@@ -379,14 +379,14 @@ export function viewShow(openModal, model, dispatch, dispatchServer) {
         return function (tupledArg_6) {
           return liftResponseAndFilter(f_5, tupledArg_6[0], tupledArg_6[1]);
         };
-      }()($var415));
+      }()($var433));
     });
   } else {
-    return view_4(openModal, model.patcher, function ($var416) {
+    return view_4(openModal, model.patcher, function ($var434) {
       return dispatch(function (arg0_11) {
         return new ShowMessage("Patcher", [arg0_11]);
-      }($var416));
-    }, function ($var417) {
+      }($var434));
+    }, function ($var435) {
       return dispatchServer(function () {
         var f_6 = function f_6(arg0_12) {
           return new ShowServerCommand("Patcher", [arg0_12]);
@@ -395,7 +395,7 @@ export function viewShow(openModal, model, dispatch, dispatchServer) {
         return function (tupledArg_7) {
           return liftResponseAndFilter(f_6, tupledArg_7[0], tupledArg_7[1]);
         };
-      }()($var417));
+      }()($var435));
     });
   }
 }

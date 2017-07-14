@@ -210,7 +210,7 @@ impl<'a, 'b> PartialEq<CompleteClock+'b> for CompleteClock + 'a {
 }
 
 // Blanket impl Outputs for every clock.
-impl<M> Outputs<M> for Box<CompleteClock> {}
+impl<M, I> Outputs<M, I> for Box<CompleteClock> {}
 
 // TODO: consider generalizing Update and/or Render as traits.
 /// Wrapper trait for a clock network.
