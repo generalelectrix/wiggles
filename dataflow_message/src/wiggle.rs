@@ -76,7 +76,7 @@ impl WiggleDescription {
 pub enum Response {
     Kinds(Arc<Vec<String>>),
     State(Vec<(WiggleId, WiggleDescription)>),
-    New{id: WiggleId, desc: WiggleDescription},
+    New(WiggleId, WiggleDescription),
     Removed(WiggleId),
     Renamed(WiggleId, Arc<String>),
     SetInput(SetInput),
@@ -131,10 +131,9 @@ pub fn handle_message(
                 messages.push(msg);
             }
 
-            messages.push(ResponseWithKnobs::Wiggle(Response::New{
-                id: id,
-                desc: WiggleDescription::from_node(node),
-            }));
+            messages.push(ResponseWithKnobs::Wiggle(Response::New(
+                id, WiggleDescription::from_node(node))));
+                
             Ok((messages, Some(ResponseFilter::All)))
         }
         Remove{id, force} => {

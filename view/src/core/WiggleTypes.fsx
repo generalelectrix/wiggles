@@ -51,29 +51,38 @@ type Command =
 
 type UsesClock =
     | Yes of ClockId option
+    | No
 
-type ClockDescription = {
+type WiggleDescription = {
     name: string
     kind: string
-    inputs: ClockId option list
+    inputs: (WiggleId * OutputId) option list
+    outputs: int,
+    clock: UsesClock
 }
 
 [<RequireQualifiedAccess>]
 type Response =
-    /// A listing of every available type of clock.
+    /// A listing of every available type of wiggle.
     | Classes of string list
-    /// A summary of the state of every clock.
-    | State of (ClockId * ClockDescription) list
-    /// A new clock has been added.
-    | New of ClockId * ClockDescription
-    /// A clock has been deleted.
-    | Removed of ClockId
-    /// A clock has been renamed.
-    | Renamed of ClockId * string
-    /// A clock's input has been reassigned.
+    /// A summary of the state of every wiggle.
+    | State of (WiggleId * WiggleDescription) list
+    /// A new wiggle has been added.
+    | New of WiggleId * WiggleDescription
+    /// A wiggle has been deleted.
+    | Removed of WiggleId
+    /// A wiggle has been renamed.
+    | Renamed of WiggleId * string
+    /// A wiggle's input has been reassigned.
     | SetInput of SetInput
-    /// A clock has had a new input added.
-    | PushInput of ClockId
-    /// A clock has had an input removed.
-    | PopInput of ClockId
+    /// A wiggle has had a new input added.
+    | PushInput of WiggleId
+    /// A wiggle has had an input removed.
+    | PopInput of WiggleId
+    /// A wiggle has had a new output added.
+    | PushOutput of WiggleId
+    /// A wiggle has had an output removed.
+    | PopOutput of WiggleId
+    /// A wiggle has had its clock source changed.
+    | SetClock of WiggleId * ClockId option
 
